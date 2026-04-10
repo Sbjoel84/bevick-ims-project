@@ -52,15 +52,13 @@ export default function Purchase() {
   const [deleteReq, setDeleteReq] = useState(null);
 
   const purchaseColumns = [
-    { key: 'date',          label: 'Date',      format: v => fmtDate(v) },
-    { key: 'name',          label: 'Item' },
-    { key: 'category',      label: 'Category' },
-    { key: 'qty',           label: 'Qty',       align: 'tc' },
-    { key: 'unit',          label: 'Unit',      align: 'tc' },
-    { key: 'supplier',      label: 'Supplier' },
-    { key: 'priority',      label: 'Priority' },
-    { key: 'estimatedCost', label: 'Est. Cost', align: 'tr', format: v => formatCurrency(v || 0, currency) },
-    { key: 'status',        label: 'Status' },
+    { key: 'date',     label: 'Date',     format: v => fmtDate(v) },
+    { key: 'name',     label: 'Item' },
+    { key: 'qty',      label: 'Qty',      align: 'tc' },
+    { key: 'unit',     label: 'Unit',     align: 'tc' },
+    { key: 'supplier', label: 'Supplier' },
+    { key: 'priority', label: 'Priority' },
+    { key: 'status',   label: 'Status' },
   ];
 
   function getPurchaseSummary(data) {

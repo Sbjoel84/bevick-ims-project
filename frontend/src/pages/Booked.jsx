@@ -207,13 +207,11 @@ export default function Booked() {
   const [deleteReq, setDeleteReq] = useState(null);
 
   const bookingColumns = [
-    { key: 'id',           label: 'Booking ID' },
-    { key: 'date',         label: 'Booked',    format: v => fmtDate(v) },
-    { key: 'customer',     label: 'Customer' },
-    { key: 'deliveryDate', label: 'Delivery',  format: v => v ? fmtDate(v) : '—' },
-    { key: 'items',        label: 'Items',     format: v => (v || []).map(i => i.name).filter(Boolean).join(', ') || '—' },
-    { key: 'total',        label: 'Value',     align: 'tr', format: v => formatCurrency(v || 0, currency) },
-    { key: 'status',       label: 'Status' },
+    { key: 'customer', label: 'Customer' },
+    { key: 'id',       label: 'Booking ID' },
+    { key: 'date',     label: 'Booked', format: v => fmtDate(v) },
+    { key: 'items', label: 'Items', tdStyle: 'white-space:pre-line;', format: v => (v || []).map(i => `${i.name}  ×${i.qty}${i.unit ? ' ' + i.unit : ''}`).filter(Boolean).join('\n') || '—' },
+    { key: 'status',   label: 'Status' },
   ];
 
   function getBookingSummary(data) {
@@ -348,27 +346,32 @@ export default function Booked() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800">
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Booking ID</th>
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Customer</th>
+                <th className="text-left text-gray-500 font-medium px-5 py-3">Booking ID</th>
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Date</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Delivery</th>
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Items</th>
-                <th className="text-right text-gray-500 font-medium px-5 py-3">Value</th>
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Status</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="text-center text-gray-600 py-12">No bookings found</td></tr>
+                <tr><td colSpan={6} className="text-center text-gray-600 py-12">No bookings found</td></tr>
               ) : filtered.map(b => (
                 <tr key={b.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
-                  <td className="px-5 py-3.5 font-mono text-gray-400 text-xs">{b.id}</td>
                   <td className="px-5 py-3.5 text-white font-medium">{b.customer}</td>
+                  <td className="px-5 py-3.5 font-mono text-gray-400 text-xs">{b.id}</td>
                   <td className="px-5 py-3.5 text-gray-400">{fmtDate(b.date)}</td>
-                  <td className="px-5 py-3.5 text-gray-400">{b.deliveryDate ? fmtDate(b.deliveryDate) : '—'}</td>
-                  <td className="px-5 py-3.5 text-gray-400">{b.items?.length || 0}</td>
-                  <td className="px-5 py-3.5 text-right font-mono text-emerald-400">{formatCurrency(b.total || 0, currency)}</td>
+                  <td className="px-5 py-3.5">
+                    <div className="space-y-1">
+                      {(b.items || []).map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 text-xs leading-tight">
+                          <span className="text-gray-200">{item.name}</span>
+                          <span className="text-gray-500">×{item.qty}{item.unit ? ' ' + item.unit : ''}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </td>
                   <td className="px-5 py-3.5">
                     <select
                       value={b.status}

@@ -170,7 +170,7 @@ export function printReport({ title, subtitle, columns, rows, summaryRows, dateR
           const raw = row[c.key];
           const val = c.format ? esc(c.format(raw, row)) : esc(raw ?? '');
           const align = c.align === 'tr' ? 'text-align:right;' : c.align === 'tc' ? 'text-align:center;' : '';
-          return `<td style="${align}">${val}</td>`;
+          return `<td style="${align}${c.tdStyle || ''}">${val}</td>`;
         }).join('');
         return `<tr>${cells}</tr>`;
       }).join('');
