@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
@@ -46,9 +46,35 @@ function LoadingScreen() {
   );
 }
 
+function ThemeToggle() {
+  const { state, dispatch } = useApp();
+  const isLight = state.theme === 'light';
+  return (
+    <button
+      onClick={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { theme: isLight ? 'dark' : 'light' } })}
+      title={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+      className="fixed top-3 right-4 z-50 p-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-white transition-colors shadow-lg"
+    >
+      {isLight ? (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+        </svg>
+      ) : (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 7a5 5 0 100 10 5 5 0 000-10z"/>
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export default function App() {
   const { state } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', state.theme || 'dark');
+  }, [state.theme]);
 
   // Show loading screen while Supabase data is being fetched
   if (!state.dbLoaded) return <LoadingScreen />;
@@ -59,6 +85,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-gray-950 overflow-hidden">
+      <ThemeToggle />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main content */}

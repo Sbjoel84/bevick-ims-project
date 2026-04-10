@@ -17,7 +17,7 @@ const initialState = {
   vat: 0.075,
   thr: 5,
   currency: 'NGN',
-  theme: 'light',
+  theme: 'dark',
   bizName: 'Bevick Packaging Machineries',
   bizRC: 'RC: 967373',
   bizPhone: '+234 800 000 0000',

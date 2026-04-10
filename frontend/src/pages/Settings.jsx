@@ -111,6 +111,32 @@ export default function Settings() {
         </Section>
       )}
 
+      {/* Appearance */}
+      <Section title="Appearance">
+        <Field label="Theme" hint="Switch between dark and light mode">
+          <button
+            onClick={() => update({ theme: state.theme === 'light' ? 'dark' : 'light' })}
+            className="flex items-center gap-2.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+          >
+            {state.theme === 'light' ? (
+              <>
+                <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                </svg>
+                Switch to Dark
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 7a5 5 0 100 10 5 5 0 000-10z"/>
+                </svg>
+                Switch to Light
+              </>
+            )}
+          </button>
+        </Field>
+      </Section>
+
       {/* Finance */}
       <Section title="Finance Settings">
         <Field label="Currency" hint="Used for all monetary display">
