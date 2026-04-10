@@ -1,0 +1,304 @@
+/**
+ * sync.js — Sync reducer actions to Supabase
+ *
+ * Called after every dispatch with (action, prevState, nextState).
+ * Maps each action type to the appropriate Supabase write(s).
+ * Errors are caught and logged — they never crash the app.
+ */
+import { supabase } from './supabase';
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+// Tables that have a branch column in the schema
+const BRANCH_TABLES = new Set(['inventory','sales','customers','expenses','bookings','purchase_list','goods_received']);
+
+async function upsert(table, obj) {
+  const row = { id: String(obj.id), data: obj };
+  if (BRANCH_TABLES.has(table)) row.branch = obj.branch || null;
+  const { error } = await supabase.from(table).upsert(row);
+  if (error) throw error;
+}
+
+async function remove(table, id) {
+  const { error } = await supabase.from(table).delete().eq('id', String(id));
+  if (error) throw error;
+}
+
+async function upsertMany(table, items) {
+  if (!items.length) return;
+  const rows = items.map(obj => {
+    const row = { id: String(obj.id), data: obj };
+    if (BRANCH_TABLES.has(table)) row.branch = obj.branch || null;
+    return row;
+  });
+  const { error } = await supabase.from(table).upsert(rows);
+  if (error) throw error;
+}
+
+async function syncAudit(nextState, prevState) {
+  // Sync only the newest audit entry (if a new one was added)
+  const next = nextState.auditLog[0];
+  const prev = prevState.auditLog[0];
+  if (next && next !== prev) {
+    await supabase.from('audit_log').upsert({ id: String(next.id), data: next });
+  }
+}
+
+async function toRecycleBin(nextState, id) {
+  const item = nextState.recycleBin.find(r => r.id === id);
+  if (item) await upsert('recycle_bin', item);
+}
+
+// ── Main sync function ───────────────────────────────────────────────────────
+
+export async function syncAction(action, prevState, nextState) {
+  try {
+    switch (action.type) {
+
+      // ── LOGIN / LOGOUT / PAGE / BRANCH — no persistence needed
+      case 'LOGIN':
+      case 'LOGOUT':
+      case 'SET_PAGE':
+      case 'SET_BRANCH':
+      case 'INIT':
+        return;
+
+      // ── SALES ────────────────────────────────────────────────
+      case 'ADD_SALE': {
+        await upsert('sales', action.payload);
+        // Sync deducted inventory items
+        const ids = new Set(action.payload.items.map(i => i.id));
+        const modified = nextState.inventory.filter(i => ids.has(i.id));
+        await upsertMany('inventory', modified);
+        break;
+      }
+      case 'DELETE_SALE': {
+        await remove('sales', action.payload);
+        await toRecycleBin(nextState, action.payload);
+        break;
+      }
+
+      // ── CUSTOMERS ────────────────────────────────────────────
+      case 'ADD_CUSTOMER':
+        await upsert('customers', action.payload);
+        break;
+      case 'UPDATE_CUSTOMER':
+        await upsert('customers', action.payload);
+        break;
+      case 'DELETE_CUSTOMER': {
+        await remove('customers', action.payload);
+        await toRecycleBin(nextState, action.payload);
+        break;
+      }
+
+      // ── EXPENSES ─────────────────────────────────────────────
+      case 'ADD_EXPENSE':
+        await upsert('expenses', action.payload);
+        break;
+      case 'DELETE_EXPENSE': {
+        await remove('expenses', action.payload);
+        await toRecycleBin(nextState, action.payload);
+        break;
+      }
+
+      // ── INVENTORY ────────────────────────────────────────────
+      case 'ADD_ITEM':
+        await upsert('inventory', action.payload);
+        break;
+      case 'UPDATE_ITEM':
+        await upsert('inventory', action.payload);
+        break;
+      case 'DELETE_ITEM': {
+        await remove('inventory', action.payload);
+        await toRecycleBin(nextState, action.payload);
+        break;
+      }
+      case 'RESTOCK_ITEM': {
+        const item = nextState.inventory.find(i => i.id === action.payload.id);
+        if (item) await upsert('inventory', item);
+        break;
+      }
+
+      // ── BOOKINGS ─────────────────────────────────────────────
+      case 'ADD_BOOKING': {
+        await upsert('bookings', action.payload);
+        // Sync auto-generated purchase list entries (new ones are at the front of nextState)
+        const prevIds = new Set(prevState.purchaseList.map(p => p.id));
+        const newPurchases = nextState.purchaseList.filter(p => !prevIds.has(p.id));
+        await upsertMany('purchase_list', newPurchases);
+        break;
+      }
+      case 'UPDATE_BOOKING_STATUS': {
+        const b = nextState.bookings.find(x => x.id === action.payload.id);
+        if (b) await upsert('bookings', b);
+        break;
+      }
+      case 'UPDATE_BOOKING':
+        await upsert('bookings', action.payload);
+        break;
+      case 'DELETE_BOOKING': {
+        await remove('bookings', action.payload);
+        await toRecycleBin(nextState, action.payload);
+        break;
+      }
+
+      // ── PURCHASE LIST ─────────────────────────────────────────
+      case 'ADD_PURCHASE':
+        await upsert('purchase_list', action.payload);
+        break;
+      case 'UPDATE_PURCHASE_STATUS': {
+        const p = nextState.purchaseList.find(x => x.id === action.payload.id);
+        if (p) await upsert('purchase_list', p);
+        break;
+      }
+      case 'DELETE_PURCHASE':
+        await remove('purchase_list', action.payload);
+        break;
+
+      // ── GOODS RECEIVED ────────────────────────────────────────
+      case 'RECEIVE_GOODS': {
+        await upsert('goods_received', action.payload);
+        // Sync restocked inventory items
+        const ids = new Set(action.payload.items.map(i => i.id));
+        const modified = nextState.inventory.filter(i => ids.has(i.id));
+        await upsertMany('inventory', modified);
+        break;
+      }
+
+      // ── SUPPLIERS ─────────────────────────────────────────────
+      case 'ADD_SUPPLIER':
+        await upsert('suppliers', action.payload);
+        break;
+      case 'UPDATE_SUPPLIER':
+        await upsert('suppliers', action.payload);
+        break;
+      case 'DELETE_SUPPLIER': {
+        await remove('suppliers', action.payload);
+        await toRecycleBin(nextState, action.payload);
+        break;
+      }
+
+      // ── USERS ─────────────────────────────────────────────────
+      case 'ADD_USER':
+        await upsert('app_users', action.payload);
+        break;
+      case 'UPDATE_USER':
+        await upsert('app_users', action.payload);
+        break;
+      case 'DELETE_USER':
+        await remove('app_users', action.payload);
+        break;
+      case 'APPROVE_PENDING': {
+        await remove('pending_users', action.payload);
+        const approved = nextState.users.find(u => u.id === action.payload);
+        if (approved) {
+          await supabase.from('app_users').upsert({ id: String(approved.id), data: approved });
+        }
+        break;
+      }
+      case 'REJECT_PENDING':
+        await remove('pending_users', action.payload);
+        break;
+      case 'REGISTER_USER':
+        // Save to pending_users table (no branch column on this table)
+        await supabase.from('pending_users').upsert({ id: String(action.payload.id), data: action.payload });
+        break;
+
+      // ── PERMISSIONS ───────────────────────────────────────────
+      case 'SET_PERMISSIONS': {
+        const { role, pages } = action.payload;
+        await supabase.from('permissions').upsert({ role, pages });
+        break;
+      }
+
+      // ── RECYCLE BIN ───────────────────────────────────────────
+      case 'RESTORE_ITEM': {
+        await remove('recycle_bin', action.payload);
+        // Find the original type from prevState recycle bin
+        const binItem = prevState.recycleBin.find(x => x.id === action.payload);
+        if (binItem) {
+          const typeToTable = {
+            inventory: 'inventory', sale: 'sales', customer: 'customers',
+            expense: 'expenses', supplier: 'suppliers', booking: 'bookings',
+          };
+          const tbl = typeToTable[binItem._type];
+          const stateKey = {
+            inventory: 'inventory', sale: 'sales', customer: 'customers',
+            expense: 'expenses', supplier: 'suppliers', booking: 'bookings',
+          }[binItem._type];
+          if (tbl && stateKey) {
+            const restored = nextState[stateKey].find(x => x.id === action.payload);
+            if (restored) await upsert(tbl, restored);
+          }
+        }
+        break;
+      }
+      case 'PERM_DELETE':
+        await remove('recycle_bin', action.payload);
+        break;
+      case 'EMPTY_BIN': {
+        // Delete all recycle bin entries
+        const ids = prevState.recycleBin.map(r => String(r.id));
+        if (ids.length) {
+          await supabase.from('recycle_bin').delete().in('id', ids);
+        }
+        break;
+      }
+
+      // ── SETTINGS ──────────────────────────────────────────────
+      case 'UPDATE_SETTINGS': {
+        // Merge updated settings into the stored settings object
+        const currentSettings = {
+          vat: nextState.vat, thr: nextState.thr, currency: nextState.currency,
+          bizName: nextState.bizName, bizRC: nextState.bizRC, bizPhone: nextState.bizPhone,
+          bizEmail: nextState.bizEmail, bizAddress: nextState.bizAddress,
+          notifySales: nextState.notifySales, notifyLowStock: nextState.notifyLowStock,
+          notifyExpenses: nextState.notifyExpenses,
+        };
+        await supabase.from('app_settings').upsert({ id: 'main', data: currentSettings });
+        break;
+      }
+      case 'UPDATE_PROFILE': {
+        const u = nextState.users.find(x => x.id === nextState.user?.id);
+        if (u) await upsert('app_users', u);
+        break;
+      }
+
+      // ── DELETE REQUESTS ───────────────────────────────────────
+      case 'REQUEST_DELETE':
+        await upsert('delete_requests', action.payload);
+        break;
+      case 'APPROVE_DELETE': {
+        // Remove the request
+        await remove('delete_requests', action.payload);
+        // Find what type of record was deleted and sync accordingly
+        const req = prevState.deleteRequests.find(r => r.id === action.payload);
+        if (req) {
+          const tableMap = {
+            sale: 'sales', customer: 'customers', expense: 'expenses',
+            inventory: 'inventory', booking: 'bookings',
+            purchase: 'purchase_list', supplier: 'suppliers',
+          };
+          const tbl = tableMap[req.type];
+          if (tbl) {
+            await remove(tbl, req.targetId);
+            await toRecycleBin(nextState, req.targetId);
+          }
+        }
+        break;
+      }
+      case 'REJECT_DELETE':
+        await remove('delete_requests', action.payload);
+        break;
+
+      default:
+        break;
+    }
+
+    // Always sync the latest audit log entry
+    await syncAudit(nextState, prevState);
+
+  } catch (err) {
+    console.error('[sync] Error syncing action', action.type, ':', err?.message || err);
+  }
+}
