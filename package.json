@@ -5,6 +5,7 @@
     "dev": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
     "preview": "npm --prefix frontend run preview",
-    "install": "npm --prefix frontend install"
+    "install": "npm --prefix frontend install && npm --prefix backend install",
+    "start": "npm --prefix backend run start"
   }
 }
