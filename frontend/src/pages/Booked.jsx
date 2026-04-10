@@ -211,7 +211,7 @@ export default function Booked() {
     { key: 'date',         label: 'Booked',    format: v => fmtDate(v) },
     { key: 'customer',     label: 'Customer' },
     { key: 'deliveryDate', label: 'Delivery',  format: v => v ? fmtDate(v) : '—' },
-    { key: 'items',        label: 'Items',     align: 'tc', format: v => (v?.length || 0) },
+    { key: 'items',        label: 'Items',     format: v => (v || []).map(i => i.name).filter(Boolean).join(', ') || '—' },
     { key: 'total',        label: 'Value',     align: 'tr', format: v => formatCurrency(v || 0, currency) },
     { key: 'status',       label: 'Status' },
   ];
