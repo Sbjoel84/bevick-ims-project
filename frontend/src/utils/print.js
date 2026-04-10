@@ -123,6 +123,7 @@ th:nth-child(3),td:nth-child(3),th:nth-child(4),td:nth-child(4){ text-align:righ
   <div class="foot">
     <p>** Thank you for your business! **</p>
     ${bizEmail ? `<p style="margin-top:4px;">${esc(bizEmail)}</p>` : ''}
+    <p style="margin-top:4px;">Tel: +234 703 925 4820</p>
     <p style="margin-top:8px;font-size:10px;">${fmtDateTime(new Date().toISOString())}</p>
   </div>
 </div>
@@ -181,7 +182,7 @@ export function printReport({ title, subtitle, columns, rows, summaryRows, dateR
   ${summaryHtml ? `<div class="summary-wrap"><div class="summary-box">${summaryHtml}</div></div>` : ''}
   <div class="footer">
     <span>${esc(bizName) || 'Bevick IMS'} · Confidential</span>
-    <span>Printed: ${now}</span>
+    <span>Tel: +234 703 925 4820 &nbsp;·&nbsp; Printed: ${now}</span>
   </div>
 </div>
 <script>window.onload=function(){ window.print(); window.onafterprint=function(){ window.close(); }; }</script>

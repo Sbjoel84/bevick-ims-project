@@ -1,0 +1,11 @@
+{
+  "[sql]": {
+    "editor.defaultFormatter": null
+  },
+  "mssql.intelliSense.enableIntelliSense": false,
+  "mssql.validateSyntax": false,
+  "mssql.enableSqlcmdVariables": false,
+  "files.associations": {
+    "supabase-schema.sql": "pgsql"
+  }
+}

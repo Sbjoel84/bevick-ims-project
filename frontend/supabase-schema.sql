@@ -1,7 +1,8 @@
 -- ============================================================
--- Bevick IMS — Supabase Schema
+-- Bevick IMS — Supabase Schema (PostgreSQL)
 -- Run this in your Supabase SQL Editor (once)
 -- ============================================================
+-- sqlfluff:dialect=postgres
 
 -- All tables use id (text PK) + data (jsonb) pattern
 -- branch column added where needed for potential server-side filtering

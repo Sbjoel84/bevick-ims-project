@@ -43,7 +43,7 @@ export default function Sidebar({ open, onClose }) {
   const { state, dispatch } = useApp();
   const { user, page, permissions, recycleBin } = state;
 
-  const allowed = permissions[user?.role] || [];
+  const allowed = user?.customPages || permissions[user?.role] || [];
 
   function go(p) {
     dispatch({ type: 'SET_PAGE', payload: p });

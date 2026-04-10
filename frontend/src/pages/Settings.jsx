@@ -89,25 +89,27 @@ export default function Settings() {
         </button>
       </Section>
 
-      {/* Business */}
-      <Section title="Business Information">
-        {[
-          { key: 'bizName',    label: 'Business Name' },
-          { key: 'bizRC',      label: 'RC Number' },
-          { key: 'bizPhone',   label: 'Business Phone' },
-          { key: 'bizEmail',   label: 'Business Email' },
-          { key: 'bizAddress', label: 'Address' },
-        ].map(f => (
-          <Field key={f.key} label={f.label}>
-            <input
-              type="text"
-              value={state[f.key]}
-              onChange={e => update({ [f.key]: e.target.value })}
-              className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-sm w-52 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </Field>
-        ))}
-      </Section>
+      {/* Business — admin only */}
+      {user?.role === 'super_admin' && (
+        <Section title="Business Information">
+          {[
+            { key: 'bizName',    label: 'Business Name' },
+            { key: 'bizRC',      label: 'RC Number' },
+            { key: 'bizPhone',   label: 'Business Phone' },
+            { key: 'bizEmail',   label: 'Business Email' },
+            { key: 'bizAddress', label: 'Address' },
+          ].map(f => (
+            <Field key={f.key} label={f.label}>
+              <input
+                type="text"
+                value={state[f.key]}
+                onChange={e => update({ [f.key]: e.target.value })}
+                className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-sm w-52 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </Field>
+          ))}
+        </Section>
+      )}
 
       {/* Finance */}
       <Section title="Finance Settings">

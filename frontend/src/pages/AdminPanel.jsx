@@ -93,6 +93,8 @@ export default function AdminPanel() {
   const [selected, setSelected] = useState(null);
   const [editPerms, setEditPerms] = useState(null);
   const [permPages, setPermPages] = useState([]);
+  const [userPermsTarget, setUserPermsTarget] = useState(null);
+  const [userPermPages, setUserPermPages] = useState([]);
 
   // Branch switcher (super admin only)
   function setBranch(bid) {
@@ -120,6 +122,21 @@ export default function AdminPanel() {
   function openPerms(role) {
     setEditPerms(role);
     setPermPages([...(permissions[role] || [])]);
+  }
+
+  function openUserPerms(u) {
+    setUserPermsTarget(u);
+    // Start from user's custom pages if set, otherwise their role defaults
+    setUserPermPages([...(u.customPages || permissions[u.role] || [])]);
+  }
+
+  function saveUserPerms() {
+    dispatch({ type: 'SET_USER_PERMISSIONS', payload: { userId: userPermsTarget.id, pages: userPermPages } });
+    setUserPermsTarget(null);
+  }
+
+  function toggleUserPermPage(pageId) {
+    setUserPermPages(p => p.includes(pageId) ? p.filter(x => x !== pageId) : [...p, pageId]);
   }
 
   function togglePage(pageId) {
@@ -200,6 +217,9 @@ export default function AdminPanel() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex gap-2 justify-end">
+                        <button onClick={() => openUserPerms(u)} title="Edit user permissions" className="text-gray-500 hover:text-emerald-400 transition-colors">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                        </button>
                         <button onClick={() => openEditUser(u)} className="text-gray-500 hover:text-white transition-colors">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         </button>
@@ -380,6 +400,54 @@ export default function AdminPanel() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Per-User Permissions Modal */}
+      {userPermsTarget && (
+        <Modal title={`Permissions — ${userPermsTarget.name}`} onClose={() => setUserPermsTarget(null)}>
+          <div className="space-y-4">
+            <p className="text-gray-400 text-xs">
+              Custom permissions override the default role permissions for this user only.
+              {userPermsTarget.customPages && (
+                <span className="ml-1 text-amber-400">Custom permissions are active.</span>
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {ALL_PAGES.map(page => {
+                const active = userPermPages.includes(page.id);
+                return (
+                  <button
+                    key={page.id}
+                    onClick={() => toggleUserPermPage(page.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                      active
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                        : 'bg-gray-800 text-gray-500 border-transparent hover:border-gray-600'
+                    }`}
+                  >
+                    {page.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex gap-2 pt-1">
+              {userPermsTarget.customPages && (
+                <button
+                  onClick={() => {
+                    dispatch({ type: 'SET_USER_PERMISSIONS', payload: { userId: userPermsTarget.id, pages: [] } });
+                    setUserPermsTarget(null);
+                  }}
+                  className="text-xs bg-gray-800 hover:bg-gray-700 text-amber-400 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Reset to Role Default
+                </button>
+              )}
+              <div className="flex-1"/>
+              <button onClick={() => setUserPermsTarget(null)} className="text-xs bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">Cancel</button>
+              <button onClick={saveUserPerms} className="text-xs bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2 rounded-lg font-medium transition-colors">Save</button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Add/Edit User Modal */}

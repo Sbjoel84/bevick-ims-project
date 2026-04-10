@@ -348,6 +348,16 @@ function reducer(state, action) {
     case 'SET_PERMISSIONS':
       return { ...state, permissions: { ...state.permissions, [action.payload.role]: action.payload.pages } };
 
+    case 'SET_USER_PERMISSIONS': {
+      const { userId, pages } = action.payload;
+      const applyCustom = u => ({ ...u, customPages: pages.length > 0 ? pages : undefined });
+      return {
+        ...state,
+        users: state.users.map(u => u.id === userId ? applyCustom(u) : u),
+        user: state.user?.id === userId ? applyCustom(state.user) : state.user,
+      };
+    }
+
     // ── RECYCLE BIN ────────────────────────────────────────────
     case 'RESTORE_ITEM': {
       const item = state.recycleBin.find(x => x.id === action.payload);

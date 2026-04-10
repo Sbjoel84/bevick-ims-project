@@ -210,6 +210,11 @@ export async function syncAction(action, prevState, nextState) {
         await supabase.from('permissions').upsert({ role, pages });
         break;
       }
+      case 'SET_USER_PERMISSIONS': {
+        const u = nextState.users.find(x => x.id === action.payload.userId);
+        if (u) await upsert('app_users', u);
+        break;
+      }
 
       // ── RECYCLE BIN ───────────────────────────────────────────
       case 'RESTORE_ITEM': {
