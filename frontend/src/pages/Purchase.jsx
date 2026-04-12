@@ -5,7 +5,7 @@ import DeleteRequestModal from '../components/DeleteRequestModal';
 
 const STATUSES = ['pending', 'ordered', 'received', 'cancelled'];
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
-const CATEGORIES = ['Machinery', 'Spare Parts', 'Consumables', 'Chemicals', 'Safety', 'Others'];
+const CATEGORIES = ['Machinery', 'Spare Parts', 'Chemicals', 'Safety', 'Others'];
 
 const STATUS_COLORS = {
   pending:   'bg-amber-950 text-amber-400',
@@ -45,6 +45,7 @@ export default function Purchase() {
 
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY);
+  const [customItem, setCustomItem] = useState(false);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
@@ -97,6 +98,7 @@ export default function Purchase() {
     });
     setModal(false);
     setForm(EMPTY);
+    setCustomItem(false);
   }
 
   function updateStatus(id, status) {
@@ -124,7 +126,7 @@ export default function Purchase() {
           <p className="text-gray-500 text-sm mt-0.5">{bname}</p>
         </div>
         <button
-          onClick={() => { setForm({ ...EMPTY, branch: branch || 'DUB' }); setModal(true); }}
+          onClick={() => { setForm({ ...EMPTY, branch: branch || 'DUB' }); setCustomItem(false); setModal(true); }}
           className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
@@ -225,11 +227,40 @@ export default function Purchase() {
       </div>
 
       {modal && (
-        <Modal title="Purchase Request" onClose={() => setModal(false)}>
+        <Modal title="Purchase Request" onClose={() => { setModal(false); setCustomItem(false); setForm(EMPTY); }}>
           <div className="space-y-4">
             <div>
               <label className="text-gray-400 text-xs font-medium block mb-1.5">Item Name <span className="text-red-400">*</span></label>
-              <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+              <select
+                value={customItem ? '__custom__' : (form.name || '')}
+                onChange={e => {
+                  if (e.target.value === '__custom__') {
+                    setCustomItem(true);
+                    setForm(f => ({ ...f, name: '' }));
+                  } else {
+                    setCustomItem(false);
+                    setForm(f => ({ ...f, name: e.target.value }));
+                  }
+                }}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="" disabled>Select an item…</option>
+                {inventory
+                  .filter(i => !branch || !i.branch || i.branch === branch)
+                  .map(i => <option key={i.id} value={i.name}>{i.name}</option>)
+                }
+                <option value="__custom__">+ Add item not on list</option>
+              </select>
+              {customItem && (
+                <input
+                  type="text"
+                  placeholder="Enter item name…"
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  className="mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  autoFocus
+                />
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -282,7 +313,7 @@ export default function Purchase() {
               <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} rows={2} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"/>
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setModal(false)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
+              <button onClick={() => { setModal(false); setCustomItem(false); setForm(EMPTY); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
               <button onClick={submit} disabled={!form.name.trim()} className="flex-1 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">Add Request</button>
             </div>
           </div>
