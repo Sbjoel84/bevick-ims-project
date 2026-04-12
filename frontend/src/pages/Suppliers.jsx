@@ -72,7 +72,7 @@ export default function Suppliers() {
           <h1 className="font-syne text-2xl font-bold text-white">Suppliers</h1>
           <p className="text-gray-500 text-sm mt-0.5">{suppliers.length} suppliers</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+        <button onClick={openAdd} className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
           Add Supplier
         </button>
@@ -85,9 +85,9 @@ export default function Suppliers() {
           placeholder="Search suppliers…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-64"
+          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
         />
-        <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="all">All Categories</option>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
         </select>
@@ -105,7 +105,7 @@ export default function Suppliers() {
                 <p className="text-gray-500 text-xs mt-0.5">{s.contact}</p>
               </div>
               <div className="flex items-center gap-1">
-                <span className={`text-xs px-2 py-0.5 rounded-lg font-medium ${s.status === 'active' ? 'bg-emerald-950 text-emerald-400' : 'bg-gray-800 text-gray-500'}`}>
+                <span className={`text-xs px-2 py-0.5 rounded-lg font-medium ${s.status === 'active' ? 'bg-blue-950 text-blue-400' : 'bg-gray-800 text-gray-500'}`}>
                   {s.status}
                 </span>
               </div>
@@ -152,19 +152,19 @@ export default function Suppliers() {
             ].map(f => (
               <div key={f.key}>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">{f.label}{f.required && <span className="text-red-400 ml-0.5">*</span>}</label>
-                <input type="text" value={form[f.key]} onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+                <input type="text" value={form[f.key]} onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
               </div>
             ))}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">Category</label>
-                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                   {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">Status</label>
-                <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
@@ -172,7 +172,7 @@ export default function Suppliers() {
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setModal(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
-              <button onClick={save} disabled={!form.name.trim()} className="flex-1 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+              <button onClick={save} disabled={!form.name.trim()} className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
                 {modal === 'add' ? 'Add Supplier' : 'Save Changes'}
               </button>
             </div>

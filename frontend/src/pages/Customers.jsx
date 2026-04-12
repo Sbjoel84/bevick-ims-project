@@ -84,7 +84,7 @@ export default function Customers() {
         </div>
         <button
           onClick={openAdd}
-          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
           Add Customer
@@ -96,7 +96,7 @@ export default function Customers() {
         placeholder="Search customers…"
         value={search}
         onChange={e => setSearch(e.target.value)}
-        className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-72"
+        className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-72"
       />
 
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
@@ -119,7 +119,7 @@ export default function Customers() {
                 <tr key={c.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-emerald-600/30 flex items-center justify-center text-emerald-400 text-xs font-bold shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-blue-600/30 flex items-center justify-center text-blue-400 text-xs font-bold shrink-0">
                         {c.name?.slice(0,2).toUpperCase()}
                       </div>
                       <span className="text-white font-medium">{c.name}</span>
@@ -128,7 +128,7 @@ export default function Customers() {
                   <td className="px-5 py-3.5 text-gray-400">{c.phone || '—'}</td>
                   <td className="px-5 py-3.5 text-gray-400">{c.email || '—'}</td>
                   <td className="px-5 py-3.5 text-gray-400">{c.createdAt ? fmtDate(c.createdAt) : '—'}</td>
-                  <td className="px-5 py-3.5 text-right font-mono text-emerald-400">{formatCurrency(customerTotal(c.id), 'NGN')}</td>
+                  <td className="px-5 py-3.5 text-right font-mono text-blue-400">{formatCurrency(customerTotal(c.id), 'NGN')}</td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2 justify-end">
                       <button onClick={() => openView(c)} className="text-gray-500 hover:text-white transition-colors">
@@ -166,7 +166,7 @@ export default function Customers() {
                   placeholder={f.placeholder}
                   value={form[f.key]}
                   onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             ))}
@@ -176,12 +176,12 @@ export default function Customers() {
                 value={form.note}
                 onChange={e => setForm(x => ({ ...x, note: e.target.value }))}
                 rows={2}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setModal(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
-              <button onClick={save} disabled={!form.name.trim()} className="flex-1 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+              <button onClick={save} disabled={!form.name.trim()} className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
                 {modal === 'add' ? 'Add Customer' : 'Save Changes'}
               </button>
             </div>
@@ -215,7 +215,7 @@ export default function Customers() {
 
             <div className="bg-gray-800 rounded-xl p-4 flex items-center justify-between">
               <span className="text-gray-400 text-sm">Total Purchases</span>
-              <span className="text-emerald-400 font-mono font-medium">{formatCurrency(customerTotal(selected.id), 'NGN')}</span>
+              <span className="text-blue-400 font-mono font-medium">{formatCurrency(customerTotal(selected.id), 'NGN')}</span>
             </div>
 
             <div className="flex gap-3">

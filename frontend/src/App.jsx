@@ -39,7 +39,7 @@ function LoadingScreen() {
         className="h-20 w-auto rounded-2xl object-contain"
       />
       <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-gray-500 text-sm">Connecting to database…</p>
       </div>
     </div>

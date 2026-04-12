@@ -27,7 +27,7 @@ function EyeIcon({ open }) {
 function Alert({ type, children }) {
   const styles = {
     error:   'bg-red-950 border-red-800 text-red-300',
-    success: 'bg-emerald-950 border-emerald-800 text-emerald-300',
+    success: 'bg-blue-950 border-blue-800 text-blue-300',
     warn:    'bg-amber-950 border-amber-800 text-amber-300',
   };
   return (
@@ -242,14 +242,14 @@ export default function Login() {
                   value={loginForm.email}
                   onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))}
                   placeholder="you@example.com"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-gray-400 text-xs font-medium">Password</label>
                   <button type="button" onClick={() => switchView('forgot')}
-                    className="text-xs text-emerald-500 hover:text-emerald-400 transition-colors">
+                    className="text-xs text-blue-500 hover:text-blue-400 transition-colors">
                     Forgot password?
                   </button>
                 </div>
@@ -259,7 +259,7 @@ export default function Login() {
                     value={loginForm.password}
                     onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
                     placeholder="••••••••"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
                   />
                   <button type="button" onClick={() => setShowPw(v => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
@@ -268,7 +268,7 @@ export default function Login() {
                 </div>
               </div>
               <button type="submit" disabled={loading}
-                className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-800 text-white font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2">
+                className="w-full bg-blue-500 hover:bg-blue-400 disabled:bg-blue-800 text-white font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2">
                 {loading ? <><Spinner/> Signing in…</> : 'Sign in'}
               </button>
             </form>
@@ -277,7 +277,7 @@ export default function Login() {
               <p className="text-gray-500 text-sm">
                 Don't have an account?{' '}
                 <button onClick={() => switchView('register')}
-                  className="text-emerald-500 hover:text-emerald-400 font-medium transition-colors">
+                  className="text-blue-500 hover:text-blue-400 font-medium transition-colors">
                   Create account
                 </button>
               </p>
@@ -301,7 +301,7 @@ export default function Login() {
                     value={regForm.name}
                     onChange={e => setRegForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="Your full name"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
@@ -310,7 +310,7 @@ export default function Login() {
                     value={regForm.email}
                     onChange={e => setRegForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="you@example.com"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
@@ -319,21 +319,21 @@ export default function Login() {
                     value={regForm.phone}
                     onChange={e => setRegForm(f => ({ ...f, phone: e.target.value }))}
                     placeholder="+234 800 000 0000"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-gray-400 text-xs font-medium mb-1.5">Role</label>
                     <select value={regForm.role} onChange={e => setRegForm(f => ({ ...f, role: e.target.value }))}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-gray-400 text-xs font-medium mb-1.5">Branch</label>
                     <select value={regForm.bid} onChange={e => setRegForm(f => ({ ...f, bid: e.target.value }))}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
                     </select>
                   </div>
@@ -345,7 +345,7 @@ export default function Login() {
                       value={regForm.password}
                       onChange={e => setRegForm(f => ({ ...f, password: e.target.value }))}
                       placeholder="Min. 6 characters"
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10"
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
                     />
                     <button type="button" onClick={() => setShowPw(v => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
@@ -360,7 +360,7 @@ export default function Login() {
                       value={regForm.confirm}
                       onChange={e => setRegForm(f => ({ ...f, confirm: e.target.value }))}
                       placeholder="Re-enter password"
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10"
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
                     />
                     <button type="button" onClick={() => setShowPw2(v => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
@@ -369,7 +369,7 @@ export default function Login() {
                   </div>
                 </div>
                 <button type="submit" disabled={loading || !regForm.name || !regForm.email || !regForm.password || !regForm.confirm}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2">
+                  className="w-full bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2">
                   {loading ? <><Spinner/> Creating account…</> : 'Create Account'}
                 </button>
               </form>
@@ -403,11 +403,11 @@ export default function Login() {
                     value={forgotEmail}
                     onChange={e => setForgotEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <button type="submit" disabled={loading || !forgotEmail.trim()}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2">
+                  className="w-full bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2">
                   {loading ? <><Spinner/> Sending…</> : 'Send Reset Link'}
                 </button>
               </form>

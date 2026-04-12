@@ -35,7 +35,7 @@ html[data-theme="light"] .text-gray-500 { color: #94a3b8 !important; }
 html[data-theme="light"] .text-gray-600 { color: #64748b !important; }
 
 /* Accented text — darken for light bg readability */
-html[data-theme="light"] .text-emerald-400 { color: #059669 !important; }
+html[data-theme="light"] .text-blue-400 { color: #2563eb !important; }
 html[data-theme="light"] .text-amber-400   { color: #d97706 !important; }
 html[data-theme="light"] .text-blue-400    { color: #2563eb !important; }
 html[data-theme="light"] .text-red-400     { color: #dc2626 !important; }
@@ -53,7 +53,7 @@ html[data-theme="light"] .divide-gray-700 > * + * { border-color: #e2e8f0 !impor
 html[data-theme="light"] .divide-gray-800 > * + * { border-color: #f1f5f9 !important; }
 
 /* Status / badge dark backgrounds → light equivalents */
-html[data-theme="light"] .bg-emerald-950 { background-color: #d1fae5 !important; }
+html[data-theme="light"] .bg-blue-950 { background-color: #dbeafe !important; }
 html[data-theme="light"] .bg-amber-950   { background-color: #fef3c7 !important; }
 html[data-theme="light"] .bg-blue-950    { background-color: #dbeafe !important; }
 html[data-theme="light"] .bg-red-950     { background-color: #fee2e2 !important; }
@@ -62,7 +62,7 @@ html[data-theme="light"] .bg-purple-950  { background-color: #f3e8ff !important;
 html[data-theme="light"] .bg-orange-950  { background-color: #ffedd5 !important; }
 
 /* Badge hover states */
-html[data-theme="light"] .hover\:bg-emerald-900:hover { background-color: #a7f3d0 !important; }
+html[data-theme="light"] .hover\:bg-blue-900:hover { background-color: #bfdbfe !important; }
 html[data-theme="light"] .hover\:bg-red-900:hover     { background-color: #fecaca !important; }
 html[data-theme="light"] .hover\:bg-blue-900:hover    { background-color: #bfdbfe !important; }
 

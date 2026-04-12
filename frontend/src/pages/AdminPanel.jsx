@@ -33,18 +33,18 @@ function PendingCard({ u, dispatch }) {
         </div>
         <div className="flex flex-col sm:flex-row gap-2 items-end sm:items-center">
           <select value={role} onChange={e => setRole(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
             {ALL_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
           </select>
           {role !== 'super_admin' && (
             <select value={bid} onChange={e => setBid(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="DUB">Dubai Market</option>
               <option value="KUB">Kubwa Office</option>
             </select>
           )}
           <button onClick={approve}
-            className="text-xs bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap">
+            className="text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap">
             Approve
           </button>
           <button onClick={() => dispatch({ type: 'REJECT_PENDING', payload: u.id })}
@@ -178,7 +178,7 @@ export default function AdminPanel() {
       {tab === 'Users' && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <button onClick={openAddUser} className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+            <button onClick={openAddUser} className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
               Add User
             </button>
@@ -196,10 +196,10 @@ export default function AdminPanel() {
               </thead>
               <tbody>
                 {users.map(u => (
-                  <tr key={u.id} className={`border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors ${u.id === currentUser?.id ? 'bg-emerald-500/5' : ''}`}>
+                  <tr key={u.id} className={`border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors ${u.id === currentUser?.id ? 'bg-blue-500/5' : ''}`}>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                           {u.initials || u.name?.slice(0,2).toUpperCase()}
                         </div>
                         <div>
@@ -213,11 +213,11 @@ export default function AdminPanel() {
                     </td>
                     <td className="px-5 py-3.5 text-gray-400">{u.bid === 'DUB' ? 'Dubai Market' : u.bid === 'KUB' ? 'Kubwa Office' : 'All'}</td>
                     <td className="px-5 py-3.5">
-                      <span className={`text-xs px-2 py-0.5 rounded-lg font-medium ${u.status === 'active' ? 'bg-emerald-950 text-emerald-400' : 'bg-gray-800 text-gray-500'}`}>{u.status}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-lg font-medium ${u.status === 'active' ? 'bg-blue-950 text-blue-400' : 'bg-gray-800 text-gray-500'}`}>{u.status}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex gap-2 justify-end">
-                        <button onClick={() => openUserPerms(u)} title="Edit user permissions" className="text-gray-500 hover:text-emerald-400 transition-colors">
+                        <button onClick={() => openUserPerms(u)} title="Edit user permissions" className="text-gray-500 hover:text-blue-400 transition-colors">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
                         </button>
                         <button onClick={() => openEditUser(u)} className="text-gray-500 hover:text-white transition-colors">
@@ -313,7 +313,7 @@ export default function AdminPanel() {
                 {editPerms === role.id ? (
                   <div className="flex gap-2">
                     <button onClick={() => setEditPerms(null)} className="text-xs bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg transition-colors">Cancel</button>
-                    <button onClick={savePerms} className="text-xs bg-emerald-500 hover:bg-emerald-400 text-white px-3 py-1.5 rounded-lg font-medium transition-colors">Save</button>
+                    <button onClick={savePerms} className="text-xs bg-blue-500 hover:bg-blue-400 text-white px-3 py-1.5 rounded-lg font-medium transition-colors">Save</button>
                   </div>
                 ) : (
                   <button onClick={() => openPerms(role.id)} className="text-xs bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg transition-colors">Edit</button>
@@ -330,7 +330,7 @@ export default function AdminPanel() {
                       onClick={() => editPerms === role.id && togglePage(page.id)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                         active
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                           : 'bg-gray-800 text-gray-500 border border-transparent'
                       } ${editPerms === role.id ? 'cursor-pointer hover:border-gray-600' : 'cursor-default'}`}
                     >
@@ -387,7 +387,7 @@ export default function AdminPanel() {
                   onClick={() => setBranch(b.id)}
                   className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border transition-colors ${
                     (state.branch === b.id) || (b.id === null && state.branch === null)
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
                       : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-600'
                   }`}
                 >
@@ -421,7 +421,7 @@ export default function AdminPanel() {
                     onClick={() => toggleUserPermPage(page.id)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                       active
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                        ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
                         : 'bg-gray-800 text-gray-500 border-transparent hover:border-gray-600'
                     }`}
                   >
@@ -444,7 +444,7 @@ export default function AdminPanel() {
               )}
               <div className="flex-1"/>
               <button onClick={() => setUserPermsTarget(null)} className="text-xs bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">Cancel</button>
-              <button onClick={saveUserPerms} className="text-xs bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2 rounded-lg font-medium transition-colors">Save</button>
+              <button onClick={saveUserPerms} className="text-xs bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 rounded-lg font-medium transition-colors">Save</button>
             </div>
           </div>
         </Modal>
@@ -462,19 +462,19 @@ export default function AdminPanel() {
             ].map(f => (
               <div key={f.key}>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">{f.label}{f.required && <span className="text-red-400 ml-0.5">*</span>}</label>
-                <input type={f.type || 'text'} value={form[f.key]} onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+                <input type={f.type || 'text'} value={form[f.key]} onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
               </div>
             ))}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">Role</label>
-                <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                   {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">Branch</label>
-                <select value={form.bid || ''} onChange={e => setForm(f => ({ ...f, bid: e.target.value || null }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <select value={form.bid || ''} onChange={e => setForm(f => ({ ...f, bid: e.target.value || null }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">All Branches</option>
                   <option value="DUB">Dubai Market</option>
                   <option value="KUB">Kubwa Office</option>
@@ -483,14 +483,14 @@ export default function AdminPanel() {
             </div>
             <div>
               <label className="text-gray-400 text-xs font-medium block mb-1.5">Status</label>
-              <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setModal(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
-              <button onClick={saveUser} disabled={!form.name.trim() || !form.em.trim()} className="flex-1 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+              <button onClick={saveUser} disabled={!form.name.trim() || !form.em.trim()} className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
                 {modal === 'add' ? 'Add User' : 'Save Changes'}
               </button>
             </div>

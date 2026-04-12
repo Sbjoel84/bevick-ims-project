@@ -203,7 +203,7 @@ export default function Sales() {
               setPickerItemId(''); setPickerQty(1); setPickerPrice('');
               setModal('new');
             }}
-            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -220,12 +220,12 @@ export default function Sales() {
           placeholder="Search by customer or ID…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-64"
+          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
         />
         <select
           value={filterPayment}
           onChange={e => setFilterPayment(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Payments</option>
           {PAYMENT_METHODS.map(m => <option key={m}>{m}</option>)}
@@ -259,7 +259,7 @@ export default function Sales() {
                     <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg">{s.payment}</span>
                   </td>
                   <td className="px-5 py-3.5 text-gray-400">{s.items?.length || 0}</td>
-                  <td className="px-5 py-3.5 text-right font-mono text-emerald-400 font-medium">{formatCurrency(s.total, currency)}</td>
+                  <td className="px-5 py-3.5 text-right font-mono text-blue-400 font-medium">{formatCurrency(s.total, currency)}</td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2 justify-end">
                       <button onClick={() => openView(s)} className="text-gray-500 hover:text-white transition-colors">
@@ -291,7 +291,7 @@ export default function Sales() {
                   placeholder="Walk-in or name…"
                   value={form.customer}
                   onChange={e => setForm(f => ({ ...f, customer: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -303,7 +303,7 @@ export default function Sales() {
                     setPickerItemId(''); setPickerQty(1); setPickerPrice('');
                   }}
                   disabled={!!branch}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
                 </select>
@@ -319,7 +319,7 @@ export default function Sales() {
                     key={m}
                     type="button"
                     onClick={() => setForm(f => ({ ...f, payment: m }))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${form.payment === m ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${form.payment === m ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
                   >
                     {m}
                   </button>
@@ -338,7 +338,7 @@ export default function Sales() {
                   <select
                     value={pickerItemId}
                     onChange={e => onPickerItemChange(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">— Choose an item —</option>
                     {availableItems.map(item => (
@@ -355,7 +355,7 @@ export default function Sales() {
                     min={1}
                     value={pickerQty}
                     onChange={e => setPickerQty(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div className="w-32">
@@ -366,14 +366,14 @@ export default function Sales() {
                     value={pickerPrice}
                     onChange={e => setPickerPrice(e.target.value)}
                     placeholder={pickerSelected ? pickerSelected.price : '0'}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-right focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={handleAddItem}
                   disabled={!pickerItemId}
-                  className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors shrink-0"
+                  className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors shrink-0"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -413,7 +413,7 @@ export default function Sales() {
                             min={1}
                             value={item.qty}
                             onChange={e => updateItemQty(item.id, e.target.value)}
-                            className="w-16 text-center bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            className="w-16 text-center bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         </td>
                         <td className="px-4 py-2.5">
@@ -422,10 +422,10 @@ export default function Sales() {
                             min={0}
                             value={item.price}
                             onChange={e => updateItemPrice(item.id, e.target.value)}
-                            className="w-28 text-right bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            className="w-28 text-right bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         </td>
-                        <td className="px-4 py-2.5 text-right text-emerald-400 text-xs font-mono">
+                        <td className="px-4 py-2.5 text-right text-blue-400 text-xs font-mono">
                           {formatCurrency(item.price * item.qty, currency)}
                         </td>
                         <td className="px-4 py-2.5">
@@ -452,7 +452,7 @@ export default function Sales() {
                     type="checkbox"
                     checked={form.applyVat}
                     onChange={e => setForm(f => ({ ...f, applyVat: e.target.checked }))}
-                    className="accent-emerald-500"
+                    className="accent-blue-500"
                   />
                   VAT ({(vat * 100).toFixed(1)}%)
                 </label>
@@ -460,7 +460,7 @@ export default function Sales() {
               </div>
               <div className="flex justify-between text-sm font-semibold border-t border-gray-700 pt-2">
                 <span className="text-white">Total</span>
-                <span className="text-emerald-400 font-mono text-base">{formatCurrency(total, currency)}</span>
+                <span className="text-blue-400 font-mono text-base">{formatCurrency(total, currency)}</span>
               </div>
             </div>
 
@@ -470,7 +470,7 @@ export default function Sales() {
                 value={form.note}
                 onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
                 rows={2}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
             </div>
 
@@ -479,7 +479,7 @@ export default function Sales() {
               <button
                 onClick={submitSale}
                 disabled={form.items.length === 0}
-                className="flex-1 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+                className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
               >
                 Record Sale
               </button>
@@ -528,7 +528,7 @@ export default function Sales() {
                       <td className="px-4 py-2.5 text-white text-xs">{item.name}</td>
                       <td className="px-4 py-2.5 text-center text-gray-400 text-xs">{item.qty} {item.unit}</td>
                       <td className="px-4 py-2.5 text-right text-gray-400 text-xs font-mono">{formatCurrency(item.price, currency)}</td>
-                      <td className="px-4 py-2.5 text-right text-emerald-400 text-xs font-mono">{formatCurrency(item.price * item.qty, currency)}</td>
+                      <td className="px-4 py-2.5 text-right text-blue-400 text-xs font-mono">{formatCurrency(item.price * item.qty, currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -538,7 +538,7 @@ export default function Sales() {
             <div className="bg-gray-800 rounded-xl p-4 space-y-1.5 text-sm">
               <div className="flex justify-between"><span className="text-gray-400">Subtotal</span><span className="text-white font-mono">{formatCurrency(selected.subtotal || 0, currency)}</span></div>
               {selected.vat > 0 && <div className="flex justify-between"><span className="text-gray-400">VAT</span><span className="text-white font-mono">{formatCurrency(selected.vat, currency)}</span></div>}
-              <div className="flex justify-between font-semibold border-t border-gray-700 pt-2"><span className="text-white">Total</span><span className="text-emerald-400 font-mono">{formatCurrency(selected.total, currency)}</span></div>
+              <div className="flex justify-between font-semibold border-t border-gray-700 pt-2"><span className="text-white">Total</span><span className="text-blue-400 font-mono">{formatCurrency(selected.total, currency)}</span></div>
             </div>
 
             <div className="flex gap-3">

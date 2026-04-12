@@ -108,7 +108,7 @@ export default function Goods() {
         </div>
         <button
           onClick={() => { setForm({ supplier: '', branch: branch || 'DUB', invoiceNo: '', date: new Date().toISOString().slice(0,10), note: '', items: [] }); setModal('new'); }}
-          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
           Receive Goods
@@ -143,7 +143,7 @@ export default function Goods() {
         placeholder="Search by supplier, GRN ID or invoice…"
         value={search}
         onChange={e => setSearch(e.target.value)}
-        className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-80"
+        className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-80"
       />
 
       {/* Table */}
@@ -172,7 +172,7 @@ export default function Goods() {
                   <td className="px-5 py-3.5 text-gray-400 font-mono text-xs">{g.invoiceNo || '—'}</td>
                   <td className="px-5 py-3.5 text-gray-400">{fmtDate(g.date || g.createdAt)}</td>
                   <td className="px-5 py-3.5 text-gray-400">{g.items?.length || 0}</td>
-                  <td className="px-5 py-3.5 text-right font-mono text-emerald-400">{formatCurrency(g.totalCost || 0, currency)}</td>
+                  <td className="px-5 py-3.5 text-right font-mono text-blue-400">{formatCurrency(g.totalCost || 0, currency)}</td>
                   <td className="px-5 py-3.5 text-gray-400">{g.receivedBy || '—'}</td>
                   <td className="px-5 py-3.5">
                     <button onClick={() => { setSelected(g); setModal('view'); }} className="text-gray-500 hover:text-white transition-colors float-right">
@@ -193,22 +193,22 @@ export default function Goods() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">Supplier</label>
-                <input type="text" list="supplier-list" value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+                <input type="text" list="supplier-list" value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
                 <datalist id="supplier-list">{suppliers.map(s => <option key={s.id} value={s.name}/>)}</datalist>
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">Invoice No.</label>
-                <input type="text" value={form.invoiceNo} onChange={e => setForm(f => ({ ...f, invoiceNo: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+                <input type="text" value={form.invoiceNo} onChange={e => setForm(f => ({ ...f, invoiceNo: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">Date</label>
-                <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+                <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">Branch</label>
-                <select value={form.branch} onChange={e => setForm(f => ({ ...f, branch: e.target.value, items: [] }))} disabled={!!branch} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50">
+                <select value={form.branch} onChange={e => setForm(f => ({ ...f, branch: e.target.value, items: [] }))} disabled={!!branch} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
                   {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
                 </select>
               </div>
@@ -222,7 +222,7 @@ export default function Goods() {
                   value={itemSearch}
                   onChange={e => { setItemSearch(e.target.value); setItemDropdown(true); }}
                   onFocus={() => setItemDropdown(true)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {itemDropdown && itemSearch && availableItems.length > 0 && (
                   <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-700 rounded-xl mt-1 z-10 max-h-48 overflow-y-auto">
@@ -266,17 +266,17 @@ export default function Goods() {
                 ))}
                 <div className="flex justify-between px-4 py-2.5 text-xs">
                   <span className="text-gray-400">Total Cost</span>
-                  <span className="text-emerald-400 font-mono">{formatCurrency(totalCost, currency)}</span>
+                  <span className="text-blue-400 font-mono">{formatCurrency(totalCost, currency)}</span>
                 </div>
               </div>
             )}
             <div>
               <label className="text-gray-400 text-xs font-medium block mb-1.5">Note</label>
-              <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} rows={2} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"/>
+              <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} rows={2} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"/>
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setModal(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
-              <button onClick={submit} disabled={form.items.length === 0} className="flex-1 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">Confirm Receipt</button>
+              <button onClick={submit} disabled={form.items.length === 0} className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">Confirm Receipt</button>
             </div>
           </div>
         </Modal>
@@ -305,7 +305,7 @@ export default function Goods() {
               ))}
               <div className="flex justify-between px-4 py-2.5 font-medium">
                 <span className="text-gray-400">Total Cost</span>
-                <span className="text-emerald-400 font-mono">{formatCurrency(selected.totalCost || 0, currency)}</span>
+                <span className="text-blue-400 font-mono">{formatCurrency(selected.totalCost || 0, currency)}</span>
               </div>
             </div>
             {selected.note && <div className="bg-gray-800 rounded-xl p-4 text-sm"><p className="text-gray-500 text-xs mb-1">Note</p><p className="text-white">{selected.note}</p></div>}

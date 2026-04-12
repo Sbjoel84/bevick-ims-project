@@ -89,7 +89,7 @@ export default function Sidebar({ open, onClose }) {
                 className={`
                   w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left
                   ${active
-                    ? 'bg-emerald-500 text-white'
+                    ? 'bg-blue-500 text-white'
                     : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}
                 `}
               >
@@ -108,7 +108,7 @@ export default function Sidebar({ open, onClose }) {
         {/* User footer */}
         <div className="px-4 py-4 border-t border-gray-800">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
               {user?.initials || user?.name?.slice(0,2).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">

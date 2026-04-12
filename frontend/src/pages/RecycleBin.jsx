@@ -12,7 +12,7 @@ const TYPE_LABELS = {
 
 const TYPE_COLORS = {
   inventory: 'bg-blue-950 text-blue-400',
-  sale:      'bg-emerald-950 text-emerald-400',
+  sale:      'bg-blue-950 text-blue-400',
   customer:  'bg-purple-950 text-purple-400',
   expense:   'bg-red-950 text-red-400',
   supplier:  'bg-amber-950 text-amber-400',
@@ -98,18 +98,18 @@ export default function RecycleBin() {
               placeholder="Search deleted items…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-64"
+              className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
             />
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setFilterType('all')}
-                className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors ${filterType === 'all' ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors ${filterType === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
               >All</button>
               {types.map(t => (
                 <button
                   key={t}
                   onClick={() => setFilterType(t)}
-                  className={`px-3 py-2 rounded-xl text-xs font-medium capitalize transition-colors ${filterType === t ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                  className={`px-3 py-2 rounded-xl text-xs font-medium capitalize transition-colors ${filterType === t ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
                 >
                   {TYPE_LABELS[t] || t}
                 </button>
@@ -149,7 +149,7 @@ export default function RecycleBin() {
                         <div className="flex items-center gap-3 justify-end">
                           <button
                             onClick={() => restore(item.id)}
-                            className="flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 text-xs font-medium transition-colors"
+                            className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs font-medium transition-colors"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                             Restore

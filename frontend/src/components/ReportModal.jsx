@@ -91,7 +91,7 @@ export default function ReportModal({ title, data, dateKey, columns, getSummary,
                   <button
                     key={r.id}
                     onClick={() => setRange(r.id)}
-                    className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors ${range === r.id ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                    className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors ${range === r.id ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
                   >
                     {r.label}
                   </button>
@@ -102,12 +102,12 @@ export default function ReportModal({ title, data, dateKey, columns, getSummary,
                   <div>
                     <label className="text-gray-500 text-xs block mb-1">From</label>
                     <input type="date" value={customS} onChange={e => setCustomS(e.target.value)}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
                   </div>
                   <div>
                     <label className="text-gray-500 text-xs block mb-1">To</label>
                     <input type="date" value={customE} onChange={e => setCustomE(e.target.value)}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
                   </div>
                 </div>
               )}
@@ -181,7 +181,7 @@ export default function ReportModal({ title, data, dateKey, columns, getSummary,
           <button
             onClick={handlePrint}
             disabled={rows.length === 0}
-            className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>

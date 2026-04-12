@@ -53,7 +53,7 @@ export default function Settings() {
           <p className="text-gray-500 text-sm mt-0.5">Configure your IMS preferences</p>
         </div>
         {saved && (
-          <span className="flex items-center gap-1.5 text-emerald-400 text-sm font-medium">
+          <span className="flex items-center gap-1.5 text-blue-400 text-sm font-medium">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
             Saved
           </span>
@@ -67,7 +67,7 @@ export default function Settings() {
             type="text"
             value={profileForm.name}
             onChange={e => setProfileForm(f => ({ ...f, name: e.target.value }))}
-            className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-sm w-52 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </Field>
         <Field label="Phone Number">
@@ -75,7 +75,7 @@ export default function Settings() {
             type="text"
             value={profileForm.phone}
             onChange={e => setProfileForm(f => ({ ...f, phone: e.target.value }))}
-            className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-sm w-52 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </Field>
         <Field label="Email">
@@ -84,7 +84,7 @@ export default function Settings() {
         <Field label="Role">
           <span className="text-gray-400 text-sm capitalize">{user?.role?.replace('_', ' ')}</span>
         </Field>
-        <button onClick={saveProfile} className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+        <button onClick={saveProfile} className="w-full sm:w-auto bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
           Save Profile
         </button>
       </Section>
@@ -104,7 +104,7 @@ export default function Settings() {
                 type="text"
                 value={state[f.key]}
                 onChange={e => update({ [f.key]: e.target.value })}
-                className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-sm w-52 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </Field>
           ))}
@@ -145,7 +145,7 @@ export default function Settings() {
               <button
                 key={c}
                 onClick={() => update({ currency: c })}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${currency === c ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${currency === c ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
               >
                 {CURRENCY_SYMBOLS[c]}&nbsp;{c}
               </button>
@@ -161,7 +161,7 @@ export default function Settings() {
               step={0.5}
               value={(vat * 100).toFixed(1)}
               onChange={e => update({ vat: parseFloat(e.target.value) / 100 || 0 })}
-              className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-sm w-24 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-sm w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <span className="text-gray-400 text-sm">%</span>
           </div>
@@ -173,7 +173,7 @@ export default function Settings() {
               min={1}
               value={thr}
               onChange={e => update({ thr: parseInt(e.target.value) || 5 })}
-              className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-sm w-24 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-white text-sm w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <span className="text-gray-400 text-sm">units</span>
           </div>
@@ -190,7 +190,7 @@ export default function Settings() {
           <Field key={f.key} label={f.label} hint={f.hint}>
             <button
               onClick={() => update({ [f.key]: !state[f.key] })}
-              className={`relative w-11 h-6 rounded-full transition-colors ${state[f.key] ? 'bg-emerald-500' : 'bg-gray-700'}`}
+              className={`relative w-11 h-6 rounded-full transition-colors ${state[f.key] ? 'bg-blue-500' : 'bg-gray-700'}`}
             >
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${state[f.key] ? 'translate-x-5' : ''}`}/>
             </button>
@@ -263,7 +263,7 @@ function ChangePassword() {
       {show && (
         <form onSubmit={submit} className="space-y-3 pt-1">
           {msg && (
-            <div className={`text-xs px-3 py-2 rounded-lg border ${msg.ok ? 'bg-emerald-950 border-emerald-800 text-emerald-300' : 'bg-red-950 border-red-800 text-red-300'}`}>
+            <div className={`text-xs px-3 py-2 rounded-lg border ${msg.ok ? 'bg-blue-950 border-blue-800 text-blue-300' : 'bg-red-950 border-red-800 text-red-300'}`}>
               {msg.text}
             </div>
           )}
@@ -279,12 +279,12 @@ function ChangePassword() {
                 value={form[f.key]}
                 onChange={e => setForm(x => ({ ...x, [f.key]: e.target.value }))}
                 placeholder="••••••••"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           ))}
           <button type="submit" disabled={loading || !form.current || !form.next || !form.confirm}
-            className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors flex items-center gap-2">
+            className="bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors flex items-center gap-2">
             {loading ? (
               <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Updating…</>
             ) : 'Update Password'}
