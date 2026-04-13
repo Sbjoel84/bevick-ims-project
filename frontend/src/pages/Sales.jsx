@@ -85,6 +85,7 @@ export default function Sales() {
   const [pickerQty, setPickerQty] = useState(1);
   const [pickerPrice, setPickerPrice] = useState('');
   const [pickerCostPrice, setPickerCostPrice] = useState('');
+  const [pickerManualName, setPickerManualName] = useState('');
 
   const filteredSales = sales
     .filter(s => branch ? s.branch === branch : true)
@@ -104,17 +105,46 @@ export default function Sales() {
   // When user picks an item from dropdown, pre-fill the price
   function onPickerItemChange(id) {
     setPickerItemId(id);
+    if (id === '__manual__') {
+      setPickerPrice('');
+      setPickerCostPrice('');
+      setPickerQty(1);
+      return;
+    }
     const item = availableItems.find(i => i.id === id);
     setPickerPrice(item ? item.price : '');
     setPickerCostPrice('');
+    setPickerManualName('');
     setPickerQty(1);
   }
 
   function handleAddItem() {
-    if (!pickerItemId || !pickerSelected) return;
     const qty       = parseInt(pickerQty) || 1;
-    const price     = parseFloat(pickerPrice) || pickerSelected.price;
+    const price     = parseFloat(pickerPrice) || 0;
     const costPrice = parseFloat(pickerCostPrice) || 0;
+
+    // ── Manual / custom item ───────────────────────────────────────────────
+    if (pickerItemId === '__manual__') {
+      const name = pickerManualName.trim();
+      if (!name) return;
+      setForm(f => ({
+        ...f,
+        items: [
+          ...f.items,
+          { id: `CUST_${Date.now()}`, name, price, costPrice, qty, unit: '', _custom: true },
+        ],
+      }));
+      setPickerItemId('');
+      setPickerManualName('');
+      setPickerQty(1);
+      setPickerPrice('');
+      setPickerCostPrice('');
+      return;
+    }
+
+    // ── Inventory item ────────────────────────────────────────────────────
+    if (!pickerItemId || !pickerSelected) return;
+    const salePrice = parseFloat(pickerPrice) || pickerSelected.price;
     const existing  = form.items.find(i => i.id === pickerItemId);
     if (existing) {
       setForm(f => ({
@@ -128,7 +158,7 @@ export default function Sales() {
         ...f,
         items: [
           ...f.items,
-          { id: pickerSelected.id, name: pickerSelected.name, price, costPrice, qty, unit: pickerSelected.unit },
+          { id: pickerSelected.id, name: pickerSelected.name, price: salePrice, costPrice, qty, unit: pickerSelected.unit },
         ],
       }));
     }
@@ -195,7 +225,7 @@ export default function Sales() {
     };
     dispatch({ type: 'ADD_SALE', payload: sale });
     setForm({ customer: '', branch: branch || 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '' });
-    setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice('');
+    setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName('');
     // Open receipt view automatically
     setSelected(sale);
     setModal('view');
@@ -256,7 +286,7 @@ export default function Sales() {
           <button
             onClick={() => {
               setForm({ customer: '', branch: branch || 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '' });
-              setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice('');
+              setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName('');
               setShowPayForm(false);
               setModal('new');
             }}
@@ -411,6 +441,8 @@ export default function Sales() {
                         {item.name}  ({item.qty} {item.unit} in stock)
                       </option>
                     ))}
+                    <option disabled>──────────────</option>
+                    <option value="__manual__">✏️  Enter item manually…</option>
                   </select>
                 </div>
                 <div className="w-20">
@@ -448,7 +480,10 @@ export default function Sales() {
                 <button
                   type="button"
                   onClick={handleAddItem}
-                  disabled={!pickerItemId}
+                  disabled={
+                    !pickerItemId ||
+                    (pickerItemId === '__manual__' && !pickerManualName.trim())
+                  }
                   className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors shrink-0"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -458,8 +493,24 @@ export default function Sales() {
                 </button>
               </div>
 
-              {/* Selected item hint */}
-              {pickerSelected && (
+              {/* Manual item name input — full-width row directly below the picker */}
+              {pickerItemId === '__manual__' && (
+                <div>
+                  <label className="text-purple-400 text-xs font-medium block mb-1">Item Name <span className="text-red-400">*</span></label>
+                  <input
+                    type="text"
+                    placeholder="Type the item name…"
+                    value={pickerManualName}
+                    onChange={e => setPickerManualName(e.target.value)}
+                    autoFocus
+                    className="w-full bg-gray-700 border border-purple-600 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <p className="text-purple-400/70 text-xs mt-1">Fill in Actual Cost and Sale Price above, then click Add Item.</p>
+                </div>
+              )}
+
+              {/* Inventory item hint */}
+              {pickerSelected && pickerItemId !== '__manual__' && (
                 <p className="text-gray-500 text-xs">
                   {pickerSelected.name} · {pickerSelected.category} · Stock: {pickerSelected.qty} {pickerSelected.unit} · Default price: {formatCurrency(pickerSelected.price, currency)}
                 </p>
@@ -813,17 +864,35 @@ export default function Sales() {
                 </div>
               )}
 
-              <div className="flex gap-3">
+              {/* ── Action buttons ── */}
+              <div className="space-y-2.5">
+                {/* Print */}
                 <button
                   onClick={() => printReceipt(currentSelected, state)}
-                  className="flex-1 flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+                  className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                   </svg>
                   Print Receipt
                 </button>
-                <button onClick={() => deleteSale(currentSelected.id)} className="flex-1 bg-red-950 hover:bg-red-900 text-red-400 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
+
+                {/* Confirm — primary action, closes modal */}
+                <button
+                  onClick={() => { setModal(null); setShowPayForm(false); }}
+                  className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white text-sm font-bold px-4 py-3 rounded-xl transition-colors shadow-lg shadow-green-900/30"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
+                  </svg>
+                  Confirm Transaction — Done
+                </button>
+
+                {/* Delete — destructive, smaller */}
+                <button
+                  onClick={() => deleteSale(currentSelected.id)}
+                  className="w-full text-red-500 hover:text-red-400 text-xs font-medium py-1.5 rounded-xl transition-colors hover:bg-red-950/40"
+                >
                   Delete Sale
                 </button>
               </div>
