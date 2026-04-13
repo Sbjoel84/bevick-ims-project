@@ -110,6 +110,23 @@ export async function loadData() {
   let permissions = {};
   if (permRows.length) {
     permRows.forEach(p => { permissions[p.role] = p.pages || []; });
+    // Merge: add any new default pages not yet stored (e.g. newly added pages like 'reports')
+    let needsSync = false;
+    for (const [role, defaultPages] of Object.entries(DEFAULT_PERMISSIONS)) {
+      const stored = permissions[role] || [];
+      const missing = defaultPages.filter(p => !stored.includes(p));
+      if (missing.length) {
+        permissions[role] = [...stored, ...missing];
+        needsSync = true;
+      }
+    }
+    if (needsSync) {
+      await Promise.all(
+        Object.entries(permissions).map(([role, pages]) =>
+          supabase.from('permissions').upsert({ role, pages })
+        )
+      );
+    }
   } else {
     permissions = JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS));
     await Promise.all(

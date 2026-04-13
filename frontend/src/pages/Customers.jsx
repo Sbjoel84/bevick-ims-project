@@ -190,41 +190,100 @@ export default function Customers() {
       )}
 
       {/* View Modal */}
-      {modal === 'view' && selected && (
-        <Modal title={selected.name} onClose={() => setModal(null)}>
-          <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              {[
-                { label: 'Phone', value: selected.phone },
-                { label: 'Email', value: selected.email },
-                { label: 'Address', value: selected.address },
-                { label: 'Added', value: selected.createdAt ? fmtDate(selected.createdAt) : '—' },
-              ].map(f => (
-                <div key={f.label}>
-                  <p className="text-gray-500 text-xs mb-1">{f.label}</p>
-                  <p className="text-white">{f.value || '—'}</p>
+      {modal === 'view' && selected && (() => {
+        const txns = customerSales(selected.id);
+        const totalCost = txns.reduce((s, x) => s + (x.total || 0), 0);
+        const totalPaid = txns.reduce((s, x) => {
+          if (x.payments && x.payments.length > 0) return s + x.payments.reduce((a, p) => a + p.amount, 0);
+          return s + (x.total || 0); // old sales with no payments array = fully paid
+        }, 0);
+        const totalBalance = totalCost - totalPaid;
+        return (
+          <Modal title={selected.name} onClose={() => setModal(null)}>
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {[
+                  { label: 'Phone', value: selected.phone },
+                  { label: 'Email', value: selected.email },
+                  { label: 'Address', value: selected.address },
+                  { label: 'Added', value: selected.createdAt ? fmtDate(selected.createdAt) : '—' },
+                ].map(f => (
+                  <div key={f.label}>
+                    <p className="text-gray-500 text-xs mb-1">{f.label}</p>
+                    <p className="text-white">{f.value || '—'}</p>
+                  </div>
+                ))}
+                {selected.note && (
+                  <div className="col-span-2">
+                    <p className="text-gray-500 text-xs mb-1">Note</p>
+                    <p className="text-white">{selected.note}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Purchase summary */}
+              <div className="bg-gray-800 rounded-xl p-4 space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Total Cost of Goods</span>
+                  <span className="text-white font-mono">{formatCurrency(totalCost, currency)}</span>
                 </div>
-              ))}
-              {selected.note && (
-                <div className="col-span-2">
-                  <p className="text-gray-500 text-xs mb-1">Note</p>
-                  <p className="text-white">{selected.note}</p>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Total Amount Paid</span>
+                  <span className="text-green-400 font-mono">{formatCurrency(totalPaid, currency)}</span>
+                </div>
+                <div className="flex justify-between font-semibold border-t border-gray-700 pt-2">
+                  <span className={totalBalance > 0.005 ? 'text-orange-400' : 'text-green-400'}>Balance Remaining</span>
+                  <span className={`font-mono ${totalBalance > 0.005 ? 'text-orange-400' : 'text-green-400'}`}>
+                    {totalBalance > 0.005 ? formatCurrency(totalBalance, currency) : 'Fully Paid'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Transaction history */}
+              {txns.length > 0 && (
+                <div>
+                  <p className="text-gray-500 text-xs font-medium uppercase tracking-wide mb-2">Transaction History</p>
+                  <div className="bg-gray-800 rounded-xl overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-gray-700">
+                          <th className="text-left text-gray-500 font-medium px-4 py-2.5">Date</th>
+                          <th className="text-right text-gray-500 font-medium px-4 py-2.5">Total</th>
+                          <th className="text-right text-gray-500 font-medium px-4 py-2.5">Paid</th>
+                          <th className="text-right text-gray-500 font-medium px-4 py-2.5">Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {txns.map(s => {
+                          const paid = s.payments && s.payments.length > 0
+                            ? s.payments.reduce((a, p) => a + p.amount, 0)
+                            : (s.total || 0);
+                          const bal = (s.total || 0) - paid;
+                          return (
+                            <tr key={s.id} className="border-b border-gray-700 last:border-0">
+                              <td className="px-4 py-2.5 text-gray-300">{fmtDate(s.date)}</td>
+                              <td className="px-4 py-2.5 text-right text-white font-mono">{formatCurrency(s.total || 0, currency)}</td>
+                              <td className="px-4 py-2.5 text-right text-green-400 font-mono">{formatCurrency(paid, currency)}</td>
+                              <td className={`px-4 py-2.5 text-right font-mono font-medium ${bal > 0.005 ? 'text-orange-400' : 'text-gray-500'}`}>
+                                {bal > 0.005 ? formatCurrency(bal, currency) : '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
-            </div>
 
-            <div className="bg-gray-800 rounded-xl p-4 flex items-center justify-between">
-              <span className="text-gray-400 text-sm">Total Purchases</span>
-              <span className="text-blue-400 font-mono font-medium">{formatCurrency(customerTotal(selected.id), 'NGN')}</span>
+              <div className="flex gap-3">
+                <button onClick={() => { openEdit(selected); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Edit</button>
+                <button onClick={() => del(selected.id)} className="flex-1 bg-red-950 hover:bg-red-900 text-red-400 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Delete</button>
+              </div>
             </div>
-
-            <div className="flex gap-3">
-              <button onClick={() => { openEdit(selected); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Edit</button>
-              <button onClick={() => del(selected.id)} className="flex-1 bg-red-950 hover:bg-red-900 text-red-400 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Delete</button>
-            </div>
-          </div>
-        </Modal>
-      )}
+          </Modal>
+        );
+      })()}
 
       {deleteReq && (
         <DeleteRequestModal

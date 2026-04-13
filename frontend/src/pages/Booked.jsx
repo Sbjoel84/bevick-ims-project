@@ -204,6 +204,8 @@ export default function Booked() {
   const [form, setForm] = useState({ ...EMPTY_FORM, branch: branch || 'DUB' });
   const [editForm, setEditForm] = useState(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [reportStatusPicker, setReportStatusPicker] = useState(false);
+  const [reportStatusFilter, setReportStatusFilter] = useState('all');
   const [deleteReq, setDeleteReq] = useState(null);
 
   const bookingColumns = [
@@ -296,7 +298,7 @@ export default function Booked() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6" onClick={() => reportStatusPicker && setReportStatusPicker(false)}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-syne text-2xl font-bold text-white">Booked Items</h1>
@@ -309,13 +311,31 @@ export default function Booked() {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
           New Booking
         </button>
-        <button
-          onClick={() => setReportOpen(true)}
-          className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-          Report
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setReportStatusPicker(p => !p)}
+            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            Report
+            <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          {reportStatusPicker && (
+            <div className="absolute right-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-xl shadow-xl z-20 p-3 w-52">
+              <p className="text-gray-500 text-xs font-medium mb-2">Print which bookings?</p>
+              {['all', ...STATUSES].map(s => (
+                <button
+                  key={s}
+                  onClick={() => { setReportStatusFilter(s); setReportStatusPicker(false); setReportOpen(true); }}
+                  className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-sm capitalize transition-colors mb-0.5
+                    ${reportStatusFilter === s ? 'bg-blue-500/20 text-blue-400' : 'text-gray-300 hover:bg-gray-800'}`}
+                >
+                  {s === 'all' ? 'All Bookings' : `${s.charAt(0).toUpperCase() + s.slice(1)} only`}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -486,17 +506,23 @@ export default function Booked() {
         </Modal>
       )}
 
-      {reportOpen && (
-        <ReportModal
-          title="Bookings"
-          data={filtered}
-          dateKey="date"
-          columns={bookingColumns}
-          getSummary={getBookingSummary}
-          onClose={() => setReportOpen(false)}
-          state={state}
-        />
-      )}
+      {reportOpen && (() => {
+        const reportData = reportStatusFilter === 'all'
+          ? filtered
+          : filtered.filter(b => b.status === reportStatusFilter);
+        const statusLabel = reportStatusFilter === 'all' ? 'All' : reportStatusFilter.charAt(0).toUpperCase() + reportStatusFilter.slice(1);
+        return (
+          <ReportModal
+            title={`Bookings — ${statusLabel}`}
+            data={reportData}
+            dateKey="date"
+            columns={bookingColumns}
+            getSummary={getBookingSummary}
+            onClose={() => setReportOpen(false)}
+            state={state}
+          />
+        );
+      })()}
 
       {deleteReq && (
         <DeleteRequestModal

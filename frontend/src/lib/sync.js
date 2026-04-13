@@ -77,6 +77,11 @@ export async function syncAction(action, prevState, nextState) {
         await toRecycleBin(nextState, action.payload);
         break;
       }
+      case 'ADD_PAYMENT': {
+        const sale = nextState.sales.find(s => s.id === action.payload.saleId);
+        if (sale) await upsert('sales', sale);
+        break;
+      }
 
       // ── CUSTOMERS ────────────────────────────────────────────
       case 'ADD_CUSTOMER':

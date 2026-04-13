@@ -139,6 +139,20 @@ function reducer(state, action) {
       };
     }
 
+    case 'ADD_PAYMENT': {
+      const { saleId, payment } = action.payload;
+      return {
+        ...state,
+        sales: state.sales.map(s => {
+          if (s.id !== saleId) return s;
+          const payments = [...(s.payments || []), payment];
+          const amountPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+          return { ...s, payments, amountPaid };
+        }),
+        auditLog: [{ id: Date.now(), action: 'Payment recorded', user: state.user?.name, ts: new Date().toISOString(), detail: `Sale #${saleId} · ₦${payment.amount.toLocaleString()}` }, ...state.auditLog],
+      };
+    }
+
     // ── CUSTOMERS ──────────────────────────────────────────────
     case 'ADD_CUSTOMER': {
       const c = action.payload;
@@ -388,6 +402,58 @@ function reducer(state, action) {
       };
     }
 
+    // ── REMOTE CHANGE (from Supabase Realtime) ─────────────────
+    case 'REMOTE_CHANGE': {
+      const { table, event, row } = action.payload;
+      // Map table names → state keys (for simple array tables)
+      const tableToKey = {
+        inventory: 'inventory', sales: 'sales', customers: 'customers',
+        expenses: 'expenses', bookings: 'bookings', purchase_list: 'purchaseList',
+        goods_received: 'goodsReceived', suppliers: 'suppliers',
+        recycle_bin: 'recycleBin', app_users: 'users',
+        pending_users: 'pendingUsers', delete_requests: 'deleteRequests',
+      };
+      // permissions table has a special structure (role/pages columns, not id/data)
+      if (table === 'permissions') {
+        if (event !== 'DELETE' && row?.role && row?.pages !== undefined) {
+          return { ...state, permissions: { ...state.permissions, [row.role]: row.pages } };
+        }
+        return state;
+      }
+      // app_settings has a single row with nested data
+      if (table === 'app_settings') {
+        if (event !== 'DELETE' && row?.data) {
+          return { ...state, ...row.data };
+        }
+        return state;
+      }
+      // audit_log: only prepend new entries, cap at 200
+      if (table === 'audit_log') {
+        if (event !== 'DELETE' && row?.data) {
+          const item = row.data;
+          if (!state.auditLog.some(a => String(a.id) === String(item.id))) {
+            return { ...state, auditLog: [item, ...state.auditLog].slice(0, 200) };
+          }
+        }
+        return state;
+      }
+      const stateKey = tableToKey[table];
+      if (!stateKey) return state;
+      if (event === 'DELETE') {
+        return { ...state, [stateKey]: state[stateKey].filter(x => String(x.id) !== String(row.id)) };
+      }
+      // INSERT or UPDATE — upsert into the array
+      const item = row?.data;
+      if (!item) return state;
+      const exists = state[stateKey].some(x => String(x.id) === String(item.id));
+      return {
+        ...state,
+        [stateKey]: exists
+          ? state[stateKey].map(x => String(x.id) === String(item.id) ? item : x)
+          : [item, ...state[stateKey]],
+      };
+    }
+
     default:
       return state;
   }
@@ -447,6 +513,41 @@ export function AppProvider({ children }) {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Subscribe to Supabase Realtime — push remote changes to all connected clients
+  useEffect(() => {
+    const TABLES = [
+      'inventory', 'sales', 'customers', 'expenses', 'bookings',
+      'purchase_list', 'goods_received', 'suppliers', 'recycle_bin',
+      'audit_log', 'app_users', 'pending_users', 'delete_requests',
+      'permissions', 'app_settings',
+    ];
+
+    const channel = supabase.channel('realtime:all-tables');
+
+    TABLES.forEach(table => {
+      channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table },
+        (payload) => {
+          const event = payload.eventType; // 'INSERT' | 'UPDATE' | 'DELETE'
+          // For DELETE, Supabase only returns the primary key in payload.old
+          const row = event === 'DELETE' ? payload.old : payload.new;
+          rawDispatch({ type: 'REMOTE_CHANGE', payload: { table, event, row } });
+        }
+      );
+    });
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('[realtime] Connected — live updates active');
+      }
+    });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return (

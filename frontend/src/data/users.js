@@ -51,12 +51,13 @@ export const ALL_PAGES = [
   { id: 'goods',      label: 'Goods Received' },
   { id: 'suppliers',  label: 'Suppliers' },
   { id: 'recycle',    label: 'Recycle Bin' },
+  { id: 'reports',    label: 'Reports' },
   { id: 'settings',   label: 'Settings' },
 ];
 
 // Default page permissions per role
 export const DEFAULT_PERMISSIONS = {
-  super_admin: ['dashboard','sales','customers','expenses','inventory','booked','purchase','goods','suppliers','recycle','settings','admin'],
-  inventory:   ['dashboard','inventory','booked','purchase','goods','suppliers','settings'],
-  sales:       ['dashboard','sales','customers','expenses','booked','settings'],
+  super_admin: ['dashboard','sales','customers','expenses','inventory','booked','purchase','goods','suppliers','recycle','reports','settings','admin'],
+  inventory:   ['dashboard','inventory','booked','purchase','goods','suppliers','reports','settings'],
+  sales:       ['dashboard','sales','customers','expenses','booked','reports','settings'],
 };

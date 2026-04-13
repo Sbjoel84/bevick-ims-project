@@ -14,6 +14,7 @@ import Suppliers from './pages/Suppliers';
 import RecycleBin from './pages/RecycleBin';
 import Settings from './pages/Settings';
 import AdminPanel from './pages/AdminPanel';
+import Reports from './pages/Reports';
 
 const PAGES = {
   dashboard: Dashboard,
@@ -28,6 +29,7 @@ const PAGES = {
   recycle: RecycleBin,
   settings: Settings,
   admin: AdminPanel,
+  reports: Reports,
 };
 
 function LoadingScreen() {
