@@ -219,11 +219,13 @@ function reducer(state, action) {
         if (currentQty < item.qty) {
           const needed = item.qty - currentQty;
           newPurchases.push({
-            id: `PO${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2,5).toUpperCase()}`,
+            id: `PO${Date.now().toString(36).toUpperCase()}${newPurchases.length}${Math.random().toString(36).slice(2,4).toUpperCase()}`,
             name: item.name,
             itemId: item.id,
             qty: needed,
             unit: item.unit || '',
+            category: invItem?.category || 'Others',
+            estimatedCost: invItem ? invItem.price * needed : 0,
             priority: 'high',
             status: 'pending',
             branch: booking.branch,
@@ -240,6 +242,55 @@ function reducer(state, action) {
         auditLog: [{ id: Date.now(), action: 'Booking created', user: state.user?.name, ts: new Date().toISOString(), detail: `#${booking.id}${newPurchases.length ? ` · ${newPurchases.length} purchase order(s) generated` : ''}` }, ...state.auditLog],
       };
     }
+    // Scans all active bookings and creates purchase orders for items below stock level
+    case 'SYNC_PURCHASES_FROM_BOOKINGS': {
+      // Build a set of item names already in the purchase list (pending or ordered) to avoid duplicates
+      const existingKeys = new Set(
+        state.purchaseList
+          .filter(p => p.status === 'pending' || p.status === 'ordered')
+          .map(p => (p.itemId || p.name?.toLowerCase()))
+      );
+      const newPurchases = [];
+      const seenThisRun = new Set();
+      let idx = 0;
+      state.bookings
+        .filter(b => b.status === 'pending' || b.status === 'confirmed')
+        .forEach(booking => {
+          (booking.items || []).forEach(item => {
+            if (!item.id || !item.name) return;
+            const key = item.id;
+            if (seenThisRun.has(key) || existingKeys.has(key)) return;
+            const invItem = state.inventory.find(i => i.id === item.id);
+            const currentQty = invItem ? (invItem.qty || 0) : 0;
+            if (currentQty < (item.qty || 1)) {
+              seenThisRun.add(key);
+              const needed = (item.qty || 1) - currentQty;
+              newPurchases.push({
+                id: `PO${Date.now().toString(36).toUpperCase()}${idx++}${Math.random().toString(36).slice(2,4).toUpperCase()}`,
+                name: item.name,
+                itemId: item.id,
+                qty: needed,
+                unit: item.unit || '',
+                category: invItem?.category || 'Others',
+                estimatedCost: invItem ? (invItem.price || 0) * needed : 0,
+                priority: 'high',
+                status: 'pending',
+                branch: booking.branch,
+                note: `Synced from booking #${booking.id} — ${booking.customer || ''}`.trim().replace(/—\s*$/, ''),
+                date: new Date().toISOString(),
+                createdBy: state.user?.name,
+              });
+            }
+          });
+        });
+      if (!newPurchases.length) return state;
+      return {
+        ...state,
+        purchaseList: [...newPurchases, ...state.purchaseList],
+        auditLog: [{ id: Date.now(), action: 'Purchase orders synced from bookings', user: state.user?.name, ts: new Date().toISOString(), detail: `${newPurchases.length} order(s) generated` }, ...state.auditLog],
+      };
+    }
+
     case 'UPDATE_BOOKING_STATUS':
       return { ...state, bookings: state.bookings.map(b => b.id === action.payload.id ? { ...b, status: action.payload.status } : b) };
     case 'UPDATE_BOOKING': {
@@ -387,8 +438,15 @@ function reducer(state, action) {
     }
     case 'PERM_DELETE':
       return { ...state, recycleBin: state.recycleBin.filter(x => x.id !== action.payload) };
-    case 'EMPTY_BIN':
-      return { ...state, recycleBin: [] };
+    case 'EMPTY_BIN': {
+      const b = action.payload?.branch;
+      return {
+        ...state,
+        recycleBin: b
+          ? state.recycleBin.filter(i => i.branch && i.branch !== b)
+          : [],
+      };
+    }
 
     // ── SETTINGS ───────────────────────────────────────────────
     case 'UPDATE_SETTINGS':

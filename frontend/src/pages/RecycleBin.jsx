@@ -57,8 +57,8 @@ export default function RecycleBin() {
   }
 
   function emptyBin() {
-    if (window.confirm(`Permanently delete all ${recycleBin.length} items? This cannot be undone.`)) {
-      dispatch({ type: 'EMPTY_BIN' });
+    if (window.confirm(`Permanently delete all ${filtered.length} items? This cannot be undone.`)) {
+      dispatch({ type: 'EMPTY_BIN', payload: { branch } });
     }
   }
 
@@ -69,9 +69,9 @@ export default function RecycleBin() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-syne text-2xl font-bold text-white">Recycle Bin</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{recycleBin.length} item{recycleBin.length !== 1 ? 's' : ''}</p>
+          <p className="text-gray-500 text-sm mt-0.5">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</p>
         </div>
-        {recycleBin.length > 0 && (
+        {filtered.length > 0 && (
           <button
             onClick={emptyBin}
             className="flex items-center gap-2 bg-red-950 hover:bg-red-900 text-red-400 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"

@@ -44,9 +44,14 @@ const NAV = [
 
 export default function Sidebar({ open, onClose }) {
   const { state, dispatch } = useApp();
-  const { user, page, permissions, recycleBin } = state;
+  const { user, page, permissions, recycleBin, branch } = state;
 
   const allowed = user?.customPages || permissions[user?.role] || [];
+
+  // Count only the recycle bin items visible to the current branch
+  const binCount = branch
+    ? recycleBin.filter(i => !i.branch || i.branch === branch).length
+    : recycleBin.length;
 
   function go(p) {
     dispatch({ type: 'SET_PAGE', payload: p });
@@ -84,7 +89,7 @@ export default function Sidebar({ open, onClose }) {
         <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
           {visibleNav.map(n => {
             const active = page === n.id;
-            const isBin = n.id === 'recycle' && recycleBin.length > 0;
+            const isBin = n.id === 'recycle' && binCount > 0;
             return (
               <button
                 key={n.id}

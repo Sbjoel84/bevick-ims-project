@@ -133,6 +133,12 @@ export async function syncAction(action, prevState, nextState) {
         await upsertMany('purchase_list', newPurchases);
         break;
       }
+      case 'SYNC_PURCHASES_FROM_BOOKINGS': {
+        const prevIds = new Set(prevState.purchaseList.map(p => p.id));
+        const newPurchases = nextState.purchaseList.filter(p => !prevIds.has(p.id));
+        await upsertMany('purchase_list', newPurchases);
+        break;
+      }
       case 'UPDATE_BOOKING_STATUS': {
         const b = nextState.bookings.find(x => x.id === action.payload.id);
         if (b) await upsert('bookings', b);
@@ -247,8 +253,11 @@ export async function syncAction(action, prevState, nextState) {
         await remove('recycle_bin', action.payload);
         break;
       case 'EMPTY_BIN': {
-        // Delete all recycle bin entries
-        const ids = prevState.recycleBin.map(r => String(r.id));
+        const b = action.payload?.branch;
+        const toDelete = b
+          ? prevState.recycleBin.filter(r => !r.branch || r.branch === b)
+          : prevState.recycleBin;
+        const ids = toDelete.map(r => String(r.id));
         if (ids.length) {
           await supabase.from('recycle_bin').delete().in('id', ids);
         }

@@ -41,7 +41,30 @@ const EMPTY = { name: '', category: 'Spare Parts', qty: '', unit: 'Pcs', estimat
 
 export default function Purchase() {
   const { state, dispatch } = useApp();
-  const { purchaseList, suppliers, currency, bname, user, branch, inventory } = state;
+  const { purchaseList, suppliers, currency, bname, user, branch, inventory, bookings } = state;
+
+  // Compute items in active bookings that exceed available stock and have no pending/ordered purchase yet
+  const existingPurchaseKeys = new Set(
+    purchaseList
+      .filter(p => p.status === 'pending' || p.status === 'ordered')
+      .map(p => p.itemId || p.name?.toLowerCase())
+  );
+  const unseenKeys = new Set();
+  const missingItems = [];
+  bookings
+    .filter(b => (branch ? b.branch === branch : true) && (b.status === 'pending' || b.status === 'confirmed'))
+    .forEach(b => {
+      (b.items || []).forEach(item => {
+        if (!item.id || !item.name) return;
+        if (unseenKeys.has(item.id) || existingPurchaseKeys.has(item.id)) return;
+        const invItem = inventory.find(i => i.id === item.id);
+        const currentQty = invItem ? (invItem.qty || 0) : 0;
+        if (currentQty < (item.qty || 1)) {
+          unseenKeys.add(item.id);
+          missingItems.push({ name: item.name, booked: item.qty || 1, inStock: currentQty });
+        }
+      });
+    });
 
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -125,13 +148,26 @@ export default function Purchase() {
           <h1 className="font-syne text-2xl font-bold text-white">Purchase List</h1>
           <p className="text-gray-500 text-sm mt-0.5">{bname}</p>
         </div>
-        <button
-          onClick={() => { setForm({ ...EMPTY, branch: branch || 'DUB' }); setCustomItem(false); setModal(true); }}
-          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-          Add Request
-        </button>
+        <div className="flex items-center gap-2">
+          {missingItems.length > 0 && (
+            <button
+              onClick={() => dispatch({ type: 'SYNC_PURCHASES_FROM_BOOKINGS' })}
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+              title="Generate purchase orders for booked items not available in stock"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Generate from Bookings
+              <span className="bg-black/20 text-black text-xs font-bold rounded-full px-1.5 py-0.5">{missingItems.length}</span>
+            </button>
+          )}
+          <button
+            onClick={() => { setForm({ ...EMPTY, branch: branch || 'DUB' }); setCustomItem(false); setModal(true); }}
+            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+            Add Request
+          </button>
+        </div>
         <button
           onClick={() => setReportOpen(true)}
           className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
@@ -140,6 +176,27 @@ export default function Purchase() {
           Report
         </button>
       </div>
+
+      {/* Banner: items from bookings needing purchase */}
+      {missingItems.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-5 py-4 flex items-start gap-3">
+          <svg className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-amber-400 font-semibold text-sm">
+              {missingItems.length} booked item{missingItems.length > 1 ? 's' : ''} not available in stock
+            </p>
+            <p className="text-amber-400/70 text-xs mt-0.5 truncate">
+              {missingItems.map(i => `${i.name} (need ${i.booked - i.inStock}, have ${i.inStock})`).join(' · ')}
+            </p>
+          </div>
+          <button
+            onClick={() => dispatch({ type: 'SYNC_PURCHASES_FROM_BOOKINGS' })}
+            className="shrink-0 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+          >
+            Generate Orders
+          </button>
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
