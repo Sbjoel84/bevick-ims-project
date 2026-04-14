@@ -11,6 +11,7 @@ const initialState = {
   dbLoaded: false,
   // Auth
   user: null,
+  recoveryMode: false, // true while user is resetting their password via email link
   // Delete Requests
   deleteRequests: [],
   // Settings
@@ -58,6 +59,12 @@ function reducer(state, action) {
     // ── DB INIT ────────────────────────────────────────────────
     case 'INIT':
       return { ...state, ...action.payload, dbLoaded: true };
+
+    // ── PASSWORD RECOVERY — enter / exit reset-password mode ───
+    case 'ENTER_RECOVERY':
+      return { ...state, user: null, recoveryMode: true, page: 'login' };
+    case 'EXIT_RECOVERY':
+      return { ...state, recoveryMode: false };
 
     // ── REFRESH — bulk-set a single table from a manual Supabase fetch ─────────
     case 'REFRESH_TABLE':
@@ -699,11 +706,10 @@ export function AppProvider({ children }) {
     // Listen for auth events (password recovery link click → redirect to app)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
-        // User clicked the reset link — they'll land on the app, sign them out
-        // so they see the login page where they can set new password.
-        // The actual password update is done in Settings after admin login,
-        // or via the reset flow which Supabase handles via email link.
-        supabase.auth.signOut();
+        // User clicked the reset link — enter recovery mode so Login.jsx
+        // shows the "Set New Password" form. Do NOT sign out here; the
+        // recovery token is needed to call supabase.auth.updateUser().
+        rawDispatch({ type: 'ENTER_RECOVERY' });
       }
     });
 

@@ -49,7 +49,8 @@ export default function Login() {
   // The very first person to register becomes the super_admin automatically.
   const isFirstUser = state.dbLoaded && users.length === 0 && pendingUsers.length === 0;
 
-  const [view, setView] = useState('login'); // 'login' | 'register' | 'forgot'
+  // If AppContext detected a PASSWORD_RECOVERY event, jump straight to that view.
+  const [view, setView] = useState(state.recoveryMode ? 'reset' : 'login'); // 'login' | 'register' | 'forgot' | 'reset'
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null); // { type, text }
   const [showPw, setShowPw] = useState(false);
@@ -66,6 +67,49 @@ export default function Login() {
 
   // Forgot form
   const [forgotEmail, setForgotEmail] = useState('');
+
+  // Reset form (password recovery via email link)
+  const [resetForm, setResetForm] = useState({ password: '', confirm: '' });
+  const [showReset1, setShowReset1] = useState(false);
+  const [showReset2, setShowReset2] = useState(false);
+
+  // Keep view in sync if AppContext flips recoveryMode after component mounts
+  // (e.g. user lands on the app via the reset link while Login is already rendered)
+  useState(() => {
+    if (state.recoveryMode) setView('reset');
+  });
+
+  // ── Set New Password (recovery) ───────────────────────────────────────────────
+  async function handleResetPassword(e) {
+    e.preventDefault();
+    setMsg(null);
+    if (resetForm.password !== resetForm.confirm) {
+      setMsg({ type: 'error', text: 'Passwords do not match.' });
+      return;
+    }
+    if (resetForm.password.length < 6) {
+      setMsg({ type: 'error', text: 'Password must be at least 6 characters.' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: resetForm.password });
+      if (error) {
+        setMsg({ type: 'error', text: error.message });
+        return;
+      }
+      // Done — sign out the recovery session, return to login
+      await supabase.auth.signOut();
+      dispatch({ type: 'EXIT_RECOVERY' });
+      setView('login');
+      setMsg({ type: 'success', text: 'Password updated! You can now sign in with your new password.' });
+      setResetForm({ password: '', confirm: '' });
+    } catch (err) {
+      setMsg({ type: 'error', text: 'Failed to update password. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // ── Login ────────────────────────────────────────────────────────────────────
   async function handleLogin(e) {
@@ -491,6 +535,54 @@ export default function Login() {
                 Back to sign in
               </button>
             </div>
+          </div>
+        )}
+        {/* ── SET NEW PASSWORD VIEW (after clicking email reset link) ── */}
+        {view === 'reset' && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+            <h2 className="font-syne text-lg font-semibold text-white mb-1">Set new password</h2>
+            <p className="text-gray-500 text-sm mb-6">Choose a new password for your account.</p>
+
+            {msg && <Alert type={msg.type}>{msg.text}</Alert>}
+
+            {!msg || msg.type !== 'success' ? (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div>
+                  <label className="block text-gray-400 text-xs font-medium mb-1.5">New Password <span className="text-red-400">*</span></label>
+                  <div className="relative">
+                    <input type={showReset1 ? 'text' : 'password'} required autoComplete="new-password"
+                      value={resetForm.password}
+                      onChange={e => setResetForm(f => ({ ...f, password: e.target.value }))}
+                      placeholder="Min. 6 characters"
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                    />
+                    <button type="button" onClick={() => setShowReset1(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                      <EyeIcon open={showReset1}/>
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-xs font-medium mb-1.5">Confirm Password <span className="text-red-400">*</span></label>
+                  <div className="relative">
+                    <input type={showReset2 ? 'text' : 'password'} required autoComplete="new-password"
+                      value={resetForm.confirm}
+                      onChange={e => setResetForm(f => ({ ...f, confirm: e.target.value }))}
+                      placeholder="Re-enter new password"
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                    />
+                    <button type="button" onClick={() => setShowReset2(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                      <EyeIcon open={showReset2}/>
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" disabled={loading || !resetForm.password || !resetForm.confirm}
+                  className="w-full bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2">
+                  {loading ? <><Spinner/> Updating password…</> : 'Set New Password'}
+                </button>
+              </form>
+            ) : null}
           </div>
         )}
       </div>

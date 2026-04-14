@@ -76,9 +76,11 @@ export async function syncAction(action, prevState, nextState) {
         return;
       }
 
-      // ── PAGE / BRANCH / REFRESH — no persistence needed ───────────────────
+      // ── PAGE / BRANCH / RECOVERY / REFRESH — no persistence needed ──────────
       case 'SET_PAGE':
       case 'SET_BRANCH':
+      case 'ENTER_RECOVERY':
+      case 'EXIT_RECOVERY':
       case 'INIT':
       case 'REFRESH_TABLE':
       case 'REFRESH_SETTINGS':
