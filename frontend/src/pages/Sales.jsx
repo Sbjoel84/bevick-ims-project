@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp, formatCurrency, fmtDate, fmtDateTime, genId } from '../context/AppContext';
+import { refreshSales, refreshInventory } from '../lib/refresh';
 import { printReceipt } from '../utils/print';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
@@ -28,6 +29,11 @@ function Modal({ title, onClose, children }) {
 export default function Sales() {
   const { state, dispatch } = useApp();
   const { sales, inventory, currency, vat, branch, bname, user } = state;
+
+  useEffect(() => {
+    refreshSales(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'sales', data } }));
+    refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
+  }, []);
 
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -97,7 +103,13 @@ export default function Sales() {
 
   // All items for the selected branch that aren't already added
   const availableItems = inventory.filter(i =>
-    (form.branch ? i.branch === form.branch : true) && i.qty > 0
+    (form.branch ? i.branch === form.branch : true)
+  );
+
+  // Search filter for item picker
+  const [pickerSearch, setPickerSearch] = useState('');
+  const filteredPickerItems = availableItems.filter(i =>
+    !pickerSearch || i.name.toLowerCase().includes(pickerSearch.toLowerCase()) || i.id.toLowerCase().includes(pickerSearch.toLowerCase())
   );
 
   const pickerSelected = availableItems.find(i => i.id === pickerItemId);
@@ -225,7 +237,7 @@ export default function Sales() {
     };
     dispatch({ type: 'ADD_SALE', payload: sale });
     setForm({ customer: '', branch: branch || 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '' });
-    setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName('');
+    setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName(''); setPickerSearch('');
     // Open receipt view automatically
     setSelected(sale);
     setModal('view');
@@ -426,22 +438,41 @@ export default function Sales() {
             <div className="bg-gray-800 rounded-xl p-4 space-y-3">
               <p className="text-gray-400 text-xs font-medium">Add Items to Sale</p>
 
+              {/* Search input */}
+              <div>
+                <label className="text-gray-500 text-xs block mb-1.5">Search Items</label>
+                <input
+                  type="text"
+                  placeholder="Search by item name or ID…"
+                  value={pickerSearch}
+                  onChange={e => setPickerSearch(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
               {/* Row: dropdown + qty + price + button */}
               <div className="flex gap-2 items-end flex-wrap">
                 <div className="flex-1 min-w-[180px]">
                   <label className="text-gray-500 text-xs block mb-1">Select Item</label>
                   <select
                     value={pickerItemId}
-                    onChange={e => onPickerItemChange(e.target.value)}
+                    onChange={e => {
+                      onPickerItemChange(e.target.value);
+                      setPickerSearch('');
+                    }}
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">— Choose an item —</option>
-                    {availableItems.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}  ({item.qty} {item.unit} in stock)
-                      </option>
-                    ))}
-                    <option disabled>──────────────</option>
+                    {filteredPickerItems.length > 0 ? (
+                      filteredPickerItems.map(item => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}  ({item.qty} {item.unit} in stock)
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>No items found</option>
+                    )}
+                    {filteredPickerItems.length > 0 && <option disabled>──────────────</option>}
                     <option value="__manual__">✏️  Enter item manually…</option>
                   </select>
                 </div>

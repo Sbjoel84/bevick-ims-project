@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp, genId } from '../context/AppContext';
+import { refreshSuppliers } from '../lib/refresh';
 import DeleteRequestModal from '../components/DeleteRequestModal';
 
 const CATEGORIES = ['Machinery', 'Spare Parts', 'Consumables', 'Chemicals', 'Safety', 'Others'];
@@ -24,6 +25,10 @@ function Modal({ title, onClose, children }) {
 export default function Suppliers() {
   const { state, dispatch } = useApp();
   const { suppliers, user } = state;
+
+  useEffect(() => {
+    refreshSuppliers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'suppliers', data } }));
+  }, []);
 
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);

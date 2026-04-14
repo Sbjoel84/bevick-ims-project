@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp, formatCurrency, fmtDate, genId } from '../context/AppContext';
+import { refreshPurchaseList, refreshInventory, refreshSuppliers } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
 
@@ -65,6 +66,12 @@ export default function Purchase() {
         }
       });
     });
+
+  useEffect(() => {
+    refreshPurchaseList(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'purchaseList', data } }));
+    refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
+    refreshSuppliers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'suppliers', data } }));
+  }, []);
 
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY);

@@ -1,4 +1,5 @@
 import { useApp } from '../context/AppContext';
+import { DEFAULT_PERMISSIONS } from '../data/users';
 
 const NAV = [
   { id:'dashboard', label:'Dashboard', icon:(
@@ -46,7 +47,13 @@ export default function Sidebar({ open, onClose }) {
   const { state, dispatch } = useApp();
   const { user, page, permissions, recycleBin, branch } = state;
 
-  const allowed = user?.customPages || permissions[user?.role] || [];
+  // Get allowed pages for user - use DEFAULT_PERMISSIONS as fallback
+  let allowed = user?.customPages;
+  if (!allowed) {
+    // If no custom pages, use role-based permissions
+    // Fallback to DEFAULT_PERMISSIONS if permissions haven't loaded yet
+    allowed = permissions[user?.role] || DEFAULT_PERMISSIONS[user?.role] || [];
+  }
 
   // Count only the recycle bin items visible to the current branch
   const binCount = branch

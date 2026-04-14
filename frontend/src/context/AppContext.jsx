@@ -59,11 +59,24 @@ function reducer(state, action) {
     case 'INIT':
       return { ...state, ...action.payload, dbLoaded: true };
 
+    // ── REFRESH — bulk-set a single table from a manual Supabase fetch ─────────
+    case 'REFRESH_TABLE':
+      return { ...state, [action.payload.key]: action.payload.data };
+
+    // ── REFRESH SETTINGS — spreads fetched settings fields into state ──────────
+    case 'REFRESH_SETTINGS':
+      return { ...state, ...action.payload };
+
     case 'LOGIN': {
       const u = action.payload;
+      // Generate a session token for cross-browser login persistence
+      const sessionToken = `ST_${Date.now().toString(36).toUpperCase()}_${Math.random().toString(36).slice(2,10)}`;
+      // Store session token in localStorage
+      localStorage.setItem('bevick_session_token', sessionToken);
+      localStorage.setItem('bevick_session_user_id', u.id);
       return {
         ...state,
-        user: u,
+        user: { ...u, sessionToken },
         branch: u.bid,
         bname: u.bid === 'DUB' ? 'Dubai Market' : u.bid === 'KUB' ? 'Kubwa Office' : 'All Branches',
         page: 'dashboard',
@@ -71,6 +84,9 @@ function reducer(state, action) {
     }
 
     case 'LOGOUT':
+      // Clear session tokens from localStorage
+      localStorage.removeItem('bevick_session_token');
+      localStorage.removeItem('bevick_session_user_id');
       return {
         ...initialState,
         dbLoaded:       true,
@@ -229,6 +245,7 @@ function reducer(state, action) {
             priority: 'high',
             status: 'pending',
             branch: booking.branch,
+            bookingId: booking.id,
             note: `Auto-generated from booking #${booking.id}`,
             date: new Date().toISOString(),
             createdBy: booking.createdBy,
@@ -276,6 +293,7 @@ function reducer(state, action) {
                 priority: 'high',
                 status: 'pending',
                 branch: booking.branch,
+                bookingId: booking.id,
                 note: `Synced from booking #${booking.id} — ${booking.customer || ''}`.trim().replace(/—\s*$/, ''),
                 date: new Date().toISOString(),
                 createdBy: state.user?.name,
@@ -293,19 +311,68 @@ function reducer(state, action) {
 
     case 'UPDATE_BOOKING_STATUS':
       return { ...state, bookings: state.bookings.map(b => b.id === action.payload.id ? { ...b, status: action.payload.status } : b) };
+
+    case 'ADD_BOOKING_PAYMENT': {
+      const { bookingId, payment } = action.payload;
+      return {
+        ...state,
+        bookings: state.bookings.map(b => {
+          if (b.id !== bookingId) return b;
+          const payments = [...(b.payments || []), payment];
+          const amountPaid = payments.reduce((s, p) => s + (p.amount || 0), 0);
+          return { ...b, payments, amountPaid };
+        }),
+        auditLog: [
+          { id: Date.now(), action: 'Booking payment recorded', user: state.user?.name, ts: new Date().toISOString(), detail: `Booking #${bookingId} · ₦${payment.amount.toLocaleString()}` },
+          ...state.auditLog,
+        ],
+      };
+    }
     case 'UPDATE_BOOKING': {
       const upd = action.payload;
+      // Remove old purchase orders from this booking and generate new ones based on updated items
+      let updatedPurchases = state.purchaseList.filter(p => p.bookingId !== upd.id);
+      const newPurchases = [];
+      (upd.items || []).forEach(item => {
+        if (!item.id) return;
+        const invItem = state.inventory.find(i => i.id === item.id);
+        const currentQty = invItem ? invItem.qty : 0;
+        if (currentQty < item.qty) {
+          const needed = item.qty - currentQty;
+          newPurchases.push({
+            id: `PO${Date.now().toString(36).toUpperCase()}${newPurchases.length}${Math.random().toString(36).slice(2,4).toUpperCase()}`,
+            name: item.name,
+            itemId: item.id,
+            qty: needed,
+            unit: item.unit || '',
+            category: invItem?.category || 'Others',
+            estimatedCost: invItem ? invItem.price * needed : 0,
+            priority: 'high',
+            status: 'pending',
+            branch: upd.branch,
+            bookingId: upd.id,
+            note: `Auto-generated from booking #${upd.id}`,
+            date: new Date().toISOString(),
+            createdBy: upd.createdBy,
+          });
+        }
+      });
+      updatedPurchases = [...newPurchases, ...updatedPurchases];
       return {
         ...state,
         bookings: state.bookings.map(b => b.id === upd.id ? { ...b, ...upd } : b),
+        purchaseList: updatedPurchases,
         auditLog: [{ id: Date.now(), action: 'Booking updated', user: state.user?.name, ts: new Date().toISOString(), detail: `#${upd.id}` }, ...state.auditLog],
       };
     }
     case 'DELETE_BOOKING': {
       const b = state.bookings.find(x => x.id === action.payload);
+      // Remove any purchase orders auto-generated from this booking
+      const purchasesAfterDelete = state.purchaseList.filter(p => p.bookingId !== action.payload);
       return {
         ...state,
         bookings: state.bookings.filter(x => x.id !== action.payload),
+        purchaseList: purchasesAfterDelete,
         recycleBin: [...state.recycleBin, { ...b, _type: 'booking', _deletedAt: new Date().toISOString() }],
       };
     }
@@ -326,10 +393,35 @@ function reducer(state, action) {
         if (received) return { ...item, qty: item.qty + received.qty };
         return item;
       });
+
+      // Get IDs of items that were received
+      const receivedItemIds = new Set(gr.items.map(i => i.id));
+
+      // Update booking statuses: if a "delivered" booking has items that were just restocked, change to "pending"
+      const bookings = state.bookings.map(booking => {
+        if (booking.status === 'delivered') {
+          const hasReceivedItems = (booking.items || []).some(item => receivedItemIds.has(item.id));
+          if (hasReceivedItems) {
+            return { ...booking, status: 'pending' };
+          }
+        }
+        return booking;
+      });
+
+      // Update purchase orders: if a "received" purchase order has items that were just restocked, mark as "fulfilled"
+      const purchaseList = state.purchaseList.map(po => {
+        if (po.status === 'received' && receivedItemIds.has(po.itemId)) {
+          return { ...po, status: 'fulfilled' };
+        }
+        return po;
+      });
+
       return {
         ...state,
         goodsReceived: [gr, ...state.goodsReceived],
         inventory,
+        bookings,
+        purchaseList,
         auditLog: [{ id: Date.now(), action: 'Goods received', user: state.user?.name, ts: new Date().toISOString(), detail: `GRN#${gr.id}` }, ...state.auditLog],
       };
     }
@@ -396,8 +488,10 @@ function reducer(state, action) {
         role: action.role || pu.role,
         bid: action.bid !== undefined ? action.bid : pu.bid,
       };
-      // Update permissions for super_admin role
-      if (approvedUser.role === 'super_admin') approvedUser.bid = null;
+      // Update permissions for admin roles: set bid to null for all admin types
+      if (['main_super_admin', 'super_admin', 'admin'].includes(approvedUser.role)) {
+        approvedUser.bid = null;
+      }
       return {
         ...state,
         pendingUsers: state.pendingUsers.filter(u => u.id !== action.payload),
@@ -512,6 +606,33 @@ function reducer(state, action) {
       };
     }
 
+    // ── SESSION RESTORATION ────────────────────────────────────
+    case 'RESTORE_SESSION_FROM_TOKEN': {
+      const sessionToken = localStorage.getItem('bevick_session_token');
+      const userId = localStorage.getItem('bevick_session_user_id');
+      
+      if (!sessionToken || !userId) return state;
+      
+      // Find the user with matching session token
+      const user = state.users.find(u => u.id === userId && u.sessionToken === sessionToken);
+      
+      if (!user) {
+        // Token not found or doesn't match, clear localStorage
+        localStorage.removeItem('bevick_session_token');
+        localStorage.removeItem('bevick_session_user_id');
+        return state;
+      }
+      
+      // Restore session
+      return {
+        ...state,
+        user,
+        branch: user.bid,
+        bname: user.bid === 'DUB' ? 'Dubai Market' : user.bid === 'KUB' ? 'Kubwa Office' : 'All Branches',
+        page: 'dashboard',
+      };
+    }
+
     default:
       return state;
   }
@@ -543,8 +664,24 @@ export function AppProvider({ children }) {
       .then(async (data) => {
         rawDispatch({ type: 'INIT', payload: data });
 
-        // After data is loaded, check for an existing Supabase auth session
-        // (handles page refresh while logged in)
+        // Try to restore session from localStorage first (cross-browser persistence)
+        const savedSessionToken = localStorage.getItem('bevick_session_token');
+        const savedUserId = localStorage.getItem('bevick_session_user_id');
+        
+        if (savedSessionToken && savedUserId) {
+          const user = data.users?.find(u => u.id === savedUserId && u.sessionToken === savedSessionToken);
+          if (user && user.status === 'active') {
+            rawDispatch({ type: 'LOGIN', payload: user });
+            return;
+          } else {
+            // Saved session is invalid or user not found, clear it
+            localStorage.removeItem('bevick_session_token');
+            localStorage.removeItem('bevick_session_user_id');
+          }
+        }
+
+        // Fallback: check for an existing Supabase auth session
+        // (handles page refresh while logged in from same browser)
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           const email = session.user.email?.toLowerCase();

@@ -55,12 +55,33 @@ export async function syncAction(action, prevState, nextState) {
   try {
     switch (action.type) {
 
-      // ── LOGIN / LOGOUT / PAGE / BRANCH — no persistence needed
-      case 'LOGIN':
-      case 'LOGOUT':
+      // ── LOGIN — persist sessionToken so refresh restores the session ─────────
+      case 'LOGIN': {
+        const u = nextState.user;
+        if (u?.id && u?.sessionToken) {
+          // Write the full user object (including sessionToken) to app_users.
+          // On refresh, AppContext reads this back and matches localStorage token.
+          await supabase.from('app_users').upsert({ id: String(u.id), data: u });
+        }
+        return;
+      }
+
+      // ── LOGOUT — clear sessionToken so stale localStorage tokens can't replay
+      case 'LOGOUT': {
+        const prev = prevState.user;
+        if (prev?.id) {
+          const { sessionToken: _drop, ...userWithoutToken } = prev;
+          await supabase.from('app_users').upsert({ id: String(prev.id), data: userWithoutToken });
+        }
+        return;
+      }
+
+      // ── PAGE / BRANCH / REFRESH — no persistence needed ───────────────────
       case 'SET_PAGE':
       case 'SET_BRANCH':
       case 'INIT':
+      case 'REFRESH_TABLE':
+      case 'REFRESH_SETTINGS':
         return;
 
       // ── SALES ────────────────────────────────────────────────
@@ -144,12 +165,34 @@ export async function syncAction(action, prevState, nextState) {
         if (b) await upsert('bookings', b);
         break;
       }
-      case 'UPDATE_BOOKING':
-        await upsert('bookings', action.payload);
+      case 'ADD_BOOKING_PAYMENT': {
+        const b = nextState.bookings.find(x => x.id === action.payload.bookingId);
+        if (b) await upsert('bookings', b);
         break;
+      }
+      case 'UPDATE_BOOKING': {
+        await upsert('bookings', action.payload);
+        // Also sync purchase orders that were regenerated for this booking
+        const purchasesForBooking = nextState.purchaseList.filter(p => p.bookingId === action.payload.id);
+        if (purchasesForBooking.length) await upsertMany('purchase_list', purchasesForBooking);
+        // Remove old purchases from this booking that no longer exist
+        const oldPurchases = prevState.purchaseList.filter(p => p.bookingId === action.payload.id);
+        const newPurchaseIds = new Set(purchasesForBooking.map(p => p.id));
+        for (const oldPurch of oldPurchases) {
+          if (!newPurchaseIds.has(oldPurch.id)) {
+            await remove('purchase_list', oldPurch.id);
+          }
+        }
+        break;
+      }
       case 'DELETE_BOOKING': {
         await remove('bookings', action.payload);
         await toRecycleBin(nextState, action.payload);
+        // Also remove purchase orders auto-generated from this booking
+        const purchasesToDelete = prevState.purchaseList.filter(p => p.bookingId === action.payload);
+        for (const p of purchasesToDelete) {
+          await remove('purchase_list', p.id);
+        }
         break;
       }
 
@@ -173,6 +216,18 @@ export async function syncAction(action, prevState, nextState) {
         const ids = new Set(action.payload.items.map(i => i.id));
         const modified = nextState.inventory.filter(i => ids.has(i.id));
         await upsertMany('inventory', modified);
+        // Sync any bookings that were changed from "delivered" to "pending"
+        const changedBookings = nextState.bookings.filter(b => {
+          const prevB = prevState.bookings.find(x => x.id === b.id);
+          return prevB && prevB.status !== b.status;
+        });
+        if (changedBookings.length) await upsertMany('bookings', changedBookings);
+        // Sync any purchase orders that were marked as "fulfilled"
+        const changedPurchases = nextState.purchaseList.filter(p => {
+          const prevP = prevState.purchaseList.find(x => x.id === p.id);
+          return prevP && prevP.status !== p.status;
+        });
+        if (changedPurchases.length) await upsertMany('purchase_list', changedPurchases);
         break;
       }
 

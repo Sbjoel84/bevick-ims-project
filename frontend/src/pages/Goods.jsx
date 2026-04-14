@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp, formatCurrency, fmtDate, fmtDateTime, genId } from '../context/AppContext';
+import { refreshGoodsReceived, refreshInventory, refreshPurchaseList, refreshBookings } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 
 const BRANCHES = [{ id: 'DUB', label: 'Dubai Market' }, { id: 'KUB', label: 'Kubwa Office' }];
@@ -23,6 +24,13 @@ function Modal({ title, onClose, children }) {
 export default function Goods() {
   const { state, dispatch } = useApp();
   const { goodsReceived, inventory, suppliers, currency, branch, bname, user } = state;
+
+  useEffect(() => {
+    refreshGoodsReceived(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'goodsReceived', data } }));
+    refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
+    refreshPurchaseList(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'purchaseList', data } }));
+    refreshBookings(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'bookings', data } }));
+  }, []);
 
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);

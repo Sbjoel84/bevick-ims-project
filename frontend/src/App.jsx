@@ -1,6 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
+import { startRealtime, stopRealtime } from './lib/realtime';
+import {
+  refreshInventory,
+  refreshSales,
+  refreshCustomers,
+  refreshExpenses,
+  refreshBookings,
+  refreshPurchaseList,
+  refreshGoodsReceived,
+  refreshSuppliers,
+  refreshRecycleBin,
+  refreshAuditLog,
+  refreshAppUsers,
+  refreshPendingUsers,
+  refreshDeleteRequests,
+  refreshPermissions,
+  refreshAppSettings,
+} from './lib/refresh';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Sales from './pages/Sales';
@@ -71,12 +89,70 @@ function ThemeToggle() {
 }
 
 export default function App() {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', state.theme || 'dark');
   }, [state.theme]);
+
+  // ── Global Supabase Realtime ───────────────────────────────────────────────
+  // Maps each Supabase table name to the setter that updates global AppContext state.
+  // Standard tables: dispatch REFRESH_TABLE with the correct state key.
+  // app_settings: dispatch REFRESH_SETTINGS (spreads fields directly into state).
+  useEffect(() => {
+    const setters = {
+      inventory:       (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'inventory',      data } }),
+      sales:           (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'sales',          data } }),
+      customers:       (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'customers',      data } }),
+      expenses:        (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'expenses',       data } }),
+      bookings:        (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'bookings',       data } }),
+      purchase_list:   (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'purchaseList',   data } }),
+      goods_received:  (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'goodsReceived',  data } }),
+      suppliers:       (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'suppliers',      data } }),
+      recycle_bin:     (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'recycleBin',     data } }),
+      audit_log:       (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'auditLog',       data } }),
+      app_users:       (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'users',          data } }),
+      pending_users:   (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'pendingUsers',   data } }),
+      delete_requests: (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'deleteRequests', data } }),
+      permissions:     (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'permissions',    data } }),
+      app_settings:    (data) => dispatch({ type: 'REFRESH_SETTINGS', payload: data }),
+    };
+
+    // Maps each table to its dedicated refresh function from /lib/refresh.js
+    const refreshFns = {
+      inventory:       refreshInventory,
+      sales:           refreshSales,
+      customers:       refreshCustomers,
+      expenses:        refreshExpenses,
+      bookings:        refreshBookings,
+      purchase_list:   refreshPurchaseList,
+      goods_received:  refreshGoodsReceived,
+      suppliers:       refreshSuppliers,
+      recycle_bin:     refreshRecycleBin,
+      audit_log:       refreshAuditLog,
+      app_users:       refreshAppUsers,
+      pending_users:   refreshPendingUsers,
+      delete_requests: refreshDeleteRequests,
+      permissions:     refreshPermissions,
+      app_settings:    refreshAppSettings,
+    };
+
+    startRealtime((payload) => {
+      const table     = payload.table;
+      const refreshFn = refreshFns[table];
+      const setState  = setters[table];
+
+      if (refreshFn && setState) {
+        // Re-fetch the full table and push fresh data into global state
+        refreshFn(setState);
+      } else {
+        console.warn('[realtime] No handler registered for table:', table);
+      }
+    });
+
+    return () => stopRealtime();
+  }, [dispatch]);
 
   // Show loading screen while Supabase data is being fetched
   if (!state.dbLoaded) return <LoadingScreen />;

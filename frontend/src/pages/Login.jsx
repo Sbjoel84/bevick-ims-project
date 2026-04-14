@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp, genId } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
+import { DEMO_USERS } from '../data/users';
 
 const ROLES = [
   { id: 'inventory', label: 'Inventory Manager' },
@@ -44,6 +45,10 @@ export default function Login() {
   const { state, dispatch } = useApp();
   const { users, pendingUsers } = state;
 
+  // True when the database has no approved users and no pending users yet.
+  // The very first person to register becomes the super_admin automatically.
+  const isFirstUser = state.dbLoaded && users.length === 0 && pendingUsers.length === 0;
+
   const [view, setView] = useState('login'); // 'login' | 'register' | 'forgot'
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null); // { type, text }
@@ -69,12 +74,41 @@ export default function Login() {
     setLoading(true);
     try {
       const email = loginForm.email.trim().toLowerCase();
+      const password = loginForm.password;
 
-      const { error: authErr } = await supabase.auth.signInWithPassword({
-        email,
-        password: loginForm.password,
-      });
+      // ── 1. Check app_users with a stored password (admin-created accounts) ──
+      // Admin can create users via the Admin Panel with a plaintext pw field.
+      // These users have no Supabase Auth account, so we match directly.
+      const directUser = users.find(u => u.em?.toLowerCase() === email && u.pw && u.pw === password);
+      if (directUser) {
+        if (directUser.status === 'inactive') {
+          setMsg({ type: 'error', text: 'Your account has been deactivated. Contact admin.' });
+          return;
+        }
+        if (directUser.status === 'pending') {
+          setMsg({ type: 'warn', text: 'Your account is awaiting admin approval.' });
+          return;
+        }
+        dispatch({ type: 'LOGIN', payload: directUser });
+        return;
+      }
 
+      // ── 2. Check DEMO_USERS (development / hardcoded test accounts) ────────
+      const demoUser = DEMO_USERS.find(u => u.em?.toLowerCase() === email);
+      if (demoUser && demoUser.pw === password) {
+        const appUser = users.find(u => u.em?.toLowerCase() === email) || demoUser;
+        if (appUser.status === 'inactive') {
+          setMsg({ type: 'error', text: 'Your account has been deactivated. Contact admin.' });
+          return;
+        }
+        if (appUser.status === 'active') {
+          dispatch({ type: 'LOGIN', payload: appUser });
+          return;
+        }
+      }
+
+      // ── 3. Supabase Auth (email/password registered via sign-up form) ──────
+      const { error: authErr } = await supabase.auth.signInWithPassword({ email, password });
       if (authErr) {
         setMsg({ type: 'error', text: authErr.message === 'Invalid login credentials'
           ? 'Incorrect email or password.'
@@ -82,7 +116,6 @@ export default function Login() {
         return;
       }
 
-      // Look up app user by email
       const appUser = users.find(u => u.em?.toLowerCase() === email);
       const isPending = pendingUsers.find(u => u.em?.toLowerCase() === email);
 
@@ -146,30 +179,48 @@ export default function Login() {
         return;
       }
 
-      // Always sign out after signUp (pending approval — they shouldn't be in)
-      await supabase.auth.signOut();
-
-      // Save to pending_users in app state + Supabase
-      dispatch({
-        type: 'REGISTER_USER',
-        payload: {
+      if (isFirstUser) {
+        // ── First user → auto-approved super_admin ──────────────
+        // No sign-out: let them straight into the app.
+        const newAdmin = {
           id: genId('U'),
           em: email,
           name: regForm.name.trim(),
-          role: regForm.role,
-          bid: regForm.bid,
+          role: 'super_admin',
+          bid: null,
           phone: regForm.phone.trim(),
           initials: regForm.name.trim().slice(0, 2).toUpperCase(),
-          status: 'pending',
+          status: 'active',
           registeredAt: new Date().toISOString(),
-        },
-      });
+        };
+        dispatch({ type: 'ADD_USER',  payload: newAdmin });
+        dispatch({ type: 'LOGIN',     payload: newAdmin });
+        // Redirect happens automatically via LOGIN dispatch → page: 'dashboard'
+      } else {
+        // ── Subsequent users → pending admin approval ───────────
+        await supabase.auth.signOut();
 
-      setMsg({
-        type: 'success',
-        text: 'Account created! Please check your email to confirm your address, then wait for admin approval before logging in.',
-      });
-      setRegForm({ name: '', email: '', password: '', confirm: '', role: 'sales', bid: 'KUB', phone: '' });
+        dispatch({
+          type: 'REGISTER_USER',
+          payload: {
+            id: genId('U'),
+            em: email,
+            name: regForm.name.trim(),
+            role: regForm.role,
+            bid: regForm.bid,
+            phone: regForm.phone.trim(),
+            initials: regForm.name.trim().slice(0, 2).toUpperCase(),
+            status: 'pending',
+            registeredAt: new Date().toISOString(),
+          },
+        });
+
+        setMsg({
+          type: 'success',
+          text: 'Account request submitted! An admin will review and approve your account before you can log in.',
+        });
+        setRegForm({ name: '', email: '', password: '', confirm: '', role: 'sales', bid: 'KUB', phone: '' });
+      }
     } catch (err) {
       setMsg({ type: 'error', text: 'Registration failed. Please try again.' });
     } finally {
@@ -288,8 +339,22 @@ export default function Login() {
         {/* ── REGISTER VIEW ── */}
         {view === 'register' && (
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="font-syne text-lg font-semibold text-white mb-1">Create an account</h2>
-            <p className="text-gray-500 text-sm mb-6">Your account will require admin approval before you can log in.</p>
+            {isFirstUser ? (
+              <>
+                <h2 className="font-syne text-lg font-semibold text-white mb-1">Set up your admin account</h2>
+                <div className="flex items-start gap-2 bg-emerald-950 border border-emerald-800 text-emerald-300 text-xs rounded-lg px-3 py-2.5 mb-5">
+                  <svg className="w-4 h-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                  </svg>
+                  <span>No users exist yet. You will be the <strong>Super Admin</strong> and can log in immediately to approve other users.</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="font-syne text-lg font-semibold text-white mb-1">Create an account</h2>
+                <p className="text-gray-500 text-sm mb-6">Your account will require admin approval before you can log in.</p>
+              </>
+            )}
 
             {msg && <Alert type={msg.type}>{msg.text}</Alert>}
 
@@ -322,22 +387,24 @@ export default function Login() {
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white placeholder-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-gray-400 text-xs font-medium mb-1.5">Role</label>
-                    <select value={regForm.role} onChange={e => setRegForm(f => ({ ...f, role: e.target.value }))}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                    </select>
+                {!isFirstUser && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-gray-400 text-xs font-medium mb-1.5">Role</label>
+                      <select value={regForm.role} onChange={e => setRegForm(f => ({ ...f, role: e.target.value }))}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 text-xs font-medium mb-1.5">Branch</label>
+                      <select value={regForm.bid} onChange={e => setRegForm(f => ({ ...f, bid: e.target.value }))}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-gray-400 text-xs font-medium mb-1.5">Branch</label>
-                    <select value={regForm.bid} onChange={e => setRegForm(f => ({ ...f, bid: e.target.value }))}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
-                    </select>
-                  </div>
-                </div>
+                )}
                 <div>
                   <label className="block text-gray-400 text-xs font-medium mb-1.5">Password <span className="text-red-400">*</span></label>
                   <div className="relative">
@@ -370,7 +437,9 @@ export default function Login() {
                 </div>
                 <button type="submit" disabled={loading || !regForm.name || !regForm.email || !regForm.password || !regForm.confirm}
                   className="w-full bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2">
-                  {loading ? <><Spinner/> Creating account…</> : 'Create Account'}
+                  {loading
+                    ? <><Spinner/> {isFirstUser ? 'Setting up…' : 'Creating account…'}</>
+                    : isFirstUser ? 'Create Admin Account' : 'Create Account'}
                 </button>
               </form>
             ) : null}

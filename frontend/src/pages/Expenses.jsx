@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp, formatCurrency, fmtDate, genId } from '../context/AppContext';
+import { refreshExpenses } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
 
@@ -27,6 +28,10 @@ const EMPTY = { desc: '', amount: '', category: 'Operations', branch: 'DUB', dat
 export default function Expenses() {
   const { state, dispatch } = useApp();
   const { expenses, currency, branch, bname, user } = state;
+
+  useEffect(() => {
+    refreshExpenses(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'expenses', data } }));
+  }, []);
 
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY);

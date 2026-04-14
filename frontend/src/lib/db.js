@@ -5,7 +5,7 @@
  */
 import { supabase } from './supabase';
 import { ALL_ITEMS } from '../data/inventory';
-import { DEMO_USERS, DEFAULT_PERMISSIONS } from '../data/users';
+import { DEFAULT_PERMISSIONS } from '../data/users';
 
 const DEFAULT_SUPPLIERS = [
   { id:'S1', name:'TechPack Ltd',       contact:'Emeka Eze',       phone:'+234 801 111 0001', email:'info@techpack.ng',      address:'Lagos, Nigeria',  category:'Machinery',   status:'active' },
@@ -85,11 +85,8 @@ export async function loadData() {
   const settingsData = settingsRes.data?.data || {};
 
   // ── Users ────────────────────────────────────────────────────
+  // Load users from Supabase (created via Gmail OAuth or manual registration)
   let users = extract(usersRes);
-  if (!users.length) {
-    users = JSON.parse(JSON.stringify(DEMO_USERS));
-    await Promise.all(users.map(u => upsert('app_users', u)));
-  }
 
   // ── Inventory ─────────────────────────────────────────────────
   let inventory = extract(inventoryRes);

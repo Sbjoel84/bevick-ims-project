@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp, fmtDateTime, fmtDate, genId } from '../context/AppContext';
+import { refreshAppUsers, refreshPendingUsers, refreshDeleteRequests, refreshPermissions, refreshAuditLog } from '../lib/refresh';
 import { ROLES, ALL_PAGES } from '../data/users';
 
 const ALL_ROLES = [
-  { id: 'super_admin', label: 'Super Admin' },
-  { id: 'inventory',   label: 'Inventory Manager' },
-  { id: 'sales',       label: 'Sales Officer' },
+  { id: 'main_super_admin', label: 'Main Super Admin' },
+  { id: 'super_admin',      label: 'Super Admin' },
+  { id: 'admin',            label: 'Admin' },
+  { id: 'inventory',        label: 'Inventory Manager' },
+  { id: 'sales',            label: 'Sales Officer' },
 ];
 
 function PendingCard({ u, dispatch }) {
@@ -86,6 +89,16 @@ const EMPTY_USER = { name: '', em: '', pw: '', role: 'sales', bid: 'KUB', phone:
 export default function AdminPanel() {
   const { state, dispatch } = useApp();
   const { users, pendingUsers, deleteRequests, permissions, auditLog, branch, bname, user: currentUser } = state;
+
+  useEffect(() => {
+    // Do NOT refresh app_users here — doing so races with the async ADD_USER sync
+    // and overwrites optimistically-added users before they land in Supabase.
+    // app_users is kept current by the Realtime subscription in AppContext.
+    refreshPendingUsers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'pendingUsers', data } }));
+    refreshDeleteRequests(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'deleteRequests', data } }));
+    refreshPermissions(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'permissions', data } }));
+    refreshAuditLog(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'auditLog', data } }));
+  }, []);
 
   const [tab, setTab] = useState('Users');
   const [modal, setModal] = useState(null);

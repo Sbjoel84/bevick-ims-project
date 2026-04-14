@@ -1,8 +1,8 @@
 export const DEMO_USERS = [
   {
     id: 'U1',
-    em: 'admin@bevick.com',
-    pw: 'admin123',
+    em: 'kwhite.ku@gmail.com',
+    pw: 'kwhite123',
     name: 'K White',
     role: 'super_admin',
     bid: null,
@@ -12,32 +12,67 @@ export const DEMO_USERS = [
   },
   {
     id: 'U2',
+    em: 'alicebetheluche@gmail.com',
+    pw: 'alice123',
+    name: 'Alice Betheluche',
+    role: 'admin',
+    bid: null,
+    initials: 'AB',
+    phone: '+234 801 000 0002',
+    status: 'active',
+  },
+  {
+    id: 'U3',
+    em: 'sbjoel160@gmail.com',
+    pw: 'sbjoel123',
+    name: 'SB Joel',
+    role: 'admin',
+    bid: null,
+    initials: 'SJ',
+    phone: '+234 801 000 0003',
+    status: 'active',
+  },
+  {
+    id: 'U4',
+    em: 'ofilifred@gmail.com',
+    pw: 'ofilifred123',
+    name: 'O Filifred',
+    role: 'admin',
+    bid: null,
+    initials: 'OF',
+    phone: '+234 801 000 0004',
+    status: 'active',
+  },
+  {
+    id: 'U5',
+    em: 'hyacintheke@gmail.com',
+    pw: 'hyacinth123',
+    name: 'Hyacinth Eke',
+    role: 'inventory',
+    bid: 'KUB',
+    initials: 'HE',
+    phone: '+234 801 000 0005',
+    status: 'active',
+  },
+  {
+    id: 'U6',
     em: 'dubai@bevick.com',
     pw: 'dubai123',
     name: 'A Musa',
     role: 'inventory',
     bid: 'DUB',
     initials: 'AM',
-    phone: '+234 802 000 0002',
-    status: 'active',
-  },
-  {
-    id: 'U3',
-    em: 'kubwa@bevick.com',
-    pw: 'kubwa123',
-    name: 'B Okafor',
-    role: 'sales',
-    bid: 'KUB',
-    initials: 'BO',
-    phone: '+234 803 000 0003',
+    phone: '+234 802 000 0006',
     status: 'active',
   },
 ];
 
 export const ROLES = [
-  { id: 'super_admin', label: 'Super Admin' },
-  { id: 'inventory',   label: 'Inventory Manager' },
-  { id: 'sales',       label: 'Sales Officer' },
+  { id: 'main_super_admin', label: 'Main Super Admin' },
+  { id: 'super_admin',      label: 'Super Admin' },
+  { id: 'admin',            label: 'Admin' },
+  { id: 'inventory',        label: 'Inventory Manager' },
+  { id: 'sales',            label: 'Sales Officer' },
 ];
 
 export const ALL_PAGES = [
@@ -57,7 +92,9 @@ export const ALL_PAGES = [
 
 // Default page permissions per role
 export const DEFAULT_PERMISSIONS = {
-  super_admin: ['dashboard','sales','customers','expenses','inventory','booked','purchase','goods','suppliers','recycle','reports','settings','admin'],
-  inventory:   ['dashboard','inventory','booked','purchase','goods','suppliers','reports','settings'],
-  sales:       ['dashboard','sales','customers','expenses','booked','reports','settings'],
+  main_super_admin: ['dashboard','sales','customers','expenses','inventory','booked','purchase','goods','suppliers','recycle','reports','settings','admin'],
+  super_admin:      ['dashboard','sales','customers','expenses','inventory','booked','purchase','goods','suppliers','recycle','reports','settings','admin'],
+  admin:            ['dashboard','sales','customers','expenses','inventory','booked','purchase','goods','suppliers','recycle','reports','settings','admin'],
+  inventory:        ['dashboard','inventory','booked','purchase','goods','suppliers','reports','settings'],
+  sales:            ['dashboard','sales','customers','expenses','booked','reports','settings'],
 };

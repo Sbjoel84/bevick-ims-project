@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp, formatCurrency, fmtDateTime } from '../context/AppContext';
+import { refreshRecycleBin } from '../lib/refresh';
 
 const TYPE_LABELS = {
   inventory: 'Inventory Item',
@@ -22,6 +23,10 @@ const TYPE_COLORS = {
 export default function RecycleBin() {
   const { state, dispatch } = useApp();
   const { recycleBin, currency, branch } = state;
+
+  useEffect(() => {
+    refreshRecycleBin(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'recycleBin', data } }));
+  }, []);
 
   const [filterType, setFilterType] = useState('all');
   const [search, setSearch] = useState('');

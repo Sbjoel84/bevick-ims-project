@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp, CURRENCY_SYMBOLS } from '../context/AppContext';
+import { refreshAppSettings } from '../lib/refresh';
 import { supabase } from '../lib/supabase';
 
 const CURRENCIES = ['NGN', 'USD', 'EUR', 'GBP', 'CNY'];
@@ -28,6 +29,10 @@ function Field({ label, hint, children }) {
 export default function Settings() {
   const { state, dispatch } = useApp();
   const { user, vat, thr, currency, bizName, bizRC, bizPhone, bizEmail, bizAddress, notifySales, notifyLowStock, notifyExpenses } = state;
+
+  useEffect(() => {
+    refreshAppSettings(settings => dispatch({ type: 'REFRESH_SETTINGS', payload: settings }));
+  }, []);
 
   const [saved, setSaved] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: user?.name || '', phone: user?.phone || '' });

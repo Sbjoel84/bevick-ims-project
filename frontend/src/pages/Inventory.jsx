@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp, formatCurrency, genId } from '../context/AppContext';
+import { refreshInventory } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
 
-const CATEGORIES = ['Machinery', 'Spare Parts', 'Consumables', 'Chemicals', 'Safety', 'Others'];
+const CATEGORIES = ['Machinery', 'Spare Parts', 'Chemicals', 'Safety', 'Others'];
 const UNITS = ['Unit', 'Pcs', 'Roll', 'Set', 'Meter', 'Kg', 'Litre', 'Box', 'Carton'];
 const BRANCHES = [{ id: 'DUB', label: 'Dubai Market' }, { id: 'KUB', label: 'Kubwa Office' }];
+const SUPPLIERS = ['China', 'Lagos', 'Abuja', 'Others'];
 
 function Modal({ title, onClose, children }) {
   return (
@@ -28,6 +30,10 @@ const EMPTY_ITEM = { name: '', category: 'Machinery', qty: '', unit: 'Unit', pri
 export default function Inventory() {
   const { state, dispatch } = useApp();
   const { inventory, currency, branch, bname, thr, user } = state;
+
+  useEffect(() => {
+    refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
+  }, []);
 
   const [modal, setModal] = useState(null); // 'add' | 'edit' | 'restock' | 'view'
   const [selected, setSelected] = useState(null);
@@ -296,7 +302,10 @@ export default function Inventory() {
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">Supplier</label>
-                <input type="text" value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                <select value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">— Select supplier —</option>
+                  {SUPPLIERS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
             </div>
             <div className="flex gap-3 pt-2">

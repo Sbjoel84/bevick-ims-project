@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { useApp, formatCurrency, fmtDate } from '../context/AppContext';
+import { refreshInventory, refreshSales, refreshExpenses } from '../lib/refresh';
 
 function StatCard({ label, value, sub, color = 'blue', icon }) {
   const colors = {
@@ -23,8 +25,15 @@ function StatCard({ label, value, sub, color = 'blue', icon }) {
 }
 
 export default function Dashboard() {
-  const { state } = useApp();
-  const { sales, expenses, inventory, bookings, customers, currency, thr, branch, bname } = state;
+  const { state, dispatch } = useApp();
+  const { sales, expenses, inventory, bookings, customers, currency, thr, branch, bname, user } = state;
+  const isAdmin = user?.role === 'super_admin';
+
+  useEffect(() => {
+    refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
+    refreshSales(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'sales', data } }));
+    refreshExpenses(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'expenses', data } }));
+  }, []);
 
   // Filter by branch — null branch means admin (sees all)
   const filteredSales     = branch ? sales.filter(s => s.branch === branch) : sales;
@@ -56,37 +65,39 @@ export default function Dashboard() {
         <p className="text-gray-500 text-sm mt-0.5">{bname} · Overview</p>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Total Revenue"
-          value={formatCurrency(totalRevenue, currency)}
-          sub={`${filteredSales.length} sales`}
-          color="blue"
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>}
-        />
-        <StatCard
-          label="Total Expenses"
-          value={formatCurrency(totalExpenses, currency)}
-          sub={`${filteredExpenses.length} entries`}
-          color="red"
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>}
-        />
-        <StatCard
-          label="Net Profit"
-          value={formatCurrency(netProfit, currency)}
-          sub={netProfit >= 0 ? 'Positive balance' : 'In deficit'}
-          color={netProfit >= 0 ? 'blue' : 'amber'}
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>}
-        />
-        <StatCard
-          label="Today's Sales"
-          value={formatCurrency(todayRevenue, currency)}
-          sub={`${todaySales.length} transactions`}
-          color="purple"
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>}
-        />
-      </div>
+      {/* KPI Grid — admin only */}
+      {isAdmin && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Total Revenue"
+            value={formatCurrency(totalRevenue, currency)}
+            sub={`${filteredSales.length} sales`}
+            color="blue"
+            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>}
+          />
+          <StatCard
+            label="Total Expenses"
+            value={formatCurrency(totalExpenses, currency)}
+            sub={`${filteredExpenses.length} entries`}
+            color="red"
+            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>}
+          />
+          <StatCard
+            label="Net Profit"
+            value={formatCurrency(netProfit, currency)}
+            sub={netProfit >= 0 ? 'Positive balance' : 'In deficit'}
+            color={netProfit >= 0 ? 'blue' : 'amber'}
+            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>}
+          />
+          <StatCard
+            label="Today's Sales"
+            value={formatCurrency(todayRevenue, currency)}
+            sub={`${todaySales.length} transactions`}
+            color="purple"
+            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>}
+          />
+        </div>
+      )}
 
       {/* Second row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
