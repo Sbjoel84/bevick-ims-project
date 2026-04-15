@@ -212,7 +212,7 @@ export default function Login() {
     setLoading(true);
     try {
       // Create Supabase Auth account
-      const { error: authErr } = await supabase.auth.signUp({
+      const { data: authData, error: authErr } = await supabase.auth.signUp({
         email,
         password: regForm.password,
         options: { emailRedirectTo: window.location.origin },
@@ -221,6 +221,19 @@ export default function Login() {
       if (authErr) {
         setMsg({ type: 'error', text: authErr.message });
         return;
+      }
+
+      // Insert into profiles table using the Supabase Auth UUID.
+      // data.user is null when email confirmation is required — skip silently in that case.
+      if (authData?.user?.id) {
+        const { error: profileErr } = await supabase.from('profiles').insert({
+          id: authData.user.id,
+          email,
+        });
+        if (profileErr && profileErr.code !== '23505') {
+          // 23505 = unique_violation (user already exists) — safe to ignore on retry
+          console.error('[signup] profiles insert:', profileErr.message);
+        }
       }
 
       if (isFirstUser) {

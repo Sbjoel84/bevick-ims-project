@@ -146,22 +146,7 @@ export default function LoginGmail() {
         registeredAt: new Date().toISOString(),
       };
 
-      // Save to Supabase pending_users
-      const { error } = await supabase.from('pending_users').insert([{
-        data: newUser,
-      }]);
-
-      if (error) {
-        if (error.message.includes('duplicate')) {
-          setMsg({ type: 'error', text: 'This email is already registered.' });
-        } else {
-          setMsg({ type: 'error', text: error.message });
-        }
-        setLoading(false);
-        return;
-      }
-
-      // Dispatch to app context
+      // Dispatch to app context — sync.js will handle saving to Supabase
       dispatch({
         type: 'REGISTER_USER',
         payload: newUser,
@@ -176,6 +161,7 @@ export default function LoginGmail() {
         type: 'success',
         text: 'Account created! Please wait for admin approval before logging in.',
       });
+      setLoading(false);
     } catch (err) {
       console.error('Profile completion error:', err);
       setMsg({ type: 'error', text: err.message || 'Failed to complete profile' });

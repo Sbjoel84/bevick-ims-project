@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp, fmtDateTime, fmtDate, genId } from '../context/AppContext';
-import { refreshAppUsers, refreshPendingUsers, refreshDeleteRequests, refreshPermissions, refreshAuditLog } from '../lib/refresh';
+import { refreshAppUsers, refreshPendingUsers, refreshDeleteRequests, refreshPermissions, refreshAuditLog, refreshProfiles } from '../lib/refresh';
 import { ROLES, ALL_PAGES } from '../data/users';
 
 const ALL_ROLES = [
@@ -82,7 +82,7 @@ function Modal({ title, onClose, children }) {
   );
 }
 
-const TABS = ['Users', 'Pending', 'Requests', 'Permissions', 'Audit Log', 'Branch'];
+const TABS = ['Users', 'Pending', 'Requests', 'Permissions', 'Audit Log', 'Branch', 'Auth Users'];
 
 const EMPTY_USER = { name: '', em: '', pw: '', role: 'sales', bid: 'KUB', phone: '', status: 'active' };
 
@@ -98,7 +98,10 @@ export default function AdminPanel() {
     refreshDeleteRequests(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'deleteRequests', data } }));
     refreshPermissions(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'permissions', data } }));
     refreshAuditLog(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'auditLog', data } }));
+    refreshProfiles(setProfiles);
   }, []);
+
+  const [profiles, setProfiles] = useState([]);
 
   const [tab, setTab] = useState('Users');
   const [modal, setModal] = useState(null);
@@ -411,6 +414,43 @@ export default function AdminPanel() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Auth Users Tab (profiles table) */}
+      {tab === 'Auth Users' && (
+        <div className="space-y-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+              <div>
+                <h3 className="font-syne font-semibold text-white">Supabase Auth Registrations</h3>
+                <p className="text-gray-500 text-xs mt-0.5">Users stored in the profiles table via Supabase Auth</p>
+              </div>
+              <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-lg">{profiles.length} total</span>
+            </div>
+            {profiles.length === 0 ? (
+              <div className="py-12 text-center text-gray-600 text-sm">No auth registrations yet</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-800">
+                    <th className="text-left text-gray-500 font-medium px-5 py-3">Email</th>
+                    <th className="text-left text-gray-500 font-medium px-5 py-3">Auth ID</th>
+                    <th className="text-left text-gray-500 font-medium px-5 py-3">Registered</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {profiles.map(p => (
+                    <tr key={p.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40">
+                      <td className="px-5 py-3.5 text-white">{p.email}</td>
+                      <td className="px-5 py-3.5 text-gray-500 font-mono text-xs">{p.id}</td>
+                      <td className="px-5 py-3.5 text-gray-500 text-xs">{fmtDate(p.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}

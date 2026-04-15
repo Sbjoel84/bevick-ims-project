@@ -104,6 +104,12 @@ export const refreshPermissions = async (setState) => {
   setState(perms);
 };
 
+export const refreshProfiles = async (setState) => {
+  const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+  if (error) { console.error('[refresh] profiles:', error.message); return; }
+  setState(data || []);
+};
+
 // app_settings has a single row { id: 'main', data: { ...settings } }
 export const refreshAppSettings = async (setState) => {
   const { data, error } = await supabase
