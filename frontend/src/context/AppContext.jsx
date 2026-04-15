@@ -267,7 +267,17 @@ function reducer(state, action) {
       };
     }
     // Scans all active bookings and creates purchase orders for items below stock level
+    // Admin (super_admin/admin) sees all branches, non-admin sees only their assigned branch
     case 'SYNC_PURCHASES_FROM_BOOKINGS': {
+      const userBranch = state.user?.bid;
+      const canEditAll = state.user?.role === 'super_admin' || state.user?.role === 'admin';
+      
+      // Filter bookings based on user role - admin sees all, non-admin sees only their branch
+      const visibleBookings = state.bookings.filter(b => {
+        if (canEditAll) return true;
+        return b.branch === userBranch;
+      });
+
       // Build a set of item names already in the purchase list (pending or ordered) to avoid duplicates
       const existingKeys = new Set(
         state.purchaseList
@@ -277,14 +287,15 @@ function reducer(state, action) {
       const newPurchases = [];
       const seenThisRun = new Set();
       let idx = 0;
-      state.bookings
+      visibleBookings
         .filter(b => b.status === 'pending' || b.status === 'confirmed')
         .forEach(booking => {
           (booking.items || []).forEach(item => {
             if (!item.id || !item.name) return;
             const key = item.id;
             if (seenThisRun.has(key) || existingKeys.has(key)) return;
-            const invItem = state.inventory.find(i => i.id === item.id);
+            // Find inventory for the same branch as the booking
+            const invItem = state.inventory.find(i => i.id === item.id && i.branch === booking.branch);
             const currentQty = invItem ? (invItem.qty || 0) : 0;
             if (currentQty < (item.qty || 1)) {
               seenThisRun.add(key);

@@ -45,6 +45,16 @@ export default function Purchase() {
   const { purchaseList, suppliers, currency, bname, user, branch, inventory, bookings } = state;
 
   // Compute items in active bookings that exceed available stock and have no pending/ordered purchase yet
+  // Admin (super_admin/admin) sees all branches, non-admin sees only their assigned branch
+  const userBranch = user?.bid;
+  const canEditAll = user?.role === 'super_admin' || user?.role === 'admin';
+  
+  // Filter bookings based on user role - admin sees all, non-admin sees only their branch
+  const visibleBookings = bookings.filter(b => {
+    if (canEditAll) return true; // Admin sees all
+    return b.branch === userBranch; // Non-admin sees only their branch
+  });
+
   const existingPurchaseKeys = new Set(
     purchaseList
       .filter(p => p.status === 'pending' || p.status === 'ordered')
@@ -52,17 +62,25 @@ export default function Purchase() {
   );
   const unseenKeys = new Set();
   const missingItems = [];
-  bookings
-    .filter(b => (branch ? b.branch === branch : true) && (b.status === 'pending' || b.status === 'confirmed'))
+  visibleBookings
+    .filter(b => b.status === 'pending' || b.status === 'confirmed')
     .forEach(b => {
       (b.items || []).forEach(item => {
         if (!item.id || !item.name) return;
         if (unseenKeys.has(item.id) || existingPurchaseKeys.has(item.id)) return;
-        const invItem = inventory.find(i => i.id === item.id);
+        
+        // Find inventory for the same branch as the booking
+        const invItem = inventory.find(i => i.id === item.id && i.branch === b.branch);
         const currentQty = invItem ? (invItem.qty || 0) : 0;
         if (currentQty < (item.qty || 1)) {
           unseenKeys.add(item.id);
-          missingItems.push({ name: item.name, booked: item.qty || 1, inStock: currentQty });
+          missingItems.push({ 
+            name: item.name, 
+            booked: item.qty || 1, 
+            inStock: currentQty,
+            branch: b.branch,
+            branchLabel: b.branch === 'DUB' ? 'Dubai' : 'Kubwa'
+          });
         }
       });
     });
@@ -103,7 +121,11 @@ export default function Purchase() {
   }
 
   const filtered = purchaseList
-    .filter(p => branch ? (!p.branch || p.branch === branch) : true)
+    .filter(p => {
+      // Admin sees all branches, non-admin sees only their branch
+      if (canEditAll) return true;
+      return !p.branch || p.branch === userBranch;
+    })
     .filter(p => filterStatus === 'all' || p.status === filterStatus)
     .filter(p => filterPriority === 'all' || p.priority === filterPriority)
     .filter(p => {
@@ -191,9 +213,10 @@ export default function Purchase() {
           <div className="flex-1 min-w-0">
             <p className="text-amber-400 font-semibold text-sm">
               {missingItems.length} booked item{missingItems.length > 1 ? 's' : ''} not available in stock
+              {!canEditAll && <span className="ml-2 text-amber-400/70">({userBranch === 'DUB' ? 'Dubai' : 'Kubwa'} branch)</span>}
             </p>
             <p className="text-amber-400/70 text-xs mt-0.5 truncate">
-              {missingItems.map(i => `${i.name} (need ${i.booked - i.inStock}, have ${i.inStock})`).join(' · ')}
+              {missingItems.map(i => `${i.name} (need ${i.booked - i.inStock}, have ${i.inStock} @ ${i.branchLabel})`).join(' · ')}
             </p>
           </div>
           <button
@@ -310,8 +333,8 @@ export default function Purchase() {
               >
                 <option value="" disabled>Select an item…</option>
                 {inventory
-                  .filter(i => !branch || !i.branch || i.branch === branch)
-                  .map(i => <option key={i.id} value={i.name}>{i.name}</option>)
+                  .filter(i => canEditAll || !i.branch || i.branch === userBranch)
+                  .map(i => <option key={i.id} value={i.name}>{i.name} ({i.branch === 'DUB' ? 'Dubai' : 'Kubwa'})</option>)
                 }
                 <option value="__custom__">+ Add item not on list</option>
               </select>
@@ -359,11 +382,12 @@ export default function Purchase() {
               <select
                 value={form.branch}
                 onChange={e => setForm(f => ({ ...f, branch: e.target.value }))}
-                disabled={!!branch}
+                disabled={!canEditAll}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
               >
                 {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
               </select>
+              {!canEditAll && <p className="text-gray-500 text-xs mt-1">You can only create purchase requests for your branch</p>}
             </div>
             <div>
               <label className="text-gray-400 text-xs font-medium block mb-1.5">Supplier (optional)</label>
