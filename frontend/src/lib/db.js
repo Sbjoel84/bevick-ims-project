@@ -19,7 +19,10 @@ const DEFAULT_SUPPLIERS = [
 ];
 
 // Helper: extract data from rows
-const extract = (res) => (res.data || []).map(r => r.data);
+const extract = (res) => {
+  console.log('[db] extract:', res.data?.length || 0, 'rows');
+  return (res.data || []).map(r => r.data);
+};
 
 // Tables that have a branch column in the schema
 const BRANCH_TABLES = new Set(['inventory','sales','customers','expenses','bookings','purchase_list','goods_received']);
@@ -87,9 +90,11 @@ export async function loadData() {
   // ── Users ────────────────────────────────────────────────────
   // Load users from Supabase (created via Gmail OAuth or manual registration)
   let users = extract(usersRes);
+  console.log('[loadData] users loaded:', users.length);
 
   // ── Inventory ─────────────────────────────────────────────────
   let inventory = extract(inventoryRes);
+  console.log('[loadData] inventory loaded:', inventory.length);
   if (!inventory.length) {
     inventory = JSON.parse(JSON.stringify(ALL_ITEMS));
     await upsertMany('inventory', inventory);
@@ -151,7 +156,7 @@ export async function loadData() {
     inventory,
     suppliers,
     permissions,
-    sales:          extract(salesRes),
+    sales:          (() => { const s = extract(salesRes); console.log('[loadData] sales loaded:', s.length); return s; })(),
     customers:      extract(customersRes),
     expenses:       extract(expensesRes),
     bookings:       extract(bookingsRes),

@@ -15,8 +15,12 @@ const BRANCH_TABLES = new Set(['inventory','sales','customers','expenses','booki
 async function upsert(table, obj) {
   const row = { id: String(obj.id), data: obj };
   if (BRANCH_TABLES.has(table)) row.branch = obj.branch || null;
+  console.log('[sync] upsert:', table, 'id:', row.id, 'branch:', row.branch);
   const { error } = await supabase.from(table).upsert(row);
-  if (error) throw error;
+  if (error) {
+    console.error('[sync] upsert error:', table, error.message);
+    throw error;
+  }
 }
 
 async function remove(table, id) {
@@ -88,10 +92,12 @@ export async function syncAction(action, prevState, nextState) {
 
       // ── SALES ────────────────────────────────────────────────
       case 'ADD_SALE': {
+        console.log('[sync] ADD_SALE:', action.payload.id, 'branch:', action.payload.branch);
         await upsert('sales', action.payload);
         // Sync deducted inventory items
         const ids = new Set(action.payload.items.map(i => i.id));
         const modified = nextState.inventory.filter(i => ids.has(i.id));
+        console.log('[sync] inventory modified count:', modified.length);
         await upsertMany('inventory', modified);
         break;
       }
