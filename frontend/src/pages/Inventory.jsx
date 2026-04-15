@@ -276,37 +276,37 @@ export default function Inventory() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Items</p>
-          <p className="font-syne text-2xl font-bold text-white">{filtered.length}</p>
+          <p className="font-syne text-xl md:text-2xl font-bold text-white">{filtered.length}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Quantity</p>
-          <p className="font-syne text-2xl font-bold text-white">{totalQty}</p>
+          <p className="font-syne text-xl md:text-2xl font-bold text-white">{totalQty}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
           <p className="text-gray-500 text-xs font-medium mb-1">Stock Value</p>
-          <p className="font-syne text-xl font-bold text-white">{formatCurrency(totalValue, currency)}</p>
+          <p className="font-syne text-lg md:text-xl font-bold text-white">{formatCurrency(totalValue, currency)}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
           <p className="text-gray-500 text-xs font-medium mb-1">Low Stock</p>
-          <p className={`font-syne text-2xl font-bold ${lowCount > 0 ? 'text-amber-400' : 'text-white'}`}>{lowCount}</p>
+          <p className={`font-syne text-xl md:text-2xl font-bold ${lowCount > 0 ? 'text-amber-400' : 'text-white'}`}>{lowCount}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5 col-span-2 md:col-span-1">
           <p className="text-gray-500 text-xs font-medium mb-1">Out of Stock</p>
-          <p className={`font-syne text-2xl font-bold ${outCount > 0 ? 'text-red-400' : 'text-white'}`}>{outCount}</p>
+          <p className={`font-syne text-xl md:text-2xl font-bold ${outCount > 0 ? 'text-red-400' : 'text-white'}`}>{outCount}</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3">
         <input
           type="text"
           placeholder="Search items…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-48 md:w-64"
         />
         <select
           value={filterCat}
@@ -326,27 +326,28 @@ export default function Inventory() {
           <option value="low">Low Stock</option>
           <option value="out">Out of Stock</option>
         </select>
-        <div className="ml-auto flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-gray-500 ml-auto">
           <span className="bg-gray-800 px-2 py-1 rounded">Your branch: {userBranch === 'DUB' ? 'Dubai' : userBranch === 'KUB' ? 'Kubwa' : 'All'}</span>
           {canEditAll && <span className="bg-blue-900 text-blue-400 px-2 py-1 rounded">Admin</span>}
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table - Mobile Card Layout */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800">
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Item</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Category</th>
-                <th className="text-center text-gray-500 font-medium px-5 py-3">Dubai</th>
-                <th className="text-center text-gray-500 font-medium px-5 py-3">Kubwa</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Unit</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Price</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Value</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Status</th>
-                <th className="px-5 py-3"></th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3">Item</th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3">Category</th>
+                <th className="text-center text-gray-500 font-medium px-4 py-3">Dubai</th>
+                <th className="text-center text-gray-500 font-medium px-4 py-3">Kubwa</th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3">Unit</th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3">Price</th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3">Value</th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3">Status</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -354,30 +355,20 @@ export default function Inventory() {
                 <tr><td colSpan={9} className="text-center text-gray-600 py-12">No items found</td></tr>
               ) : filtered.map(item => (
                 <tr key={item.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-3">
                     <p className="text-white font-medium">{item.name}</p>
                     {item.supplier && <p className="text-gray-500 text-xs mt-0.5">{item.supplier}</p>}
                   </td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-3">
                     <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg">{item.category}</span>
                   </td>
-                  <td className="px-5 py-3.5 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <span className="text-white font-mono">{item.dubQty}</span>
-                      <span className="text-gray-500 text-xs">{item.unit}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <span className="text-white font-mono">{item.kubQty}</span>
-                      <span className="text-gray-500 text-xs">{item.unit}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-gray-400 text-xs">{item.unit}</td>
-                  <td className="px-5 py-3.5 text-gray-400 font-mono">{formatCurrency(item.price, currency)}</td>
-                  <td className="px-5 py-3.5 text-blue-400 font-mono">{formatCurrency(((item.dubQty || 0) + (item.kubQty || 0)) * item.price, currency)}</td>
-                  <td className="px-5 py-3.5">{stockBadge(item)}</td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-3 text-center text-white font-mono">{item.dubQty} <span className="text-gray-500 text-xs">{item.unit}</span></td>
+                  <td className="px-4 py-3 text-center text-white font-mono">{item.kubQty} <span className="text-gray-500 text-xs">{item.unit}</span></td>
+                  <td className="px-4 py-3 text-gray-400 text-xs">{item.unit}</td>
+                  <td className="px-4 py-3 text-gray-400 font-mono">{formatCurrency(item.price, currency)}</td>
+                  <td className="px-4 py-3 text-blue-400 font-mono">{formatCurrency(((item.dubQty || 0) + (item.kubQty || 0)) * item.price, currency)}</td>
+                  <td className="px-4 py-3">{stockBadge(item)}</td>
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5 justify-end">
                       <button onClick={() => openView(item)} title="View" className="text-gray-500 hover:text-white transition-colors p-1">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -407,6 +398,72 @@ export default function Inventory() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card Layout */}
+        <div className="md:hidden divide-y divide-gray-800">
+          {filtered.length === 0 ? (
+            <div className="text-center text-gray-600 py-12">No items found</div>
+          ) : filtered.map(item => (
+            <div key={item.id} className="p-4 space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-white font-medium">{item.name}</p>
+                  {item.supplier && <p className="text-gray-500 text-xs">{item.supplier}</p>}
+                </div>
+                {stockBadge(item)}
+              </div>
+              <div className="flex flex-wrap gap-3 text-xs">
+                <div className="bg-gray-800 px-2 py-1 rounded">
+                  <span className="text-gray-500">Category:</span> <span className="text-gray-300">{item.category}</span>
+                </div>
+                <div className="bg-gray-800 px-2 py-1 rounded">
+                  <span className="text-gray-500">Dubai:</span> <span className="text-white font-mono">{item.dubQty} {item.unit}</span>
+                </div>
+                <div className="bg-gray-800 px-2 py-1 rounded">
+                  <span className="text-gray-500">Kubwa:</span> <span className="text-white font-mono">{item.kubQty} {item.unit}</span>
+                </div>
+                <div className="bg-gray-800 px-2 py-1 rounded">
+                  <span className="text-gray-500">Price:</span> <span className="text-gray-300 font-mono">{formatCurrency(item.price, currency)}</span>
+                </div>
+                <div className="bg-gray-800 px-2 py-1 rounded">
+                  <span className="text-gray-500">Value:</span> <span className="text-blue-400 font-mono">{formatCurrency(((item.dubQty || 0) + (item.kubQty || 0)) * item.price, currency)}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 justify-end pt-2 border-t border-gray-800">
+                <button onClick={() => openView(item)} className="text-gray-500 hover:text-white p-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </button>
+                {(canEditAll || userBranch === 'DUB') && (
+                  <button onClick={() => openRestock(item, 'DUB')} className="text-gray-500 hover:text-blue-400 p-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                    <span className="text-xs ml-1">D</span>
+                  </button>
+                )}
+                {(canEditAll || userBranch === 'KUB') && (
+                  <button onClick={() => openRestock(item, 'KUB')} className="text-gray-500 hover:text-blue-400 p-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                    <span className="text-xs ml-1">K</span>
+                  </button>
+                )}
+                {(canEditAll || userBranch === 'DUB') && (
+                  <button onClick={() => openEdit(item, 'DUB')} className="text-gray-500 hover:text-white p-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    <span className="text-xs ml-1">D</span>
+                  </button>
+                )}
+                {(canEditAll || userBranch === 'KUB') && (
+                  <button onClick={() => openEdit(item, 'KUB')} className="text-gray-500 hover:text-white p-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    <span className="text-xs ml-1">K</span>
+                  </button>
+                )}
+                <button onClick={() => del(item)} className="text-gray-500 hover:text-red-400 p-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

@@ -1,10 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useApp, formatCurrency, fmtDate } from '../context/AppContext';
 import { refreshInventory, refreshSales, refreshExpenses } from '../lib/refresh';
 
 function StatCard({ label, value, sub, color = 'blue', icon }) {
   const colors = {
-    blue:    'bg-blue-500/10 text-blue-400',
     blue:    'bg-blue-500/10 text-blue-400',
     amber:   'bg-amber-500/10 text-amber-400',
     red:     'bg-red-500/10 text-red-400',
@@ -20,6 +19,50 @@ function StatCard({ label, value, sub, color = 'blue', icon }) {
       <p className="text-2xl font-syne font-bold text-white">{value}</p>
       <p className="text-gray-400 text-sm mt-0.5">{label}</p>
       {sub && <p className="text-gray-600 text-xs mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+function SimpleBarChart({ data, currency }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center text-gray-500 text-sm">
+        No sales data available
+      </div>
+    );
+  }
+  
+  const maxQty = Math.max(...data.map(d => d.qty));
+  
+  const colors = [
+    'from-blue-600 to-blue-400',
+    'from-emerald-600 to-emerald-400',
+    'from-violet-600 to-violet-400',
+    'from-amber-600 to-amber-400',
+    'from-rose-600 to-rose-400',
+    'from-cyan-600 to-cyan-400',
+    'from-orange-600 to-orange-400',
+    'from-indigo-600 to-indigo-400',
+    'from-pink-600 to-pink-400',
+    'from-teal-600 to-teal-400',
+  ];
+  
+  return (
+    <div className="flex items-end justify-between gap-2 h-48 pb-4">
+      {data.map((item, idx) => (
+        <div key={idx} className="flex-1 flex flex-col items-center gap-1">
+          <span className="text-gray-400 text-xs font-mono font-semibold">{item.qty}</span>
+          <div className="w-full bg-gray-800 rounded-t-lg overflow-hidden relative" style={{ height: '140px' }}>
+            <div 
+              className={`absolute bottom-0 w-full bg-gradient-to-t ${colors[idx % colors.length]} rounded-t-lg transition-all duration-500`}
+              style={{ height: `${(item.qty / maxQty) * 100}%` }}
+            />
+          </div>
+          <span className="text-gray-500 text-[10px] text-center truncate w-full" title={item.name}>
+            {item.name.length > 8 ? item.name.slice(0, 8) + '...' : item.name}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -57,17 +100,35 @@ export default function Dashboard() {
   // Recent sales (last 5)
   const recentSales = [...filteredSales].slice(0, 5);
 
+  // Top 10 most sold items
+  const topSoldItems = useMemo(() => {
+    const itemMap = new Map();
+    filteredSales.forEach(sale => {
+      (sale.items || []).forEach(item => {
+        if (!item.name) return;
+        const key = item.name;
+        const existing = itemMap.get(key) || { name: key, qty: 0, total: 0 };
+        existing.qty += item.qty || 1;
+        existing.total += (item.qty || 1) * (item.price || 0);
+        itemMap.set(key, existing);
+      });
+    });
+    return Array.from(itemMap.values())
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 10);
+  }, [filteredSales]);
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="font-syne text-2xl font-bold text-white">Dashboard</h1>
+        <h1 className="font-syne text-xl md:text-2xl font-bold text-white">Dashboard</h1>
         <p className="text-gray-500 text-sm mt-0.5">{bname} · Overview</p>
       </div>
 
       {/* KPI Grid — admin only */}
       {isAdmin && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <StatCard
             label="Total Revenue"
             value={formatCurrency(totalRevenue, currency)}
@@ -131,7 +192,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Recent Sales */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
           <h2 className="font-syne font-semibold text-white mb-4">Recent Sales</h2>
@@ -181,6 +242,12 @@ export default function Dashboard() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Top 10 Most Sold Items - spans 2 columns */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 lg:col-span-2">
+          <h2 className="font-syne font-semibold text-white mb-4">Top 10 Most Sold Items</h2>
+          <SimpleBarChart data={topSoldItems} currency={currency} />
         </div>
       </div>
     </div>

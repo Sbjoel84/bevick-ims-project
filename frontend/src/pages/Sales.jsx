@@ -278,22 +278,22 @@ export default function Sales() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="font-syne text-2xl font-bold text-white">Sales</h1>
+          <h1 className="font-syne text-xl md:text-2xl font-bold text-white">Sales</h1>
           <p className="text-gray-500 text-sm mt-0.5">{bname}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setReportOpen(true)}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-3 md:px-4 py-2.5 rounded-xl transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
             </svg>
-            Report
+            <span className="hidden sm:inline">Report</span>
           </button>
           <button
             onClick={() => {
@@ -302,24 +302,24 @@ export default function Sales() {
               setShowPayForm(false);
               setModal('new');
             }}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-3 md:px-4 py-2.5 rounded-xl transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            New Sale
+            <span className="hidden sm:inline">New Sale</span>
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3">
         <input
           type="text"
           placeholder="Search by customer or ID…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-48 md:w-64"
         />
         <select
           value={filterPayment}
@@ -331,21 +331,22 @@ export default function Sales() {
         </select>
       </div>
 
-      {/* Table */}
+      {/* Table - Mobile Card Layout */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800">
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Sale ID</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Customer</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Date</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Payment</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Items</th>
-                <th className="text-right text-amber-600 font-medium px-5 py-3">Actual Cost</th>
-                <th className="text-right text-gray-500 font-medium px-5 py-3">Revenue</th>
-                <th className="text-right text-green-600 font-medium px-5 py-3">Profit</th>
-                <th className="px-5 py-3"></th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3">Sale ID</th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3">Customer</th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3">Date</th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3">Payment</th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3">Items</th>
+                <th className="text-right text-amber-600 font-medium px-4 py-3">Actual Cost</th>
+                <th className="text-right text-gray-500 font-medium px-4 py-3">Revenue</th>
+                <th className="text-right text-green-600 font-medium px-4 py-3">Profit</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -353,21 +354,21 @@ export default function Sales() {
                 <tr><td colSpan={9} className="text-center text-gray-600 py-12">No sales found</td></tr>
               ) : filteredSales.map(s => (
                 <tr key={s.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
-                  <td className="px-5 py-3.5 font-mono text-gray-400 text-xs">{s.id}</td>
-                  <td className="px-5 py-3.5 text-white font-medium">{s.customer}</td>
-                  <td className="px-5 py-3.5 text-gray-400">{fmtDate(s.date)}</td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-3.5 font-mono text-gray-400 text-xs">{s.id}</td>
+                  <td className="px-4 py-3.5 text-white font-medium">{s.customer}</td>
+                  <td className="px-4 py-3.5 text-gray-400">{fmtDate(s.date)}</td>
+                  <td className="px-4 py-3.5">
                     <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg">{s.payment}</span>
                   </td>
-                  <td className="px-5 py-3.5 text-gray-400">{s.items?.length || 0}</td>
-                  <td className="px-5 py-3.5 text-right font-mono text-amber-400 text-sm">
+                  <td className="px-4 py-3.5 text-gray-400">{s.items?.length || 0}</td>
+                  <td className="px-4 py-3.5 text-right font-mono text-amber-400 text-sm">
                     {s.totalCost != null ? formatCurrency(s.totalCost, currency) : '—'}
                   </td>
-                  <td className="px-5 py-3.5 text-right font-mono text-blue-400 font-medium">{formatCurrency(s.total, currency)}</td>
-                  <td className={`px-5 py-3.5 text-right font-mono font-semibold text-sm ${s.profit != null ? (s.profit >= 0 ? 'text-green-400' : 'text-red-400') : 'text-gray-600'}`}>
+                  <td className="px-4 py-3.5 text-right font-mono text-blue-400 font-medium">{formatCurrency(s.total, currency)}</td>
+                  <td className={`px-4 py-3.5 text-right font-mono font-semibold text-sm ${s.profit != null ? (s.profit >= 0 ? 'text-green-400' : 'text-red-400') : 'text-gray-600'}`}>
                     {s.profit != null ? formatCurrency(s.profit, currency) : '—'}
                   </td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-3.5">
                     <div className="flex items-center gap-2 justify-end">
                       <button onClick={() => openView(s)} className="text-gray-500 hover:text-white transition-colors">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -381,6 +382,45 @@ export default function Sales() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card Layout */}
+        <div className="md:hidden divide-y divide-gray-800">
+          {filteredSales.length === 0 ? (
+            <div className="text-center text-gray-600 py-12">No sales found</div>
+          ) : filteredSales.map(s => (
+            <div key={s.id} className="p-4 space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-white font-medium">{s.customer || 'Walk-in'}</p>
+                  <p className="text-gray-500 text-xs">{fmtDate(s.date)} · {s.id}</p>
+                </div>
+                <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg">{s.payment}</span>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <div className="bg-gray-800 px-2 py-1 rounded">
+                  <span className="text-gray-500">Items:</span> <span className="text-gray-300">{s.items?.length || 0}</span>
+                </div>
+                <div className="bg-gray-800 px-2 py-1 rounded">
+                  <span className="text-gray-500">Cost:</span> <span className="text-amber-400 font-mono">{s.totalCost != null ? formatCurrency(s.totalCost, currency) : '—'}</span>
+                </div>
+                <div className="bg-gray-800 px-2 py-1 rounded">
+                  <span className="text-gray-500">Revenue:</span> <span className="text-blue-400 font-mono">{formatCurrency(s.total, currency)}</span>
+                </div>
+                <div className="bg-gray-800 px-2 py-1 rounded">
+                  <span className="text-gray-500">Profit:</span> <span className={`font-mono ${s.profit != null ? (s.profit >= 0 ? 'text-green-400' : 'text-red-400') : 'text-gray-600'}`}>{s.profit != null ? formatCurrency(s.profit, currency) : '—'}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 justify-end pt-2 border-t border-gray-800">
+                <button onClick={() => openView(s)} className="text-gray-500 hover:text-white p-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </button>
+                <button onClick={() => deleteSale(s.id)} className="text-gray-500 hover:text-red-400 p-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
