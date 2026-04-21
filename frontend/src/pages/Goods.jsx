@@ -69,8 +69,7 @@ export default function Goods() {
     });
 
   const availableItems = inventory.filter(i =>
-    (form.branch ? i.branch === form.branch : true) &&
-    (itemSearch === '' || i.name.toLowerCase().includes(itemSearch.toLowerCase()))
+    itemSearch === '' || i.name.toLowerCase().includes(itemSearch.toLowerCase())
   );
 
   function addItem(item) {

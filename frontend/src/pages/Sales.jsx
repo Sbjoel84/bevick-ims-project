@@ -101,10 +101,8 @@ export default function Sales() {
     })
     .filter(s => filterPayment === 'all' || s.payment === filterPayment);
 
-  // All items for the selected branch that aren't already added
-  const availableItems = inventory.filter(i =>
-    (form.branch ? i.branch === form.branch : true)
-  );
+  // All inventory items — no branch filter so newly added items always appear
+  const availableItems = inventory;
 
   // Search filter for item picker
   const [pickerSearch, setPickerSearch] = useState('');
@@ -300,6 +298,7 @@ export default function Sales() {
               setForm({ customer: '', branch: branch || 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '' });
               setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName('');
               setShowPayForm(false);
+              refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
               setModal('new');
             }}
             className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-3 md:px-4 py-2.5 rounded-xl transition-colors"
@@ -476,46 +475,93 @@ export default function Sales() {
 
             {/* ── Item Picker ── */}
             <div className="bg-gray-800 rounded-xl p-4 space-y-3">
-              <p className="text-gray-400 text-xs font-medium">Add Items to Sale</p>
+              <div className="flex items-center justify-between">
+                <p className="text-gray-400 text-xs font-medium">Add Items to Sale</p>
+                <span className="text-gray-600 text-xs">{availableItems.length} items in inventory</span>
+              </div>
 
-              {/* Search input */}
+              {/* Dropdown — full width */}
               <div>
-                <label className="text-gray-500 text-xs block mb-1.5">Search Items</label>
+                <label className="text-gray-500 text-xs block mb-1">Select Item</label>
+                <select
+                  value={pickerItemId}
+                  onChange={e => {
+                    onPickerItemChange(e.target.value);
+                    setPickerSearch('');
+                  }}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">— Choose an item —</option>
+                  {filteredPickerItems.length > 0 ? (
+                    filteredPickerItems.map(item => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}  ({item.qty} {item.unit} in stock)
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>No items found</option>
+                  )}
+                  {filteredPickerItems.length > 0 && <option disabled>──────────────</option>}
+                  <option value="__manual__">✏️  Enter item manually…</option>
+                </select>
+              </div>
+
+              {/* Search input — full width, below dropdown, green styled */}
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
                 <input
                   type="text"
                   placeholder="Search by item name or ID…"
                   value={pickerSearch}
                   onChange={e => setPickerSearch(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && filteredPickerItems.length === 1) {
+                      onPickerItemChange(filteredPickerItems[0].id);
+                      setPickerSearch('');
+                    }
+                  }}
+                  className="w-full bg-emerald-950 border border-emerald-700 rounded-lg pl-9 pr-9 py-2.5 text-emerald-100 text-sm placeholder-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
+                {pickerSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setPickerSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600 hover:text-emerald-300 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
 
-              {/* Row: dropdown + qty + price + button */}
+              {/* Search button — below the search input */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (filteredPickerItems.length === 1) {
+                    onPickerItemChange(filteredPickerItems[0].id);
+                    setPickerSearch('');
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                {pickerSearch
+                  ? filteredPickerItems.length === 0
+                    ? 'No items found'
+                    : filteredPickerItems.length === 1
+                      ? 'Select this item'
+                      : `${filteredPickerItems.length} items found — refine search`
+                  : 'Quick Search'}
+              </button>
+
+              {/* Qty + Cost + Price + Add Item */}
               <div className="flex gap-2 items-end flex-wrap">
-                <div className="flex-1 min-w-[180px]">
-                  <label className="text-gray-500 text-xs block mb-1">Select Item</label>
-                  <select
-                    value={pickerItemId}
-                    onChange={e => {
-                      onPickerItemChange(e.target.value);
-                      setPickerSearch('');
-                    }}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">— Choose an item —</option>
-                    {filteredPickerItems.length > 0 ? (
-                      filteredPickerItems.map(item => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}  ({item.qty} {item.unit} in stock)
-                        </option>
-                      ))
-                    ) : (
-                      <option disabled>No items found</option>
-                    )}
-                    {filteredPickerItems.length > 0 && <option disabled>──────────────</option>}
-                    <option value="__manual__">✏️  Enter item manually…</option>
-                  </select>
-                </div>
                 <div className="w-20">
                   <label className="text-gray-500 text-xs block mb-1">Qty</label>
                   <input
