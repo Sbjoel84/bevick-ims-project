@@ -10,15 +10,15 @@ function StatCard({ label, value, sub, color = 'blue', icon }) {
     purple:  'bg-purple-500/10 text-purple-400',
   };
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 overflow-hidden min-w-0">
       <div className="flex items-start justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]}`}>
+        <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${colors[color]}`}>
           {icon}
         </div>
       </div>
-      <p className="text-2xl font-syne font-bold text-white">{value}</p>
-      <p className="text-gray-400 text-sm mt-0.5">{label}</p>
-      {sub && <p className="text-gray-600 text-xs mt-1">{sub}</p>}
+      <p className="text-xl md:text-2xl font-syne font-bold text-white leading-tight break-all">{value}</p>
+      <p className="text-gray-400 text-sm mt-0.5 truncate">{label}</p>
+      {sub && <p className="text-gray-600 text-xs mt-1 truncate">{sub}</p>}
     </div>
   );
 }
@@ -201,12 +201,12 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-3">
               {recentSales.map(s => (
-                <div key={s.id} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
-                  <div>
-                    <p className="text-white text-sm font-medium">{s.customer || 'Walk-in'}</p>
-                    <p className="text-gray-500 text-xs">{fmtDate(s.date)} · #{s.id}</p>
+                <div key={s.id} className="flex items-center justify-between gap-2 py-2 border-b border-gray-800 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{s.customer || 'Walk-in'}</p>
+                    <p className="text-gray-500 text-xs truncate">{fmtDate(s.date)} · #{s.id}</p>
                   </div>
-                  <span className="text-blue-400 text-sm font-mono font-medium">
+                  <span className="text-blue-400 text-sm font-mono font-medium shrink-0">
                     {formatCurrency(s.total || 0, currency)}
                   </span>
                 </div>
@@ -223,12 +223,12 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-3">
               {lowStock.slice(0, 6).map(item => (
-                <div key={item.id} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
-                  <div>
-                    <p className="text-white text-sm font-medium truncate max-w-[200px]">{item.name}</p>
-                    <p className="text-gray-500 text-xs">{item.category}</p>
+                <div key={item.id} className="flex items-center justify-between gap-2 py-2 border-b border-gray-800 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{item.name}</p>
+                    <p className="text-gray-500 text-xs truncate">{item.category}</p>
                   </div>
-                  <span className={`text-xs font-mono px-2 py-1 rounded-lg font-semibold ${
+                  <span className={`text-xs font-mono px-2 py-1 rounded-lg font-semibold shrink-0 ${
                     item.qty === 0
                       ? 'bg-red-950 text-red-400'
                       : 'bg-amber-950 text-amber-400'
