@@ -76,6 +76,8 @@ export default function Sales() {
     ];
   }
 
+  const [editSaleId, setEditSaleId] = useState(null);
+
   const [form, setForm] = useState({
     customer: '',
     branch: branch || 'DUB',
@@ -84,6 +86,7 @@ export default function Sales() {
     items: [],
     applyVat: false,
     amountPaid: '',
+    date: new Date().toISOString().split('T')[0],
   });
 
   // Item picker state
@@ -205,15 +208,21 @@ export default function Sales() {
   const vatAmount    = form.applyVat ? subtotal * vat : 0;
   const total        = subtotal + vatAmount;
 
+  function resetForm() {
+    setForm({ customer: '', branch: branch || 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '', date: new Date().toISOString().split('T')[0] });
+    setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName(''); setPickerSearch('');
+  }
+
   function submitSale() {
     if (form.items.length === 0) return;
+    const saleDate = form.date ? new Date(form.date + 'T12:00:00').toISOString() : new Date().toISOString();
     const initialAmt = parseFloat(form.amountPaid);
     const paidNow = isNaN(initialAmt) ? total : Math.min(Math.max(initialAmt, 0), total);
     const initialPayment = {
       id: genId('PAY'),
       amount: paidNow,
       method: form.payment,
-      date: new Date().toISOString(),
+      date: saleDate,
       note: isNaN(initialAmt) || initialAmt >= total ? 'Full payment' : 'Initial payment',
     };
     const sale = {
@@ -230,15 +239,52 @@ export default function Sales() {
       total,
       amountPaid: paidNow,
       payments: [initialPayment],
-      date: new Date().toISOString(),
+      date: saleDate,
       createdBy: user?.name,
     };
     dispatch({ type: 'ADD_SALE', payload: sale });
-    setForm({ customer: '', branch: branch || 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '' });
-    setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName(''); setPickerSearch('');
-    // Open receipt view automatically
+    resetForm();
     setSelected(sale);
     setModal('view');
+  }
+
+  function openEdit(sale) {
+    setForm({
+      customer: sale.customer === 'Walk-in' ? '' : (sale.customer || ''),
+      branch: sale.branch,
+      payment: sale.payment,
+      note: sale.note || '',
+      items: sale.items || [],
+      applyVat: (sale.vat || 0) > 0,
+      amountPaid: '',
+      date: sale.date ? sale.date.split('T')[0] : new Date().toISOString().split('T')[0],
+    });
+    setEditSaleId(sale.id);
+    setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName(''); setPickerSearch('');
+    setModal('edit');
+  }
+
+  function submitEdit() {
+    if (form.items.length === 0 || !editSaleId) return;
+    const originalSale = sales.find(s => s.id === editSaleId);
+    const updatedSale = {
+      ...originalSale,
+      customer: form.customer || 'Walk-in',
+      branch: form.branch,
+      payment: form.payment,
+      note: form.note,
+      items: form.items,
+      subtotal,
+      totalCost: totalCostAmt,
+      profit: grossProfit,
+      vat: vatAmount,
+      total,
+      date: form.date ? new Date(form.date + 'T12:00:00').toISOString() : originalSale.date,
+    };
+    dispatch({ type: 'UPDATE_SALE', payload: updatedSale });
+    setEditSaleId(null);
+    setModal(null);
+    resetForm();
   }
 
   function submitPayment() {
@@ -295,8 +341,8 @@ export default function Sales() {
           </button>
           <button
             onClick={() => {
-              setForm({ customer: '', branch: branch || 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '' });
-              setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName('');
+              resetForm();
+              setEditSaleId(null);
               setShowPayForm(false);
               refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
               setModal('new');
@@ -369,10 +415,13 @@ export default function Sales() {
                   </td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-2 justify-end">
-                      <button onClick={() => openView(s)} className="text-gray-500 hover:text-white transition-colors">
+                      <button onClick={() => openView(s)} className="text-gray-500 hover:text-white transition-colors" title="View">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                       </button>
-                      <button onClick={() => deleteSale(s.id)} className="text-gray-500 hover:text-red-400 transition-colors">
+                      <button onClick={() => openEdit(s)} className="text-gray-500 hover:text-blue-400 transition-colors" title="Edit">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                      </button>
+                      <button onClick={() => deleteSale(s.id)} className="text-gray-500 hover:text-red-400 transition-colors" title="Delete">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                       </button>
                     </div>
@@ -414,6 +463,9 @@ export default function Sales() {
                 <button onClick={() => openView(s)} className="text-gray-500 hover:text-white p-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                 </button>
+                <button onClick={() => openEdit(s)} className="text-gray-500 hover:text-blue-400 p-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                </button>
                 <button onClick={() => deleteSale(s.id)} className="text-gray-500 hover:text-red-400 p-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 </button>
@@ -423,12 +475,12 @@ export default function Sales() {
         </div>
       </div>
 
-      {/* ── New Sale Modal ── */}
-      {modal === 'new' && (
-        <Modal title="Record New Sale" onClose={() => setModal(null)}>
+      {/* ── New / Edit Sale Modal ── */}
+      {(modal === 'new' || modal === 'edit') && (
+        <Modal title={modal === 'edit' ? 'Edit Sale' : 'Record New Sale'} onClose={() => { setModal(null); setEditSaleId(null); resetForm(); }}>
           <div className="space-y-4">
 
-            {/* Customer + Branch */}
+            {/* Customer + Branch + Date */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">Customer Name</label>
@@ -453,6 +505,15 @@ export default function Sales() {
                 >
                   {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
                 </select>
+              </div>
+              <div className="col-span-2">
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Sale Date</label>
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
 
@@ -728,26 +789,28 @@ export default function Sales() {
                 <span className="text-white">Total Charged to Customer</span>
                 <span className="text-blue-400 font-mono text-base">{formatCurrency(total, currency)}</span>
               </div>
-              {/* Initial Payment */}
-              <div className="border-t border-gray-700 pt-2 space-y-1.5">
-                <div className="flex items-center justify-between text-sm">
-                  <label className="text-gray-400">Initial Payment</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.amountPaid}
-                    onChange={e => setForm(f => ({ ...f, amountPaid: e.target.value }))}
-                    placeholder={`${formatCurrency(total, currency)} (full)`}
-                    className="w-44 text-right bg-gray-700 border border-gray-600 rounded-lg px-2.5 py-1.5 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-600"
-                  />
-                </div>
-                {form.amountPaid !== '' && parseFloat(form.amountPaid) < total && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-orange-400">Balance Remaining</span>
-                    <span className="text-orange-400 font-mono font-medium">{formatCurrency(total - (parseFloat(form.amountPaid) || 0), currency)}</span>
+              {/* Initial Payment — new sales only */}
+              {modal === 'new' && (
+                <div className="border-t border-gray-700 pt-2 space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <label className="text-gray-400">Initial Payment</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={form.amountPaid}
+                      onChange={e => setForm(f => ({ ...f, amountPaid: e.target.value }))}
+                      placeholder={`${formatCurrency(total, currency)} (full)`}
+                      className="w-44 text-right bg-gray-700 border border-gray-600 rounded-lg px-2.5 py-1.5 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-600"
+                    />
                   </div>
-                )}
-              </div>
+                  {form.amountPaid !== '' && parseFloat(form.amountPaid) < total && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-orange-400">Balance Remaining</span>
+                      <span className="text-orange-400 font-mono font-medium">{formatCurrency(total - (parseFloat(form.amountPaid) || 0), currency)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -761,13 +824,13 @@ export default function Sales() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setModal(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
+              <button onClick={() => { setModal(null); setEditSaleId(null); resetForm(); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
               <button
-                onClick={submitSale}
+                onClick={modal === 'edit' ? submitEdit : submitSale}
                 disabled={form.items.length === 0}
                 className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
               >
-                Record Sale
+                {modal === 'edit' ? 'Save Changes' : 'Record Sale'}
               </button>
             </div>
           </div>
@@ -992,6 +1055,17 @@ export default function Sales() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                   </svg>
                   Print Receipt
+                </button>
+
+                {/* Edit */}
+                <button
+                  onClick={() => openEdit(currentSelected)}
+                  className="w-full flex items-center justify-center gap-2 bg-blue-950 hover:bg-blue-900 border border-blue-800 text-blue-400 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                  Edit Sale
                 </button>
 
                 {/* Confirm — primary action, closes modal */}

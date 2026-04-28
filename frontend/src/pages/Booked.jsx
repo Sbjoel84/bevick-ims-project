@@ -16,7 +16,15 @@ const STATUS_COLORS = {
 const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'POS', 'Cheque', 'Credit'];
 
 function blankRow() {
-  return { _rowId: Date.now() + Math.random(), id: null, name: '', qty: 1, unit: '', price: 0 };
+  return { _rowId: Date.now() + Math.random(), id: null, name: '', qty: 1, unit: '', price: '', commission: 0 };
+}
+
+function calcNetPrice(price, commission) {
+  return (parseFloat(price) || 0) * (1 - (parseFloat(commission) || 0) / 100);
+}
+
+function calcItemsTotal(items) {
+  return items.filter(i => i.id).reduce((s, i) => s + (i.qty || 1) * calcNetPrice(i.price, i.commission), 0);
 }
 
 function Modal({ title, onClose, children, wide }) {
@@ -37,7 +45,7 @@ function Modal({ title, onClose, children, wide }) {
   );
 }
 
-function ItemRow({ item, availableItems, onChange, onRemove }) {
+function ItemRow({ item, availableItems, onChange, onRemove, currency }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(item.name || '');
 
@@ -48,59 +56,98 @@ function ItemRow({ item, availableItems, onChange, onRemove }) {
   function select(inv) {
     setSearch(inv.name);
     setOpen(false);
-    onChange({ ...item, id: inv.id, name: inv.name, unit: inv.unit, price: inv.price });
+    onChange({ ...item, id: inv.id, name: inv.name, unit: inv.unit });
   }
 
+  const lineNet = (item.qty || 1) * calcNetPrice(item.price, item.commission);
+
   return (
-    <div className="flex items-center gap-2 py-2 border-b border-gray-700 last:border-0">
-      <div className="relative flex-1">
+    <div className="py-2 border-b border-gray-700 last:border-0">
+      {/* Row 1: item search, qty, unit, remove */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            placeholder="Search item…"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setOpen(true); onChange({ ...item, id: null, name: e.target.value }); }}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          {open && filtered.length > 0 && (
+            <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-700 rounded-xl mt-1 z-20 max-h-52 overflow-y-auto shadow-xl">
+              {filtered.map(i => (
+                <button
+                  key={i.id}
+                  type="button"
+                  onMouseDown={() => select(i)}
+                  className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-700 text-left gap-2"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-xs truncate">{i.name}</p>
+                    <p className="text-gray-500 text-xs">{i.category} · {i.branch === 'DUB' ? 'Dubai' : 'Kubwa'}</p>
+                  </div>
+                  <span className="text-gray-400 text-xs shrink-0">{i.qty} {i.unit}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <input
-          type="text"
-          placeholder="Search item…"
-          value={search}
-          onChange={e => { setSearch(e.target.value); setOpen(true); onChange({ ...item, id: null, name: e.target.value }); }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+          type="number"
+          min={1}
+          value={item.qty}
+          onChange={e => onChange({ ...item, qty: parseInt(e.target.value) || 1 })}
+          className="w-14 text-center bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none"
         />
-        {open && filtered.length > 0 && (
-          <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-700 rounded-xl mt-1 z-20 max-h-52 overflow-y-auto shadow-xl">
-            {filtered.map(i => (
-              <button
-                key={i.id}
-                type="button"
-                onMouseDown={() => select(i)}
-                className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-700 text-left gap-2"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-white text-xs truncate">{i.name}</p>
-                  <p className="text-gray-500 text-xs">{i.category} · {i.branch === 'DUB' ? 'Dubai' : 'Kubwa'}</p>
-                </div>
-                <span className="text-gray-400 text-xs shrink-0">{i.qty} {i.unit}</span>
-              </button>
-            ))}
+        <span className="text-gray-500 text-xs w-8 shrink-0">{item.unit || '—'}</span>
+        <button type="button" onClick={onRemove} className="text-gray-600 hover:text-red-400 shrink-0">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      {/* Row 2: price, commission, net total */}
+      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <span className="text-gray-500 text-xs">Price</span>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="0.00"
+            value={item.price}
+            onChange={e => onChange({ ...item, price: e.target.value })}
+            className="w-24 bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-gray-500 text-xs">Commission %</span>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step="0.1"
+            placeholder="0"
+            value={item.commission ?? ''}
+            onChange={e => onChange({ ...item, commission: e.target.value })}
+            className="w-16 bg-gray-700 border border-amber-600/40 rounded-lg px-2 py-1 text-amber-300 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+          />
+        </div>
+        {parseFloat(item.price) > 0 && (
+          <div className="flex items-center gap-1 ml-auto">
+            <span className="text-gray-500 text-xs">Net</span>
+            <span className="text-blue-400 text-xs font-mono font-semibold">{formatCurrency(lineNet, currency)}</span>
           </div>
         )}
       </div>
-      <input
-        type="number"
-        min={1}
-        value={item.qty}
-        onChange={e => onChange({ ...item, qty: parseInt(e.target.value) || 1 })}
-        className="w-14 text-center bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none"
-      />
-      <span className="text-gray-500 text-xs w-8 shrink-0">{item.unit || '—'}</span>
-      <button type="button" onClick={onRemove} className="text-gray-600 hover:text-red-400 shrink-0">
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
     </div>
   );
 }
 
 function BookingFormFields({ f, setF, availableItems, currency }) {
-  const total = f.items.filter(i => i.id).reduce((s, i) => s + (i.qty || 1) * (i.price || 0), 0);
+  const total = calcItemsTotal(f.items);
 
   function addRow() { setF(x => ({ ...x, items: [...x.items, blankRow()] })); }
   function updateRow(rowId, updated) { setF(x => ({ ...x, items: x.items.map(i => i._rowId === rowId ? updated : i) })); }
@@ -158,6 +205,7 @@ function BookingFormFields({ f, setF, availableItems, currency }) {
                 availableItems={availableItems}
                 onChange={updated => updateRow(item._rowId, updated)}
                 onRemove={() => removeRow(item._rowId)}
+                currency={currency}
               />
             ))}
             <div className="flex justify-between py-2.5 text-xs border-t border-gray-700 mt-1">
@@ -247,10 +295,14 @@ export default function Booked() {
     });
 
   function submitNew() {
-    const validItems = form.items.filter(i => i.id).map(({ _rowId, ...rest }) => rest);
+    const validItems = form.items.filter(i => i.id).map(({ _rowId, ...rest }) => ({
+      ...rest,
+      price: parseFloat(rest.price) || 0,
+      commission: parseFloat(rest.commission) || 0,
+    }));
     if (!form.customer.trim() || validItems.length === 0) return;
 
-    const total = validItems.reduce((s, i) => s + i.qty * i.price, 0);
+    const total = validItems.reduce((s, i) => s + i.qty * calcNetPrice(i.price, i.commission), 0);
 
     // Process initial payment if provided
     const payments = [];
@@ -296,11 +348,19 @@ export default function Booked() {
   }
 
   function submitEdit() {
-    const validItems = editForm.items.filter(i => i.id).map(({ _rowId, ...rest }) => rest);
+    const validItems = editForm.items.filter(i => i.id).map(({ _rowId, ...rest }) => ({
+      ...rest,
+      price: parseFloat(rest.price) || 0,
+      commission: parseFloat(rest.commission) || 0,
+    }));
     if (!editForm.customer.trim() || validItems.length === 0) return;
     dispatch({
       type: 'UPDATE_BOOKING',
-      payload: { ...editForm, items: validItems, total: validItems.reduce((s, i) => s + i.qty * i.price, 0) },
+      payload: {
+        ...editForm,
+        items: validItems,
+        total: validItems.reduce((s, i) => s + i.qty * calcNetPrice(i.price, i.commission), 0),
+      },
     });
     setModal(null);
     setEditForm(null);
@@ -519,7 +579,7 @@ export default function Booked() {
             </div>
             {/* Live preview */}
             {parseFloat(form.initialPayment) > 0 && (() => {
-              const total   = form.items.filter(i => i.id).reduce((s, i) => s + (i.qty || 1) * (i.price || 0), 0);
+              const total   = calcItemsTotal(form.items);
               const paid    = parseFloat(form.initialPayment) || 0;
               const balance = total - paid;
               return (
@@ -592,12 +652,25 @@ export default function Booked() {
 
               {/* Items */}
               <div className="bg-gray-800 rounded-xl divide-y divide-gray-700 text-sm">
-                {b.items?.map(item => (
-                  <div key={item.id} className="flex justify-between px-4 py-2.5">
-                    <span className="text-white">{item.name}</span>
-                    <span className="text-gray-400 text-xs">{item.qty} {item.unit}</span>
-                  </div>
-                ))}
+                {b.items?.map(item => {
+                  const net = calcNetPrice(item.price, item.commission);
+                  const lineTotal = (item.qty || 1) * net;
+                  return (
+                    <div key={item.id} className="px-4 py-2.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-white">{item.name}</span>
+                        <span className="text-blue-400 text-xs font-mono font-semibold">{formatCurrency(lineTotal, currency)}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500 flex-wrap">
+                        <span>{item.qty}{item.unit ? ' ' + item.unit : ''}</span>
+                        {item.price > 0 && <span>@ {formatCurrency(item.price, currency)}</span>}
+                        {item.commission > 0 && (
+                          <span className="text-amber-500">−{item.commission}% commission</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Note */}

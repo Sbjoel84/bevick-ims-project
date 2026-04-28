@@ -152,6 +152,15 @@ function reducer(state, action) {
       };
     }
 
+    case 'UPDATE_SALE': {
+      const updated = action.payload;
+      return {
+        ...state,
+        sales: state.sales.map(s => s.id === updated.id ? updated : s),
+        auditLog: [{ id: Date.now(), action: 'Sale updated', user: state.user?.name, ts: new Date().toISOString(), detail: `#${updated.id}` }, ...state.auditLog],
+      };
+    }
+
     case 'DELETE_SALE': {
       const s = state.sales.find(x => x.id === action.payload);
       return {
