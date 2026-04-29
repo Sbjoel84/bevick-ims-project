@@ -55,6 +55,7 @@ export default function Sales() {
     { key: 'payment',         label: 'Payment' },
     { key: 'totalCost',       label: 'Actual Cost',      align: 'tr', format: v => v != null ? formatCurrency(v, currency) : '—' },
     { key: 'subtotal',        label: 'Sales Revenue',    align: 'tr', format: v => formatCurrency(v || 0, currency) },
+    { key: 'totalDiscount',   label: 'Discount',         align: 'tr', format: v => v ? formatCurrency(v, currency) : '—' },
     { key: 'totalCommission', label: 'Commission',       align: 'tr', format: v => v ? formatCurrency(v, currency) : '—' },
     { key: 'vat',             label: 'VAT',              align: 'tr', format: v => formatCurrency(v || 0, currency) },
     { key: 'profit',          label: 'Net Profit',       align: 'tr', format: v => v != null ? formatCurrency(v, currency) : '—' },
@@ -66,11 +67,13 @@ export default function Sales() {
     const totalVat        = data.reduce((s, x) => s + (x.vat             || 0), 0);
     const totalSub        = data.reduce((s, x) => s + (x.subtotal        || 0), 0);
     const totalCost       = data.reduce((s, x) => s + (x.totalCost       || 0), 0);
+    const totalDiscount   = data.reduce((s, x) => s + (x.totalDiscount   || 0), 0);
     const totalCommission = data.reduce((s, x) => s + (x.totalCommission || 0), 0);
     const totalProfit     = data.reduce((s, x) => s + (x.profit          || 0), 0);
     return [
       { label: 'Number of Sales',        value: data.length },
       { label: 'Total Actual Cost',      value: formatCurrency(totalCost, currency) },
+      { label: 'Total Discounts Given',  value: formatCurrency(totalDiscount, currency) },
       { label: 'Total Commission Paid',  value: formatCurrency(totalCommission, currency) },
       { label: 'Total VAT Collected',    value: formatCurrency(totalVat, currency) },
       { label: 'Net Revenue (ex-VAT)',   value: formatCurrency(totalSub, currency) },
@@ -229,6 +232,7 @@ export default function Sales() {
 
   const subtotal           = form.items.reduce((s, i) => s + i.price * (1 - (i.discount || 0) / 100) * i.qty, 0);
   const totalCostAmt       = form.items.reduce((s, i) => s + (i.costPrice || 0) * i.qty, 0);
+  const totalDiscountAmt   = form.items.reduce((s, i) => s + i.price * ((i.discount || 0) / 100) * i.qty, 0);
   const totalCommissionAmt = form.items.reduce((s, i) => s + i.price * (1 - (i.discount || 0) / 100) * i.qty * ((i.commission || 0) / 100), 0);
   const grossProfit        = subtotal - totalCostAmt - totalCommissionAmt;
   const vatAmount          = form.applyVat ? subtotal * vat : 0;
@@ -260,6 +264,7 @@ export default function Sales() {
       items: form.items,
       subtotal,
       totalCost: totalCostAmt,
+      totalDiscount: totalDiscountAmt,
       totalCommission: totalCommissionAmt,
       profit: grossProfit,
       vat: vatAmount,
@@ -303,6 +308,7 @@ export default function Sales() {
       items: form.items,
       subtotal,
       totalCost: totalCostAmt,
+      totalDiscount: totalDiscountAmt,
       totalCommission: totalCommissionAmt,
       profit: grossProfit,
       vat: vatAmount,
@@ -847,6 +853,12 @@ export default function Sales() {
                 <span className="text-gray-400">Sales Revenue (subtotal)</span>
                 <span className="text-white font-mono">{formatCurrency(subtotal, currency)}</span>
               </div>
+              {totalDiscountAmt > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-orange-400">Total Discount</span>
+                  <span className="text-orange-300 font-mono">−{formatCurrency(totalDiscountAmt, currency)}</span>
+                </div>
+              )}
               {totalCommissionAmt > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-purple-400">Total Commission</span>
@@ -1001,6 +1013,12 @@ export default function Sales() {
                   </div>
                 )}
                 <div className="flex justify-between"><span className="text-gray-400">Sales Revenue</span><span className="text-white font-mono">{formatCurrency(currentSelected.subtotal || 0, currency)}</span></div>
+                {currentSelected.totalDiscount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-orange-400">Total Discount</span>
+                    <span className="text-orange-300 font-mono">−{formatCurrency(currentSelected.totalDiscount, currency)}</span>
+                  </div>
+                )}
                 {currentSelected.totalCommission > 0 && (
                   <div className="flex justify-between">
                     <span className="text-purple-400">Total Commission</span>

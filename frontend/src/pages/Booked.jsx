@@ -16,16 +16,11 @@ const STATUS_COLORS = {
 const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'POS', 'Cheque', 'Credit'];
 
 function blankRow() {
-  return { _rowId: Date.now() + Math.random(), id: null, name: '', qty: 1, unit: '', price: '', discount: 0, commission: 0 };
-}
-
-function calcNetPrice(price, discount, commission) {
-  const discounted = (parseFloat(price) || 0) * (1 - (parseFloat(discount) || 0) / 100);
-  return discounted * (1 - (parseFloat(commission) || 0) / 100);
+  return { _rowId: Date.now() + Math.random(), id: null, name: '', qty: 1, unit: '', price: '' };
 }
 
 function calcItemsTotal(items) {
-  return items.filter(i => i.id).reduce((s, i) => s + (i.qty || 1) * calcNetPrice(i.price, i.discount, i.commission), 0);
+  return items.filter(i => i.id).reduce((s, i) => s + (i.qty || 1) * (parseFloat(i.price) || 0), 0);
 }
 
 function Modal({ title, onClose, children, wide }) {
@@ -60,7 +55,7 @@ function ItemRow({ item, availableItems, onChange, onRemove, currency }) {
     onChange({ ...item, id: inv.id, name: inv.name, unit: inv.unit });
   }
 
-  const lineNet = (item.qty || 1) * calcNetPrice(item.price, item.discount, item.commission);
+  const lineNet = (item.qty || 1) * (parseFloat(item.price) || 0);
 
   return (
     <div className="py-2 border-b border-gray-700 last:border-0">
@@ -109,7 +104,7 @@ function ItemRow({ item, availableItems, onChange, onRemove, currency }) {
           </svg>
         </button>
       </div>
-      {/* Row 2: price, discount, commission, net total */}
+      {/* Row 2: price, line total */}
       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
         <div className="flex items-center gap-1.5">
           <span className="text-gray-500 text-xs">Price</span>
@@ -123,35 +118,9 @@ function ItemRow({ item, availableItems, onChange, onRemove, currency }) {
             className="w-24 bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-gray-500 text-xs">Disc %</span>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step="0.1"
-            placeholder="0"
-            value={item.discount ?? ''}
-            onChange={e => onChange({ ...item, discount: e.target.value })}
-            className="w-16 bg-gray-700 border border-orange-600/40 rounded-lg px-2 py-1 text-orange-300 text-xs focus:outline-none focus:ring-1 focus:ring-orange-500"
-          />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-gray-500 text-xs">Comm %</span>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step="0.1"
-            placeholder="0"
-            value={item.commission ?? ''}
-            onChange={e => onChange({ ...item, commission: e.target.value })}
-            className="w-16 bg-gray-700 border border-purple-600/40 rounded-lg px-2 py-1 text-purple-300 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
-          />
-        </div>
         {parseFloat(item.price) > 0 && (
           <div className="flex items-center gap-1 ml-auto">
-            <span className="text-gray-500 text-xs">Net</span>
+            <span className="text-gray-500 text-xs">Line</span>
             <span className="text-blue-400 text-xs font-mono font-semibold">{formatCurrency(lineNet, currency)}</span>
           </div>
         )}
@@ -170,12 +139,21 @@ function BookingFormFields({ f, setF, availableItems, currency }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <div>
+        <div className="col-span-2">
           <label className="text-gray-400 text-xs font-medium block mb-1.5">Customer <span className="text-red-400">*</span></label>
           <input
             type="text"
             value={f.customer}
             onChange={e => setF(x => ({ ...x, customer: e.target.value }))}
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label className="text-gray-400 text-xs font-medium block mb-1.5">Booking Date</label>
+          <input
+            type="date"
+            value={f.bookingDate}
+            onChange={e => setF(x => ({ ...x, bookingDate: e.target.value }))}
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -243,7 +221,7 @@ function BookingFormFields({ f, setF, availableItems, currency }) {
   );
 }
 
-const EMPTY_FORM = { customer: '', branch: 'DUB', deliveryDate: '', note: '', items: [], initialPayment: '', paymentMethod: 'Cash' };
+const EMPTY_FORM = { customer: '', branch: 'DUB', bookingDate: new Date().toISOString().split('T')[0], deliveryDate: '', note: '', items: [], initialPayment: '', paymentMethod: 'Cash' };
 const EMPTY_PAY  = { amount: '', method: 'Cash', date: new Date().toISOString().split('T')[0], note: '' };
 
 export default function Booked() {
@@ -312,12 +290,10 @@ export default function Booked() {
     const validItems = form.items.filter(i => i.id).map(({ _rowId, ...rest }) => ({
       ...rest,
       price: parseFloat(rest.price) || 0,
-      discount: parseFloat(rest.discount) || 0,
-      commission: parseFloat(rest.commission) || 0,
     }));
     if (!form.customer.trim() || validItems.length === 0) return;
 
-    const total = validItems.reduce((s, i) => s + i.qty * calcNetPrice(i.price, i.discount, i.commission), 0);
+    const total = validItems.reduce((s, i) => s + (i.qty || 1) * (parseFloat(i.price) || 0), 0);
 
     // Process initial payment if provided
     const payments = [];
@@ -346,7 +322,7 @@ export default function Booked() {
         payments,
         amountPaid,
         status: 'pending',
-        date: new Date().toISOString(),
+        date: form.bookingDate ? new Date(form.bookingDate + 'T12:00:00').toISOString() : new Date().toISOString(),
         createdBy: user?.name,
       },
     });
@@ -357,25 +333,26 @@ export default function Booked() {
   function openEdit(b) {
     setEditForm({
       ...b,
+      bookingDate: b.date ? b.date.split('T')[0] : new Date().toISOString().split('T')[0],
       items: b.items.map(i => ({ ...i, _rowId: i.id + '-' + Math.random() })),
     });
     setModal('edit');
   }
 
   function submitEdit() {
-    const validItems = editForm.items.filter(i => i.id).map(({ _rowId, ...rest }) => ({
+    const { bookingDate, ...editFormData } = editForm;
+    const validItems = editFormData.items.filter(i => i.id).map(({ _rowId, ...rest }) => ({
       ...rest,
       price: parseFloat(rest.price) || 0,
-      discount: parseFloat(rest.discount) || 0,
-      commission: parseFloat(rest.commission) || 0,
     }));
-    if (!editForm.customer.trim() || validItems.length === 0) return;
+    if (!editFormData.customer.trim() || validItems.length === 0) return;
     dispatch({
       type: 'UPDATE_BOOKING',
       payload: {
-        ...editForm,
+        ...editFormData,
+        date: bookingDate ? new Date(bookingDate + 'T12:00:00').toISOString() : (editFormData.date || new Date().toISOString()),
         items: validItems,
-        total: validItems.reduce((s, i) => s + i.qty * calcNetPrice(i.price, i.discount, i.commission), 0),
+        total: validItems.reduce((s, i) => s + (i.qty || 1) * (parseFloat(i.price) || 0), 0),
       },
     });
     setModal(null);
@@ -669,8 +646,7 @@ export default function Booked() {
               {/* Items */}
               <div className="bg-gray-800 rounded-xl divide-y divide-gray-700 text-sm">
                 {b.items?.map(item => {
-                  const net = calcNetPrice(item.price, item.discount, item.commission);
-                  const lineTotal = (item.qty || 1) * net;
+                  const lineTotal = (item.qty || 1) * (parseFloat(item.price) || 0);
                   return (
                     <div key={item.id} className="px-4 py-2.5">
                       <div className="flex justify-between items-center">
@@ -680,12 +656,6 @@ export default function Booked() {
                       <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500 flex-wrap">
                         <span>{item.qty}{item.unit ? ' ' + item.unit : ''}</span>
                         {item.price > 0 && <span>@ {formatCurrency(item.price, currency)}</span>}
-                        {item.discount > 0 && (
-                          <span className="text-orange-400">−{item.discount}% discount</span>
-                        )}
-                        {item.commission > 0 && (
-                          <span className="text-purple-400">−{item.commission}% commission</span>
-                        )}
                       </div>
                     </div>
                   );
