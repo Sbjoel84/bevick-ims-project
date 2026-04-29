@@ -208,6 +208,25 @@ function BookingFormFields({ f, setF, availableItems, currency }) {
         )}
       </div>
 
+      {/* Booking-level discount */}
+      <div>
+        <label className="text-gray-400 text-xs font-medium block mb-1.5">Booking Discount <span className="text-gray-600 normal-case">(optional flat amount)</span></label>
+        <input
+          type="number"
+          min={0}
+          step="0.01"
+          placeholder="0.00"
+          value={f.discount}
+          onChange={e => setF(x => ({ ...x, discount: e.target.value }))}
+          className="w-full bg-gray-800 border border-red-900/40 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+        />
+        {parseFloat(f.discount) > 0 && total > 0 && (
+          <p className="text-red-400 text-xs mt-1.5">
+            Effective total: {formatCurrency(Math.max(0, total - (parseFloat(f.discount) || 0)), currency)}
+          </p>
+        )}
+      </div>
+
       <div>
         <label className="text-gray-400 text-xs font-medium block mb-1.5">Note</label>
         <textarea
@@ -221,7 +240,7 @@ function BookingFormFields({ f, setF, availableItems, currency }) {
   );
 }
 
-const EMPTY_FORM = { customer: '', branch: 'DUB', bookingDate: new Date().toISOString().split('T')[0], deliveryDate: '', note: '', items: [], initialPayment: '', paymentMethod: 'Cash' };
+const EMPTY_FORM = { customer: '', branch: 'DUB', bookingDate: new Date().toISOString().split('T')[0], deliveryDate: '', note: '', items: [], discount: '', initialPayment: '', paymentMethod: 'Cash' };
 const EMPTY_PAY  = { amount: '', method: 'Cash', date: new Date().toISOString().split('T')[0], note: '' };
 
 export default function Booked() {
@@ -263,7 +282,7 @@ export default function Booked() {
   ];
 
   function getBookingSummary(data) {
-    const total   = data.reduce((s, b) => s + (b.total || 0), 0);
+    const total   = data.reduce((s, b) => s + Math.max(0, (b.total || 0) - (b.discount || 0)), 0);
     const paid    = data.reduce((s, b) => s + (b.amountPaid || 0), 0);
     const balance = total - paid;
     const byStatus = STATUSES.map(st => ({
@@ -293,7 +312,9 @@ export default function Booked() {
     }));
     if (!form.customer.trim() || validItems.length === 0) return;
 
-    const total = validItems.reduce((s, i) => s + (i.qty || 1) * (parseFloat(i.price) || 0), 0);
+    const total    = validItems.reduce((s, i) => s + (i.qty || 1) * (parseFloat(i.price) || 0), 0);
+    const discount = parseFloat(form.discount) || 0;
+    const effectiveTotal = Math.max(0, total - discount);
 
     // Process initial payment if provided
     const payments = [];
@@ -319,6 +340,7 @@ export default function Booked() {
         note: form.note,
         items: validItems,
         total,
+        discount,
         payments,
         amountPaid,
         status: 'pending',
@@ -334,6 +356,7 @@ export default function Booked() {
     setEditForm({
       ...b,
       bookingDate: b.date ? b.date.split('T')[0] : new Date().toISOString().split('T')[0],
+      discount: b.discount != null ? String(b.discount) : '',
       items: b.items.map(i => ({ ...i, _rowId: i.id + '-' + Math.random() })),
     });
     setModal('edit');
@@ -353,6 +376,7 @@ export default function Booked() {
         date: bookingDate ? new Date(bookingDate + 'T12:00:00').toISOString() : (editFormData.date || new Date().toISOString()),
         items: validItems,
         total: validItems.reduce((s, i) => s + (i.qty || 1) * (parseFloat(i.price) || 0), 0),
+        discount: parseFloat(editFormData.discount) || 0,
       },
     });
     setModal(null);
@@ -483,7 +507,7 @@ export default function Booked() {
                 <tr><td colSpan={9} className="text-center text-gray-600 py-12">No bookings found</td></tr>
               ) : filtered.map(b => {
                 const bPaid    = b.amountPaid || 0;
-                const bBalance = (b.total || 0) - bPaid;
+                const bBalance = Math.max(0, (b.total || 0) - (b.discount || 0)) - bPaid;
                 return (
                   <tr key={b.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
                     <td className="px-5 py-3.5 text-white font-medium">{b.customer}</td>
@@ -572,12 +596,16 @@ export default function Booked() {
             </div>
             {/* Live preview */}
             {parseFloat(form.initialPayment) > 0 && (() => {
-              const total   = calcItemsTotal(form.items);
-              const paid    = parseFloat(form.initialPayment) || 0;
-              const balance = total - paid;
+              const rawTotal     = calcItemsTotal(form.items);
+              const discountAmt  = parseFloat(form.discount) || 0;
+              const effTotal     = Math.max(0, rawTotal - discountAmt);
+              const paid         = parseFloat(form.initialPayment) || 0;
+              const balance      = effTotal - paid;
               return (
                 <div className="bg-gray-800 rounded-xl px-4 py-3 space-y-1 text-xs">
-                  <div className="flex justify-between"><span className="text-gray-400">Total Value</span><span className="text-white font-mono">{formatCurrency(total, currency)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">Total Value</span><span className="text-white font-mono">{formatCurrency(rawTotal, currency)}</span></div>
+                  {discountAmt > 0 && <div className="flex justify-between"><span className="text-red-400">Discount</span><span className="text-red-400 font-mono">- {formatCurrency(discountAmt, currency)}</span></div>}
+                  {discountAmt > 0 && <div className="flex justify-between"><span className="text-gray-400">Amount Due</span><span className="text-white font-mono font-semibold">{formatCurrency(effTotal, currency)}</span></div>}
                   <div className="flex justify-between"><span className="text-gray-400">Initial Payment</span><span className="text-green-400 font-mono">{formatCurrency(paid, currency)}</span></div>
                   <div className="flex justify-between font-semibold border-t border-gray-700 pt-1 mt-1">
                     <span className={balance > 0.005 ? 'text-orange-400' : 'text-green-400'}>Balance Remaining</span>
@@ -622,10 +650,11 @@ export default function Booked() {
 
       {/* ── View Modal ────────────────────────────────────────────────────────── */}
       {modal === 'view' && currentSelected && (() => {
-        const b        = currentSelected;
-        const payments = b.payments || [];
-        const paid     = b.amountPaid || 0;
-        const balance  = (b.total || 0) - paid;
+        const b             = currentSelected;
+        const payments      = b.payments || [];
+        const paid          = b.amountPaid || 0;
+        const effectiveTotal = Math.max(0, (b.total || 0) - (b.discount || 0));
+        const balance       = effectiveTotal - paid;
 
         return (
           <Modal title={`Booking · ${b.id}`} onClose={() => setModal(null)} wide>
@@ -676,6 +705,18 @@ export default function Booked() {
                   <span className="text-gray-400">Booking Value</span>
                   <span className="text-white font-mono">{formatCurrency(b.total || 0, currency)}</span>
                 </div>
+                {(b.discount || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-red-400">Discount Applied</span>
+                    <span className="text-red-400 font-mono">- {formatCurrency(b.discount, currency)}</span>
+                  </div>
+                )}
+                {(b.discount || 0) > 0 && (
+                  <div className="flex justify-between border-t border-gray-700 pt-2">
+                    <span className="text-gray-400">Amount Due</span>
+                    <span className="text-white font-mono font-semibold">{formatCurrency(effectiveTotal, currency)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-400">Total Amount Paid</span>
                   <span className="text-green-400 font-mono">{formatCurrency(paid, currency)}</span>
