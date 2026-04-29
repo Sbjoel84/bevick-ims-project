@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useApp, formatCurrency, fmtDate } from '../context/AppContext';
-import { refreshInventory, refreshSales, refreshExpenses } from '../lib/refresh';
+import { refreshInventory, refreshSales, refreshExpenses, refreshCustomers, refreshBookings } from '../lib/refresh';
 
 function StatCard({ label, value, sub, color = 'blue', icon }) {
   const colors = {
@@ -76,6 +76,8 @@ export default function Dashboard() {
     refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
     refreshSales(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'sales', data } }));
     refreshExpenses(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'expenses', data } }));
+    refreshCustomers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'customers', data } }));
+    refreshBookings(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'bookings', data } }));
   }, []);
 
   // Filter by branch — null branch means admin (sees all)
@@ -84,6 +86,15 @@ export default function Dashboard() {
   const filteredInventory = branch ? inventory.filter(i => i.branch === branch) : inventory;
   const filteredBookings  = branch ? bookings.filter(b => !b.branch || b.branch === branch) : bookings;
   const filteredCustomers = branch ? customers.filter(c => !c.branch || c.branch === branch) : customers;
+
+  // All unique customers: registered + anyone named in a sale or booking (mirrors Customers page)
+  const totalUniqueCustomers = useMemo(() => {
+    const norm = s => s?.toLowerCase().trim() || '';
+    const seen = new Set(filteredCustomers.map(c => norm(c.name)).filter(Boolean));
+    [...filteredSales.map(s => s.customer), ...filteredBookings.map(b => b.customer)]
+      .forEach(name => { const k = norm(name); if (k) seen.add(k); });
+    return seen.size;
+  }, [filteredCustomers, filteredSales, filteredBookings]);
 
   // KPIs
   const totalRevenue = filteredSales.reduce((s, x) => s + (x.total || 0), 0);
@@ -185,7 +196,7 @@ export default function Dashboard() {
         />
         <StatCard
           label="Customers"
-          value={filteredCustomers.length}
+          value={totalUniqueCustomers}
           sub="Registered"
           color="blue"
           icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>}
