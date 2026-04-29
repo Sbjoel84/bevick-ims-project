@@ -16,15 +16,16 @@ const STATUS_COLORS = {
 const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'POS', 'Cheque', 'Credit'];
 
 function blankRow() {
-  return { _rowId: Date.now() + Math.random(), id: null, name: '', qty: 1, unit: '', price: '', commission: 0 };
+  return { _rowId: Date.now() + Math.random(), id: null, name: '', qty: 1, unit: '', price: '', discount: 0, commission: 0 };
 }
 
-function calcNetPrice(price, commission) {
-  return (parseFloat(price) || 0) * (1 - (parseFloat(commission) || 0) / 100);
+function calcNetPrice(price, discount, commission) {
+  const discounted = (parseFloat(price) || 0) * (1 - (parseFloat(discount) || 0) / 100);
+  return discounted * (1 - (parseFloat(commission) || 0) / 100);
 }
 
 function calcItemsTotal(items) {
-  return items.filter(i => i.id).reduce((s, i) => s + (i.qty || 1) * calcNetPrice(i.price, i.commission), 0);
+  return items.filter(i => i.id).reduce((s, i) => s + (i.qty || 1) * calcNetPrice(i.price, i.discount, i.commission), 0);
 }
 
 function Modal({ title, onClose, children, wide }) {
@@ -59,7 +60,7 @@ function ItemRow({ item, availableItems, onChange, onRemove, currency }) {
     onChange({ ...item, id: inv.id, name: inv.name, unit: inv.unit });
   }
 
-  const lineNet = (item.qty || 1) * calcNetPrice(item.price, item.commission);
+  const lineNet = (item.qty || 1) * calcNetPrice(item.price, item.discount, item.commission);
 
   return (
     <div className="py-2 border-b border-gray-700 last:border-0">
@@ -108,7 +109,7 @@ function ItemRow({ item, availableItems, onChange, onRemove, currency }) {
           </svg>
         </button>
       </div>
-      {/* Row 2: price, commission, net total */}
+      {/* Row 2: price, discount, commission, net total */}
       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
         <div className="flex items-center gap-1.5">
           <span className="text-gray-500 text-xs">Price</span>
@@ -123,7 +124,20 @@ function ItemRow({ item, availableItems, onChange, onRemove, currency }) {
           />
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-gray-500 text-xs">Commission %</span>
+          <span className="text-gray-500 text-xs">Disc %</span>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step="0.1"
+            placeholder="0"
+            value={item.discount ?? ''}
+            onChange={e => onChange({ ...item, discount: e.target.value })}
+            className="w-16 bg-gray-700 border border-orange-600/40 rounded-lg px-2 py-1 text-orange-300 text-xs focus:outline-none focus:ring-1 focus:ring-orange-500"
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-gray-500 text-xs">Comm %</span>
           <input
             type="number"
             min={0}
@@ -132,7 +146,7 @@ function ItemRow({ item, availableItems, onChange, onRemove, currency }) {
             placeholder="0"
             value={item.commission ?? ''}
             onChange={e => onChange({ ...item, commission: e.target.value })}
-            className="w-16 bg-gray-700 border border-amber-600/40 rounded-lg px-2 py-1 text-amber-300 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+            className="w-16 bg-gray-700 border border-purple-600/40 rounded-lg px-2 py-1 text-purple-300 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
           />
         </div>
         {parseFloat(item.price) > 0 && (
@@ -298,11 +312,12 @@ export default function Booked() {
     const validItems = form.items.filter(i => i.id).map(({ _rowId, ...rest }) => ({
       ...rest,
       price: parseFloat(rest.price) || 0,
+      discount: parseFloat(rest.discount) || 0,
       commission: parseFloat(rest.commission) || 0,
     }));
     if (!form.customer.trim() || validItems.length === 0) return;
 
-    const total = validItems.reduce((s, i) => s + i.qty * calcNetPrice(i.price, i.commission), 0);
+    const total = validItems.reduce((s, i) => s + i.qty * calcNetPrice(i.price, i.discount, i.commission), 0);
 
     // Process initial payment if provided
     const payments = [];
@@ -351,6 +366,7 @@ export default function Booked() {
     const validItems = editForm.items.filter(i => i.id).map(({ _rowId, ...rest }) => ({
       ...rest,
       price: parseFloat(rest.price) || 0,
+      discount: parseFloat(rest.discount) || 0,
       commission: parseFloat(rest.commission) || 0,
     }));
     if (!editForm.customer.trim() || validItems.length === 0) return;
@@ -359,7 +375,7 @@ export default function Booked() {
       payload: {
         ...editForm,
         items: validItems,
-        total: validItems.reduce((s, i) => s + i.qty * calcNetPrice(i.price, i.commission), 0),
+        total: validItems.reduce((s, i) => s + i.qty * calcNetPrice(i.price, i.discount, i.commission), 0),
       },
     });
     setModal(null);
@@ -653,7 +669,7 @@ export default function Booked() {
               {/* Items */}
               <div className="bg-gray-800 rounded-xl divide-y divide-gray-700 text-sm">
                 {b.items?.map(item => {
-                  const net = calcNetPrice(item.price, item.commission);
+                  const net = calcNetPrice(item.price, item.discount, item.commission);
                   const lineTotal = (item.qty || 1) * net;
                   return (
                     <div key={item.id} className="px-4 py-2.5">
@@ -664,8 +680,11 @@ export default function Booked() {
                       <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500 flex-wrap">
                         <span>{item.qty}{item.unit ? ' ' + item.unit : ''}</span>
                         {item.price > 0 && <span>@ {formatCurrency(item.price, currency)}</span>}
+                        {item.discount > 0 && (
+                          <span className="text-orange-400">−{item.discount}% discount</span>
+                        )}
                         {item.commission > 0 && (
-                          <span className="text-amber-500">−{item.commission}% commission</span>
+                          <span className="text-purple-400">−{item.commission}% commission</span>
                         )}
                       </div>
                     </div>
