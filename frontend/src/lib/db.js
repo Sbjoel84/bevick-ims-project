@@ -8,14 +8,16 @@ import { ALL_ITEMS } from '../data/inventory';
 import { DEFAULT_PERMISSIONS } from '../data/users';
 
 const DEFAULT_SUPPLIERS = [
-  { id:'S1', name:'TechPack Ltd',       contact:'Emeka Eze',       phone:'+234 801 111 0001', email:'info@techpack.ng',      address:'Lagos, Nigeria',  category:'Machinery',   status:'active' },
-  { id:'S2', name:'SealPro NG',         contact:'Fatima Bello',    phone:'+234 802 111 0002', email:'sales@sealpro.ng',      address:'Abuja, Nigeria',  category:'Spare Parts', status:'active' },
-  { id:'S3', name:'FilmPack NG',        contact:'Chukwudi Obi',    phone:'+234 803 111 0003', email:'info@filmpack.ng',      address:'Kano, Nigeria',   category:'Consumables', status:'active' },
-  { id:'S4', name:'OilChem NG',         contact:'Aisha Mohammed',  phone:'+234 804 111 0004', email:'sales@oilchem.ng',      address:'Lagos, Nigeria',  category:'Chemicals',   status:'active' },
-  { id:'S5', name:'SafetyGear NG',      contact:'Tunde Adeyemi',   phone:'+234 805 111 0005', email:'info@safetygear.ng',    address:'Abuja, Nigeria',  category:'Others',      status:'active' },
-  { id:'S6', name:'LabelTech NG',       contact:'Grace Nwosu',     phone:'+234 806 111 0006', email:'sales@labeltech.ng',    address:'PH, Nigeria',     category:'Consumables', status:'active' },
-  { id:'S7', name:'BeltTech NG',        contact:'Ibrahim Suleiman', phone:'+234 807 111 0007', email:'info@belttech.ng',     address:'Kaduna, Nigeria', category:'Spare Parts', status:'active' },
-  { id:'S8', name:'ElectroParts NG',    contact:'Ngozi Ike',       phone:'+234 808 111 0008', email:'sales@electroparts.ng', address:'Enugu, Nigeria',  category:'Spare Parts', status:'active' },
+  { id:'S1',  name:'TechPack Ltd',          contact:'Emeka Eze',        phone:'+234 801 111 0001', email:'info@techpack.ng',       address:'Lagos, Nigeria',  category:'Machinery',   status:'active' },
+  { id:'S2',  name:'SealPro NG',            contact:'Fatima Bello',     phone:'+234 802 111 0002', email:'sales@sealpro.ng',       address:'Abuja, Nigeria',  category:'Spare Parts', status:'active' },
+  { id:'S3',  name:'FilmPack NG',           contact:'Chukwudi Obi',     phone:'+234 803 111 0003', email:'info@filmpack.ng',       address:'Kano, Nigeria',   category:'Consumables', status:'active' },
+  { id:'S4',  name:'OilChem NG',            contact:'Aisha Mohammed',   phone:'+234 804 111 0004', email:'sales@oilchem.ng',       address:'Lagos, Nigeria',  category:'Chemicals',   status:'active' },
+  { id:'S5',  name:'SafetyGear NG',         contact:'Tunde Adeyemi',    phone:'+234 805 111 0005', email:'info@safetygear.ng',     address:'Abuja, Nigeria',  category:'Others',      status:'active' },
+  { id:'S6',  name:'LabelTech NG',          contact:'Grace Nwosu',      phone:'+234 806 111 0006', email:'sales@labeltech.ng',     address:'PH, Nigeria',     category:'Consumables', status:'active' },
+  { id:'S7',  name:'BeltTech NG',           contact:'Ibrahim Suleiman', phone:'+234 807 111 0007', email:'info@belttech.ng',       address:'Kaduna, Nigeria', category:'Spare Parts', status:'active' },
+  { id:'S8',  name:'ElectroParts NG',       contact:'Ngozi Ike',        phone:'+234 808 111 0008', email:'sales@electroparts.ng',  address:'Enugu, Nigeria',  category:'Spare Parts', status:'active' },
+  { id:'S9',  name:'Bama City',             contact:'',                 phone:'',                  email:'',                       address:'Nigeria',         category:'Others',      status:'active' },
+  { id:'S10', name:'Young Cej Executive',   contact:'',                 phone:'',                  email:'',                       address:'Nigeria',         category:'Others',      status:'active' },
 ];
 
 // Helper: extract data from rows

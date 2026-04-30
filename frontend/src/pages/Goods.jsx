@@ -58,8 +58,26 @@ export default function Goods() {
 
   // GRN Form
   const [form, setForm] = useState({ supplier: '', branch: branch || 'DUB', invoiceNo: '', date: new Date().toISOString().slice(0,10), note: '', items: [] });
+  const [supplierMode, setSupplierMode] = useState('select');
+  const [newSupplierName, setNewSupplierName] = useState('');
   const [itemSearch, setItemSearch] = useState('');
   const [itemDropdown, setItemDropdown] = useState(false);
+
+  function addNewSupplier() {
+    const name = newSupplierName.trim();
+    if (!name) return;
+    dispatch({ type: 'ADD_SUPPLIER', payload: { id: genId('SUP'), name, status: 'active' } });
+    setForm(f => ({ ...f, supplier: name }));
+    setSupplierMode('select');
+    setNewSupplierName('');
+  }
+
+  function closeGRNModal() {
+    setModal(null);
+    setForm({ supplier: '', branch: branch || 'DUB', invoiceNo: '', date: new Date().toISOString().slice(0,10), note: '', items: [] });
+    setSupplierMode('select');
+    setNewSupplierName('');
+  }
 
   const filtered = goodsReceived
     .filter(g => branch ? g.branch === branch : true)
@@ -104,6 +122,8 @@ export default function Goods() {
     });
     setModal(null);
     setForm({ supplier: '', branch: branch || 'DUB', invoiceNo: '', date: new Date().toISOString().slice(0,10), note: '', items: [] });
+    setSupplierMode('select');
+    setNewSupplierName('');
   }
 
   return (
@@ -114,7 +134,7 @@ export default function Goods() {
           <p className="text-gray-500 text-sm mt-0.5">{bname}</p>
         </div>
         <button
-          onClick={() => { setForm({ supplier: '', branch: branch || 'DUB', invoiceNo: '', date: new Date().toISOString().slice(0,10), note: '', items: [] }); setModal('new'); }}
+          onClick={() => { setForm({ supplier: '', branch: branch || 'DUB', invoiceNo: '', date: new Date().toISOString().slice(0,10), note: '', items: [] }); setSupplierMode('select'); setNewSupplierName(''); setModal('new'); }}
           className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
@@ -195,13 +215,42 @@ export default function Goods() {
 
       {/* New GRN Modal */}
       {modal === 'new' && (
-        <Modal title="Receive Goods (New GRN)" onClose={() => setModal(null)}>
+        <Modal title="Receive Goods (New GRN)" onClose={closeGRNModal}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">Supplier</label>
-                <input type="text" list="supplier-list" value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                <datalist id="supplier-list">{suppliers.map(s => <option key={s.id} value={s.name}/>)}</datalist>
+                {supplierMode === 'add' ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="New supplier name…"
+                      value={newSupplierName}
+                      onChange={e => setNewSupplierName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addNewSupplier()}
+                      className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus
+                    />
+                    <button type="button" onClick={addNewSupplier} className="bg-blue-500 hover:bg-blue-400 text-white text-xs font-semibold px-3 rounded-lg transition-colors">Save</button>
+                    <button type="button" onClick={() => { setSupplierMode('select'); setNewSupplierName(''); }} className="bg-gray-700 hover:bg-gray-600 text-white text-xs px-3 rounded-lg transition-colors">✕</button>
+                  </div>
+                ) : (
+                  <select
+                    value={form.supplier}
+                    onChange={e => {
+                      if (e.target.value === '__add__') {
+                        setSupplierMode('add');
+                      } else {
+                        setForm(f => ({ ...f, supplier: e.target.value }));
+                      }
+                    }}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">— Select supplier —</option>
+                    {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    <option value="__add__">+ Add new supplier…</option>
+                  </select>
+                )}
               </div>
               <div>
                 <label className="text-gray-400 text-xs font-medium block mb-1.5">Invoice No.</label>
@@ -282,7 +331,7 @@ export default function Goods() {
               <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} rows={2} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"/>
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setModal(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
+              <button onClick={closeGRNModal} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
               <button onClick={submit} disabled={form.items.length === 0} className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">Confirm Receipt</button>
             </div>
           </div>

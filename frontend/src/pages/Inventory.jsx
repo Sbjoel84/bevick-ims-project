@@ -7,7 +7,7 @@ import DeleteRequestModal from '../components/DeleteRequestModal';
 const CATEGORIES = ['Machinery', 'Spare Parts', 'Chemicals', 'Safety', 'Others'];
 const UNITS = ['Unit', 'Pcs', 'Roll', 'Set', 'Meter', 'Kg', 'Litre', 'Box', 'Carton'];
 const BRANCHES = [{ id: 'DUB', label: 'Dubai Market' }, { id: 'KUB', label: 'Kubwa Office' }];
-const SUPPLIERS = ['China', 'Lagos', 'Abuja', 'Others'];
+const SOURCES = ['China', 'Lagos', 'Abuja', 'Others'];
 
 function Modal({ title, onClose, children }) {
   return (
@@ -528,10 +528,10 @@ export default function Inventory() {
               </div>
             </div>
             <div>
-              <label className="text-gray-400 text-xs font-medium block mb-1.5">Supplier</label>
+              <label className="text-gray-400 text-xs font-medium block mb-1.5">Source</label>
               <select value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">— Select supplier —</option>
-                {SUPPLIERS.map(s => <option key={s} value={s}>{s}</option>)}
+                <option value="">— Select source —</option>
+                {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div className="flex gap-3 pt-2">
@@ -635,7 +635,7 @@ export default function Inventory() {
                 <p className="text-blue-400">{formatCurrency(((selected.dubQty || 0) + (selected.kubQty || 0)) * selected.price, currency)}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-gray-500 text-xs mb-1">Supplier</p>
+                <p className="text-gray-500 text-xs mb-1">Source</p>
                 <p className="text-white">{selected.supplier || '—'}</p>
               </div>
               <div className="col-span-2">
