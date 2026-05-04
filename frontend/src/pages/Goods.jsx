@@ -126,6 +126,42 @@ export default function Goods() {
     setNewSupplierName('');
   }
 
+  function openEditModal(grn) {
+    setSelected(grn);
+    setForm({
+      supplier: grn.supplier || '',
+      branch: grn.branch || branch || 'DUB',
+      invoiceNo: grn.invoiceNo || '',
+      date: grn.date ? grn.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      note: grn.note || '',
+      items: grn.items ? grn.items.map(i => ({ ...i })) : [],
+    });
+    setSupplierMode('select');
+    setNewSupplierName('');
+    setModal('edit');
+  }
+
+  function submitEdit() {
+    if (form.items.length === 0) return;
+    const editTotalCost = form.items.reduce((s, i) => s + i.qty * (i.unitCost || 0), 0);
+    const updated = {
+      ...selected,
+      supplier: form.supplier,
+      branch: branch || form.branch,
+      invoiceNo: form.invoiceNo,
+      date: form.date || selected.date,
+      note: form.note,
+      items: form.items,
+      totalCost: editTotalCost,
+    };
+    dispatch({ type: 'UPDATE_GRN', payload: { updated, original: selected } });
+    setModal(null);
+    setSelected(null);
+    setForm({ supplier: '', branch: branch || 'DUB', invoiceNo: '', date: new Date().toISOString().slice(0,10), note: '', items: [] });
+    setSupplierMode('select');
+    setNewSupplierName('');
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -202,9 +238,14 @@ export default function Goods() {
                   <td className="px-5 py-3.5 text-right font-mono text-blue-400">{formatCurrency(g.totalCost || 0, currency)}</td>
                   <td className="px-5 py-3.5 text-gray-400">{g.receivedBy || '—'}</td>
                   <td className="px-5 py-3.5">
-                    <button onClick={() => { setSelected(g); setModal('view'); }} className="text-gray-500 hover:text-white transition-colors float-right">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => openEditModal(g)} className="text-gray-500 hover:text-blue-400 transition-colors" title="Edit GRN">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                      </button>
+                      <button onClick={() => { setSelected(g); setModal('view'); }} className="text-gray-500 hover:text-white transition-colors" title="View GRN">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -333,6 +374,128 @@ export default function Goods() {
             <div className="flex gap-3 pt-2">
               <button onClick={closeGRNModal} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
               <button onClick={submit} disabled={form.items.length === 0} className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">Confirm Receipt</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit GRN Modal */}
+      {modal === 'edit' && selected && (
+        <Modal title={`Edit GRN #${selected.id}`} onClose={() => { setModal(null); setSelected(null); }}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Supplier</label>
+                {supplierMode === 'add' ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="New supplier name…"
+                      value={newSupplierName}
+                      onChange={e => setNewSupplierName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addNewSupplier()}
+                      className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus
+                    />
+                    <button type="button" onClick={addNewSupplier} className="bg-blue-500 hover:bg-blue-400 text-white text-xs font-semibold px-3 rounded-lg transition-colors">Save</button>
+                    <button type="button" onClick={() => { setSupplierMode('select'); setNewSupplierName(''); }} className="bg-gray-700 hover:bg-gray-600 text-white text-xs px-3 rounded-lg transition-colors">✕</button>
+                  </div>
+                ) : (
+                  <select
+                    value={form.supplier}
+                    onChange={e => {
+                      if (e.target.value === '__add__') { setSupplierMode('add'); }
+                      else { setForm(f => ({ ...f, supplier: e.target.value })); }
+                    }}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">— Select supplier —</option>
+                    {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    <option value="__add__">+ Add new supplier…</option>
+                  </select>
+                )}
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Invoice No.</label>
+                <input type="text" value={form.invoiceNo} onChange={e => setForm(f => ({ ...f, invoiceNo: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Date</label>
+                <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Branch</label>
+                <select value={form.branch} onChange={e => setForm(f => ({ ...f, branch: e.target.value }))} disabled={!!branch} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
+                  {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-gray-400 text-xs font-medium block mb-1.5">Items <span className="text-red-400">*</span></label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search inventory to add items…"
+                  value={itemSearch}
+                  onChange={e => { setItemSearch(e.target.value); setItemDropdown(true); }}
+                  onFocus={() => setItemDropdown(true)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {itemDropdown && itemSearch && availableItems.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-700 rounded-xl mt-1 z-10 max-h-48 overflow-y-auto">
+                    {availableItems.slice(0, 8).map(item => (
+                      <button key={item.id} type="button" onClick={() => addItem(item)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-700 text-left transition-colors">
+                        <span className="text-white text-sm truncate">{item.name}</span>
+                        <span className="text-gray-400 text-xs ml-2 shrink-0">{item.qty} {item.unit} in stock</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            {form.items.length > 0 && (
+              <div className="bg-gray-800 rounded-xl divide-y divide-gray-700">
+                {form.items.map(item => (
+                  <div key={item.id} className="flex items-center gap-3 px-4 py-2.5">
+                    <span className="text-white text-xs flex-1 truncate">{item.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500 text-xs">Qty:</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={item.qty}
+                        onChange={e => setForm(f => ({ ...f, items: f.items.map(i => i.id === item.id ? { ...i, qty: parseInt(e.target.value) || 1 } : i) }))}
+                        className="w-14 text-center bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-white text-xs focus:outline-none"
+                      />
+                      <span className="text-gray-500 text-xs">Cost:</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={item.unitCost}
+                        onChange={e => setForm(f => ({ ...f, items: f.items.map(i => i.id === item.id ? { ...i, unitCost: parseFloat(e.target.value) || 0 } : i) }))}
+                        className="w-24 text-right bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-white text-xs focus:outline-none"
+                      />
+                      <button onClick={() => setForm(f => ({ ...f, items: f.items.filter(i => i.id !== item.id) }))} className="text-gray-600 hover:text-red-400">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-between px-4 py-2.5 text-xs">
+                  <span className="text-gray-400">Total Cost</span>
+                  <span className="text-blue-400 font-mono">{formatCurrency(form.items.reduce((s, i) => s + i.qty * (i.unitCost || 0), 0), currency)}</span>
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="text-gray-400 text-xs font-medium block mb-1.5">Note</label>
+              <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} rows={2} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"/>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => { setModal(null); setSelected(null); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
+              <button onClick={submitEdit} disabled={form.items.length === 0} className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">Save Changes</button>
             </div>
           </div>
         </Modal>

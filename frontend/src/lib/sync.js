@@ -239,6 +239,17 @@ export async function syncAction(action, prevState, nextState) {
         break;
       }
 
+      case 'UPDATE_GRN': {
+        await upsert('goods_received', action.payload.updated);
+        const allItemIds = new Set([
+          ...action.payload.original.items.map(i => i.id),
+          ...action.payload.updated.items.map(i => i.id),
+        ]);
+        const modifiedItems = nextState.inventory.filter(i => allItemIds.has(i.id));
+        await upsertMany('inventory', modifiedItems);
+        break;
+      }
+
       // ── SUPPLIERS ─────────────────────────────────────────────
       case 'ADD_SUPPLIER':
         await upsert('suppliers', action.payload);

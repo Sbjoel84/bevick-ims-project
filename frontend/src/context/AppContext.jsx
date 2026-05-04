@@ -453,6 +453,24 @@ function reducer(state, action) {
       };
     }
 
+    case 'UPDATE_GRN': {
+      const { updated, original } = action.payload;
+      const inventory = state.inventory.map(item => {
+        const oldItem = original.items.find(i => i.id === item.id);
+        const newItem = updated.items.find(i => i.id === item.id);
+        let qty = item.qty;
+        if (oldItem) qty -= oldItem.qty;
+        if (newItem) qty += newItem.qty;
+        return (oldItem || newItem) ? { ...item, qty: Math.max(0, qty) } : item;
+      });
+      return {
+        ...state,
+        goodsReceived: state.goodsReceived.map(g => g.id === updated.id ? updated : g),
+        inventory,
+        auditLog: [{ id: Date.now(), action: 'GRN updated', user: state.user?.name, ts: new Date().toISOString(), detail: `GRN#${updated.id}` }, ...state.auditLog],
+      };
+    }
+
     // ── SUPPLIERS ──────────────────────────────────────────────
     case 'ADD_SUPPLIER':
       return { ...state, suppliers: [action.payload, ...state.suppliers] };
