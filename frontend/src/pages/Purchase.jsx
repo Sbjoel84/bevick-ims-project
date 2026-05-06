@@ -91,9 +91,47 @@ export default function Purchase() {
     refreshSuppliers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'suppliers', data } }));
   }, []);
 
+  // Items from active bookings that exceed current branch stock and have no pending/ordered PO yet
+  const existingPOKeys = new Set(
+    purchaseList
+      .filter(p => p.status === 'pending' || p.status === 'ordered')
+      .map(p => p.itemId)
+  );
+  const orderableItems = (() => {
+    const seen = new Set();
+    const items = [];
+    visibleBookings
+      .filter(b => b.status === 'pending' || b.status === 'confirmed')
+      .forEach(b => {
+        (b.items || []).forEach(item => {
+          if (!item.id || !item.name) return;
+          if (seen.has(item.id) || existingPOKeys.has(item.id)) return;
+          const invItem = inventory.find(i => i.id === item.id && i.branch === b.branch);
+          const currentQty = invItem ? (invItem.qty || 0) : 0;
+          if (currentQty < (item.qty || 1)) {
+            seen.add(item.id);
+            const needed = (item.qty || 1) - currentQty;
+            items.push({
+              itemId: item.id,
+              name: item.name,
+              needed,
+              inStock: currentQty,
+              unit: item.unit || invItem?.unit || '',
+              bookingId: b.id,
+              customer: b.customer,
+              branch: b.branch,
+              category: invItem?.category || 'Others',
+              estimatedCost: (invItem?.price || 0) * needed,
+            });
+          }
+        });
+      });
+    return items;
+  })();
+
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY);
-  const [customItem, setCustomItem] = useState(false);
+  const [selectedOrderable, setSelectedOrderable] = useState('');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
@@ -150,7 +188,7 @@ export default function Purchase() {
     });
     setModal(false);
     setForm(EMPTY);
-    setCustomItem(false);
+    setSelectedOrderable('');
   }
 
   function updateStatus(id, status) {
@@ -190,7 +228,7 @@ export default function Purchase() {
             </button>
           )}
           <button
-            onClick={() => { setForm({ ...EMPTY, branch: branch || 'DUB' }); setCustomItem(false); setModal(true); }}
+            onClick={() => { setForm({ ...EMPTY, branch: branch || 'DUB' }); setSelectedOrderable(''); setModal(true); }}
             className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
@@ -285,7 +323,8 @@ export default function Purchase() {
                 <tr key={p.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
                   <td className="px-5 py-3.5">
                     <p className="text-white font-medium">{p.name}</p>
-                    {p.note && <p className="text-gray-500 text-xs mt-0.5 truncate max-w-[180px]">{p.note}</p>}
+                    {p.bookingId && <p className="text-blue-500 text-xs mt-0.5">Booking #{p.bookingId}</p>}
+                    {p.note && !p.bookingId && <p className="text-gray-500 text-xs mt-0.5 truncate max-w-[180px]">{p.note}</p>}
                   </td>
                   <td className="px-5 py-3.5"><span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg">{p.category}</span></td>
                   <td className="px-5 py-3.5 text-white font-mono">{p.qty} <span className="text-gray-500 text-xs">{p.unit}</span></td>
@@ -314,94 +353,113 @@ export default function Purchase() {
       </div>
 
       {modal && (
-        <Modal title="Purchase Request" onClose={() => { setModal(false); setCustomItem(false); setForm(EMPTY); }}>
+        <Modal title="Purchase Request" onClose={() => { setModal(false); setForm(EMPTY); setSelectedOrderable(''); }}>
           <div className="space-y-4">
+
+            {/* Booked item picker */}
             <div>
-              <label className="text-gray-400 text-xs font-medium block mb-1.5">Item Name <span className="text-red-400">*</span></label>
-              <select
-                value={customItem ? '__custom__' : (form.name || '')}
-                onChange={e => {
-                  if (e.target.value === '__custom__') {
-                    setCustomItem(true);
-                    setForm(f => ({ ...f, name: '' }));
-                  } else {
-                    setCustomItem(false);
-                    setForm(f => ({ ...f, name: e.target.value }));
-                  }
-                }}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="" disabled>Select an item…</option>
-                {inventory
-                  .filter(i => canEditAll || !i.branch || i.branch === userBranch)
-                  .map(i => <option key={i.id} value={i.name}>{i.name} ({i.branch === 'DUB' ? 'Dubai' : 'Kubwa'})</option>)
-                }
-                <option value="__custom__">+ Add item not on list</option>
-              </select>
-              {customItem && (
-                <input
-                  type="text"
-                  placeholder="Enter item name…"
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  autoFocus
-                />
+              <label className="text-gray-400 text-xs font-medium block mb-1.5">
+                Select Booked Item <span className="text-red-400">*</span>
+              </label>
+              {orderableItems.length === 0 ? (
+                <div className="bg-gray-800 rounded-lg px-4 py-3 text-gray-500 text-sm">
+                  All booked items are either in stock or already have a pending order.
+                </div>
+              ) : (
+                <select
+                  value={selectedOrderable}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setSelectedOrderable(val);
+                    if (!val) { setForm(f => ({ ...f, name: '', itemId: '', bookingId: '', qty: '', unit: '', category: 'Spare Parts', estimatedCost: '' })); return; }
+                    const found = orderableItems.find(o => o.itemId === val);
+                    if (found) {
+                      setForm(f => ({
+                        ...f,
+                        name: found.name,
+                        itemId: found.itemId,
+                        bookingId: found.bookingId,
+                        qty: String(found.needed),
+                        unit: found.unit,
+                        category: found.category,
+                        estimatedCost: String(found.estimatedCost),
+                        branch: found.branch,
+                        note: `From booking #${found.bookingId} — ${found.customer || ''}`.trim().replace(/—\s*$/, ''),
+                      }));
+                    }
+                  }}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">— Pick a booked item —</option>
+                  {orderableItems.map(o => (
+                    <option key={o.itemId} value={o.itemId}>
+                      {o.name} · need {o.needed} {o.unit} · {o.branch === 'DUB' ? 'Dubai' : 'Kubwa'} (booking #{o.bookingId})
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-gray-400 text-xs font-medium block mb-1.5">Category</label>
-                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-gray-400 text-xs font-medium block mb-1.5">Priority</label>
-                <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {PRIORITIES.map(p => <option key={p}>{p}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="text-gray-400 text-xs font-medium block mb-1.5">Quantity</label>
-                <input type="number" min={1} value={form.qty} onChange={e => setForm(f => ({ ...f, qty: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-              </div>
-              <div>
-                <label className="text-gray-400 text-xs font-medium block mb-1.5">Unit</label>
-                <input type="text" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-              </div>
-              <div>
-                <label className="text-gray-400 text-xs font-medium block mb-1.5">Est. Cost</label>
-                <input type="number" min={0} value={form.estimatedCost} onChange={e => setForm(f => ({ ...f, estimatedCost: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-              </div>
-            </div>
-            <div>
-              <label className="text-gray-400 text-xs font-medium block mb-1.5">Branch</label>
-              <select
-                value={form.branch}
-                onChange={e => setForm(f => ({ ...f, branch: e.target.value }))}
-                disabled={!canEditAll}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
-              </select>
-              {!canEditAll && <p className="text-gray-500 text-xs mt-1">You can only create purchase requests for your branch</p>}
-            </div>
-            <div>
-              <label className="text-gray-400 text-xs font-medium block mb-1.5">Supplier (optional)</label>
-              <input type="text" list="supplier-list" value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-              <datalist id="supplier-list">
-                {suppliers.map(s => <option key={s.id} value={s.name}/>)}
-              </datalist>
-            </div>
-            <div>
-              <label className="text-gray-400 text-xs font-medium block mb-1.5">Note</label>
-              <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} rows={2} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"/>
-            </div>
+
+            {/* Show filled details only after an item is selected */}
+            {selectedOrderable && (
+              <>
+                {/* Info strip */}
+                {(() => { const o = orderableItems.find(x => x.itemId === selectedOrderable); return o ? (
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2.5 text-xs text-amber-400 flex flex-wrap gap-x-4 gap-y-1">
+                    <span>Customer: <strong>{o.customer || '—'}</strong></span>
+                    <span>In stock: <strong>{o.inStock}</strong></span>
+                    <span>Needed: <strong>{o.needed} {o.unit}</strong></span>
+                    <span>Branch: <strong>{o.branch === 'DUB' ? 'Dubai' : 'Kubwa'}</strong></span>
+                  </div>
+                ) : null; })()}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-gray-400 text-xs font-medium block mb-1.5">Category</label>
+                    <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs font-medium block mb-1.5">Priority</label>
+                    <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {PRIORITIES.map(p => <option key={p}>{p}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-gray-400 text-xs font-medium block mb-1.5">Quantity</label>
+                    <input type="number" min={1} value={form.qty} onChange={e => setForm(f => ({ ...f, qty: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs font-medium block mb-1.5">Unit</label>
+                    <input type="text" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-xs font-medium block mb-1.5">Est. Cost</label>
+                    <input type="number" min={0} value={form.estimatedCost} onChange={e => setForm(f => ({ ...f, estimatedCost: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-gray-400 text-xs font-medium block mb-1.5">Supplier (optional)</label>
+                  <input type="text" list="supplier-list" value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                  <datalist id="supplier-list">
+                    {suppliers.map(s => <option key={s.id} value={s.name}/>)}
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="text-gray-400 text-xs font-medium block mb-1.5">Note</label>
+                  <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} rows={2} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"/>
+                </div>
+              </>
+            )}
+
             <div className="flex gap-3 pt-2">
-              <button onClick={() => { setModal(false); setCustomItem(false); setForm(EMPTY); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
+              <button onClick={() => { setModal(false); setForm(EMPTY); setSelectedOrderable(''); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
               <button onClick={submit} disabled={!form.name.trim()} className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">Add Request</button>
             </div>
           </div>

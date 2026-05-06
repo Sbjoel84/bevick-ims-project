@@ -29,7 +29,7 @@ const EMPTY_ITEM = { name: '', category: 'Machinery', dubQty: '', kubQty: '', un
 
 export default function Inventory() {
   const { state, dispatch } = useApp();
-  const { inventory, currency, branch, bname, thr, user } = state;
+  const { inventory, sales, bookings, purchaseList, currency, branch, bname, thr, user } = state;
 
   useEffect(() => {
     refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
@@ -38,6 +38,10 @@ export default function Inventory() {
   const userBranch = user?.bid;
   const canEditAll = user?.role === 'super_admin' || user?.role === 'admin';
 
+  const [tab, setTab] = useState('inventory');
+  const [recordSearch, setRecordSearch] = useState('');
+  const [recordEditItem, setRecordEditItem] = useState(null);
+  const [recordEditForm, setRecordEditForm] = useState({ dubQty: '', kubQty: '' });
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -134,6 +138,98 @@ export default function Inventory() {
   const totalQty = filtered.reduce((s, i) => s + (i.dubQty || 0) + (i.kubQty || 0), 0);
   const lowCount = filtered.filter(i => { const t = (i.dubQty || 0) + (i.kubQty || 0); return t > 0 && t <= (i.minQty || thr); }).length;
   const outCount = filtered.filter(i => (i.dubQty || 0) + (i.kubQty || 0) === 0).length;
+
+  const recordData = useMemo(() => {
+    return mergedInventory.map(item => {
+      const itemIds = new Set(item.items.map(i => i.id));
+
+      const fullFactory = bookings
+        .filter(b => b.bookingType === 'full_factory')
+        .reduce((sum, b) => {
+          const found = (b.items || []).find(i => itemIds.has(i.id) || i.name === item.name);
+          return sum + (found ? (found.qty || 1) : 0);
+        }, 0);
+
+      const others = bookings
+        .filter(b => b.bookingType !== 'full_factory')
+        .reduce((sum, b) => {
+          const found = (b.items || []).find(i => itemIds.has(i.id) || i.name === item.name);
+          return sum + (found ? (found.qty || 1) : 0);
+        }, 0);
+
+      const itemsSold = sales.reduce((sum, sale) => {
+        const found = (sale.items || []).find(i => itemIds.has(i.id) || i.name === item.name);
+        return sum + (found ? (found.qty || 1) : 0);
+      }, 0);
+
+      const goodsToOrder = purchaseList
+        .filter(p => (p.status === 'pending' || p.status === 'ordered') && (itemIds.has(p.itemId) || p.name === item.name))
+        .reduce((sum, p) => sum + (p.qty || 0), 0);
+
+      const goodsForSales = (item.dubQty || 0) + (item.kubQty || 0);
+
+      return { ...item, fullFactory, others, itemsSold, goodsToOrder, goodsForSales };
+    });
+  }, [mergedInventory, bookings, sales, purchaseList]);
+
+  const filteredRecord = useMemo(() => {
+    const q = recordSearch.toLowerCase().trim();
+    if (!q) return recordData;
+    return recordData.filter(i => i.name.toLowerCase().includes(q) || i.supplier?.toLowerCase().includes(q));
+  }, [recordData, recordSearch]);
+
+  function openRecordEdit(item) {
+    setRecordEditItem(item);
+    setRecordEditForm({ dubQty: String(item.dubQty), kubQty: String(item.kubQty) });
+  }
+
+  function saveRecordEdit() {
+    const newDubQty = parseInt(recordEditForm.dubQty) || 0;
+    const newKubQty = parseInt(recordEditForm.kubQty) || 0;
+    const dubItem = recordEditItem.items.find(i => i.branch === 'DUB');
+    const kubItem = recordEditItem.items.find(i => i.branch === 'KUB');
+    if (dubItem) dispatch({ type: 'UPDATE_ITEM', payload: { ...dubItem, qty: newDubQty } });
+    if (kubItem) dispatch({ type: 'UPDATE_ITEM', payload: { ...kubItem, qty: newKubQty } });
+    setRecordEditItem(null);
+  }
+
+  function printGeneralRecord() {
+    const rows = filteredRecord.map((item, idx) => `
+      <tr>
+        <td style="text-align:center">${idx + 1}</td>
+        <td>${item.name}${item.supplier ? ` (${item.supplier})` : ''}</td>
+        <td style="text-align:center">${item.fullFactory}</td>
+        <td style="text-align:center">${item.others}</td>
+        <td style="text-align:center">${item.itemsSold}</td>
+        <td style="text-align:center">${item.kubQty}</td>
+        <td style="text-align:center">${item.dubQty}</td>
+        <td style="text-align:center">${item.goodsToOrder}</td>
+        <td style="text-align:center">${item.goodsForSales}</td>
+      </tr>`).join('');
+    const html = `<!DOCTYPE html><html><head><title>General Record</title>
+      <style>
+        body{font-family:Arial,sans-serif;font-size:11px;margin:20px}
+        h2{text-align:center;margin-bottom:4px}
+        p.sub{text-align:center;color:#666;margin-bottom:14px;font-size:10px}
+        table{width:100%;border-collapse:collapse}
+        th,td{border:1px solid #bbb;padding:5px 8px}
+        th{background:#e8e8e8;font-weight:bold;text-align:center}
+        tr:nth-child(even){background:#f5f5f5}
+      </style></head><body>
+      <h2>General Record</h2>
+      <p class="sub">Printed: ${new Date().toLocaleString('en-NG')}</p>
+      <table><thead><tr>
+        <th>S/N</th><th style="text-align:left">Item Name</th>
+        <th>Full Factory</th><th>Others</th><th>Items Sold</th>
+        <th>Stocks in Kubwa</th><th>Stocks in Dubai</th>
+        <th>Goods to Order</th><th>Goods for Sales</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+      </body></html>`;
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    win.print();
+  }
 
   function canEditBranch(itemBranch) {
     if (canEditAll) return true;
@@ -261,19 +357,42 @@ export default function Inventory() {
           <p className="text-gray-500 text-sm mt-0.5">All Branches</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setReportOpen(true)}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-            Stock Report
-          </button>
-          <button onClick={() => openAdd()} className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-            Add Item
-          </button>
+          {tab === 'inventory' && (
+            <>
+              <button
+                onClick={() => setReportOpen(true)}
+                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                Stock Report
+              </button>
+              <button onClick={() => openAdd()} className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                Add Item
+              </button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Tab Navbar */}
+      <div className="flex border-b border-gray-800 -mt-2">
+        <button
+          onClick={() => setTab('inventory')}
+          className={`px-5 py-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${tab === 'inventory' ? 'text-blue-400 border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+        >
+          General Inventory
+        </button>
+        <button
+          onClick={() => setTab('record')}
+          className={`px-5 py-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${tab === 'record' ? 'text-blue-400 border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+        >
+          General Record
+        </button>
+      </div>
+
+      {/* ── General Inventory Tab ── */}
+      {tab === 'inventory' && (<>
 
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -466,6 +585,165 @@ export default function Inventory() {
           ))}
         </div>
       </div>
+
+      </>)}
+
+      {/* ── General Record Tab ── */}
+      {tab === 'record' && (
+        <div className="space-y-4">
+          {/* Toolbar */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="relative flex-1 w-full sm:max-w-xs">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/></svg>
+              <input
+                type="text"
+                placeholder="Search items…"
+                value={recordSearch}
+                onChange={e => setRecordSearch(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="text-gray-500 text-xs">{filteredRecord.length} item{filteredRecord.length !== 1 ? 's' : ''}</span>
+              <button
+                onClick={printGeneralRecord}
+                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                Print Report
+              </button>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr>
+                    <th className="bg-gray-800 text-gray-400 font-medium px-3 py-2.5 text-center border border-gray-700 w-10">S/N</th>
+                    <th className="bg-gray-800 text-gray-400 font-medium px-3 py-2.5 text-left border border-gray-700 min-w-[200px]">Item Name</th>
+                    <th className="bg-amber-950 text-amber-300 font-bold px-3 py-2.5 text-center border border-gray-700 min-w-[110px]">Full Factory</th>
+                    <th className="bg-red-950 text-red-400 font-bold px-3 py-2.5 text-center border border-gray-700 min-w-[90px]">Others</th>
+                    <th className="bg-green-950 text-green-400 font-bold px-3 py-2.5 text-center border border-gray-700 min-w-[100px]">Items Sold</th>
+                    <th className="bg-cyan-950 text-cyan-400 font-bold px-3 py-2.5 text-center border border-gray-700 min-w-[130px]">Stocks in Kubwa</th>
+                    <th className="bg-indigo-950 text-indigo-400 font-bold px-3 py-2.5 text-center border border-gray-700 min-w-[120px]">Stocks in Dubai</th>
+                    <th className="bg-orange-950 text-orange-400 font-bold px-3 py-2.5 text-center border border-gray-700 min-w-[120px]">Goods to Order</th>
+                    <th className="bg-emerald-950 text-emerald-400 font-bold px-3 py-2.5 text-center border border-gray-700 min-w-[120px]">Goods for Sales</th>
+                    <th className="bg-gray-800 text-gray-400 font-medium px-3 py-2.5 text-center border border-gray-700 w-12"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRecord.length === 0 ? (
+                    <tr><td colSpan={10} className="text-center text-gray-600 py-12">No items found</td></tr>
+                  ) : filteredRecord.map((item, idx) => (
+                    <tr key={item.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/30 transition-colors">
+                      <td className="px-3 py-2.5 text-center text-gray-500 font-mono text-xs border border-gray-800">{idx + 1}</td>
+                      <td className="px-3 py-2.5 border border-gray-800">
+                        <p className="text-white font-medium text-sm">{item.name}</p>
+                        {item.supplier && <p className="text-gray-500 text-xs">{item.supplier}</p>}
+                      </td>
+                      <td className="px-3 py-2.5 text-center border border-gray-800">
+                        <span className={`font-mono font-bold text-sm ${item.fullFactory > 0 ? 'text-amber-300' : 'text-gray-600'}`}>{item.fullFactory}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center border border-gray-800">
+                        <span className={`font-mono font-bold text-sm ${item.others > 0 ? 'text-red-400' : 'text-gray-600'}`}>{item.others}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center border border-gray-800">
+                        <span className={`font-mono font-bold text-sm ${item.itemsSold > 0 ? 'text-green-400' : 'text-gray-600'}`}>{item.itemsSold}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center border border-gray-800">
+                        <span className={`font-mono font-bold text-sm ${item.kubQty > 0 ? 'text-cyan-400' : 'text-gray-600'}`}>{item.kubQty}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center border border-gray-800">
+                        <span className={`font-mono font-bold text-sm ${item.dubQty > 0 ? 'text-indigo-400' : 'text-gray-600'}`}>{item.dubQty}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center border border-gray-800">
+                        <span className={`font-mono font-bold text-sm ${item.goodsToOrder > 0 ? 'text-orange-400' : 'text-gray-600'}`}>{item.goodsToOrder}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center border border-gray-800">
+                        <span className={`font-mono font-bold text-sm ${item.goodsForSales > 0 ? 'text-emerald-400' : 'text-gray-600'}`}>{item.goodsForSales}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center border border-gray-800">
+                        <button
+                          onClick={() => openRecordEdit(item)}
+                          title="Edit stock quantities"
+                          className="text-gray-500 hover:text-blue-400 transition-colors p-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* General Record Edit Modal */}
+      {recordEditItem && (
+        <Modal title={`Edit Record: ${recordEditItem.name}`} onClose={() => setRecordEditItem(null)}>
+          <div className="space-y-5">
+            <p className="text-gray-500 text-xs">Update stock quantities for this item. Booking and sales figures are computed automatically.</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-800 rounded-xl p-4">
+                <p className="text-gray-400 text-xs font-medium mb-1">Full Factory</p>
+                <p className="text-amber-300 font-mono font-bold text-lg">{recordEditItem.fullFactory}</p>
+                <p className="text-gray-600 text-xs mt-0.5">Auto — from bookings</p>
+              </div>
+              <div className="bg-gray-800 rounded-xl p-4">
+                <p className="text-gray-400 text-xs font-medium mb-1">Others</p>
+                <p className="text-red-400 font-mono font-bold text-lg">{recordEditItem.others}</p>
+                <p className="text-gray-600 text-xs mt-0.5">Auto — from bookings</p>
+              </div>
+              <div className="bg-gray-800 rounded-xl p-4">
+                <p className="text-gray-400 text-xs font-medium mb-1">Items Sold</p>
+                <p className="text-green-400 font-mono font-bold text-lg">{recordEditItem.itemsSold}</p>
+                <p className="text-gray-600 text-xs mt-0.5">Auto — from sales</p>
+              </div>
+              <div className="bg-gray-800 rounded-xl p-4">
+                <p className="text-gray-400 text-xs font-medium mb-1">Goods to Order</p>
+                <p className="text-orange-400 font-mono font-bold text-lg">{recordEditItem.goodsToOrder}</p>
+                <p className="text-gray-600 text-xs mt-0.5">Auto — from purchase list</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-cyan-400 text-xs font-semibold block mb-1.5">Stocks in Kubwa</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={recordEditForm.kubQty}
+                  onChange={e => setRecordEditForm(f => ({ ...f, kubQty: e.target.value }))}
+                  className="w-full bg-gray-800 border border-cyan-900 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+              <div>
+                <label className="text-indigo-400 text-xs font-semibold block mb-1.5">Stocks in Dubai</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={recordEditForm.dubQty}
+                  onChange={e => setRecordEditForm(f => ({ ...f, dubQty: e.target.value }))}
+                  className="w-full bg-gray-800 border border-indigo-900 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+            <div className="bg-gray-800 rounded-xl px-4 py-3 flex justify-between text-sm">
+              <span className="text-gray-400">Goods for Sales (computed)</span>
+              <span className="text-emerald-400 font-mono font-bold">
+                {(parseInt(recordEditForm.dubQty) || 0) + (parseInt(recordEditForm.kubQty) || 0)}
+              </span>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setRecordEditItem(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
+              <button onClick={saveRecordEdit} className="flex-1 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">Save Changes</button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Add/Edit Modal */}
       {(modal === 'add' || modal === 'edit') && (

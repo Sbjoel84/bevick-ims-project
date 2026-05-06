@@ -246,7 +246,7 @@ function reducer(state, action) {
       const newPurchases = [];
       (booking.items || []).forEach(item => {
         if (!item.id) return;
-        const invItem = state.inventory.find(i => i.id === item.id);
+        const invItem = state.inventory.find(i => i.id === item.id && i.branch === booking.branch);
         const currentQty = invItem ? invItem.qty : 0;
         if (currentQty < item.qty) {
           const needed = item.qty - currentQty;
@@ -362,7 +362,7 @@ function reducer(state, action) {
       const newPurchases = [];
       (upd.items || []).forEach(item => {
         if (!item.id) return;
-        const invItem = state.inventory.find(i => i.id === item.id);
+        const invItem = state.inventory.find(i => i.id === item.id && i.branch === upd.branch);
         const currentQty = invItem ? invItem.qty : 0;
         if (currentQty < item.qty) {
           const needed = item.qty - currentQty;

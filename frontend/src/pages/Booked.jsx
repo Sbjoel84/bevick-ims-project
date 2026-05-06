@@ -148,6 +148,17 @@ function BookingFormFields({ f, setF, availableItems, currency }) {
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
+        <div className="col-span-2">
+          <label className="text-gray-400 text-xs font-medium block mb-1.5">Booking Type</label>
+          <select
+            value={f.type || 'others'}
+            onChange={e => setF(x => ({ ...x, type: e.target.value }))}
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="full_factory">Full Factory</option>
+            <option value="others">Others (Selected Items)</option>
+          </select>
+        </div>
         <div>
           <label className="text-gray-400 text-xs font-medium block mb-1.5">Booking Date</label>
           <input
@@ -240,7 +251,7 @@ function BookingFormFields({ f, setF, availableItems, currency }) {
   );
 }
 
-const EMPTY_FORM = { customer: '', branch: 'DUB', bookingDate: new Date().toISOString().split('T')[0], deliveryDate: '', note: '', items: [], discount: '', initialPayment: '', paymentMethod: 'Cash' };
+const EMPTY_FORM = { customer: '', branch: 'DUB', bookingDate: new Date().toISOString().split('T')[0], deliveryDate: '', note: '', items: [], discount: '', initialPayment: '', paymentMethod: 'Cash', type: 'others' };
 const EMPTY_PAY  = { amount: '', method: 'Cash', date: new Date().toISOString().split('T')[0], note: '' };
 
 export default function Booked() {
@@ -338,6 +349,7 @@ export default function Booked() {
         id: genId('B'),
         customer: form.customer,
         branch: branch || form.branch,
+        bookingType: form.type || 'others',
         deliveryDate: form.deliveryDate,
         note: form.note,
         items: validItems,

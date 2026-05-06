@@ -49,104 +49,159 @@ function rangeLabel(id, s, e) {
 }
 
 // ── Report Configs ────────────────────────────────────────────────────────────
-// Each config: { id, label, dateKey, getData(state), columns, getSummary(rows, state) }
 
 function makeReportConfigs(state) {
   const { sales, customers, expenses, inventory, bookings, purchaseList, goodsReceived, suppliers, currency, branch, thr } = state;
+  const bl = v => v === 'DUB' ? 'Dubai Market' : v === 'KUB' ? 'Kubwa Office' : v || '—';
+  const cap = v => v ? v.charAt(0).toUpperCase() + v.slice(1) : '—';
 
-  const branchLabel = v => v === 'DUB' ? 'Dubai Market' : v === 'KUB' ? 'Kubwa Office' : v || '—';
+  // Merge inventory entries into one row per item (DUB + KUB combined)
+  const mergedInv = (() => {
+    const map = new Map();
+    const src = branch ? inventory.filter(i => i.branch === branch) : inventory;
+    src.forEach(i => {
+      const key = `${i.name}||${i.category}`;
+      if (!map.has(key)) {
+        map.set(key, { id: i.id, name: i.name, category: i.category, unit: i.unit, price: i.price, minQty: i.minQty, supplier: i.supplier, dubQty: 0, kubQty: 0 });
+      }
+      const e = map.get(key);
+      if (i.branch === 'DUB') e.dubQty += i.qty || 0;
+      else e.kubQty += i.qty || 0;
+      if (i.price != null) e.price = i.price;
+      if (i.minQty != null) e.minQty = i.minQty;
+      if (i.unit) e.unit = i.unit;
+      if (i.supplier) e.supplier = i.supplier;
+    });
+    return Array.from(map.values()).map(e => ({ ...e, totalQty: e.dubQty + e.kubQty }));
+  })();
 
   return [
-    // ── Sales ──────────────────────────────────────────────────────────────────
+
+    // ── Sales — one row per line item ─────────────────────────────────────────
     {
       id: 'sales',
       label: 'Sales',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-        </svg>
-      ),
-      dateKey: 'date',
-      getData: () => sales.filter(s => branch ? s.branch === branch : true),
+      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>,
+      dateKey: '_date',
+      getData: () => {
+        const src = sales.filter(s => branch ? s.branch === branch : true);
+        return src.flatMap(s =>
+          (s.items || []).length > 0
+            ? (s.items || []).map(item => ({
+                _date:    s.date,
+                saleId:   s.id,
+                customer: s.customer || 'Walk-in',
+                branch:   s.branch,
+                payment:  s.payment || '—',
+                itemName: item.name,
+                qty:      item.qty,
+                unit:     item.unit || '',
+                price:    item.price || 0,
+                amount:   (item.qty || 0) * (item.price || 0),
+                vat:      s.vat || 0,
+                saleTotal: s.total || 0,
+              }))
+            : [{ _date: s.date, saleId: s.id, customer: s.customer || 'Walk-in', branch: s.branch, payment: s.payment || '—', itemName: '—', qty: 0, unit: '', price: 0, amount: 0, vat: s.vat || 0, saleTotal: s.total || 0 }]
+        );
+      },
       columns: [
-        { key: 'id',        label: 'Sale ID' },
-        { key: 'date',      label: 'Date',        format: v => fmtDate(v) },
-        { key: 'customer',  label: 'Customer',    format: v => v || 'Walk-in' },
-        { key: 'branch',    label: 'Branch',      format: branchLabel },
-        { key: 'payment',   label: 'Payment' },
-        { key: 'totalCost', label: 'Actual Cost', align: 'tr', format: v => v != null ? formatCurrency(v, currency) : '—' },
-        { key: 'subtotal',  label: 'Revenue',     align: 'tr', format: v => formatCurrency(v || 0, currency) },
-        { key: 'profit',    label: 'Profit',      align: 'tr', format: v => v != null ? formatCurrency(v, currency) : '—' },
-        { key: 'vat',       label: 'VAT',         align: 'tr', format: v => formatCurrency(v || 0, currency) },
-        { key: 'total',     label: 'Total',       align: 'tr', format: v => formatCurrency(v || 0, currency) },
+        { key: '_date',    label: 'Date',       format: v => fmtDate(v) },
+        { key: 'saleId',   label: 'Sale ID' },
+        { key: 'customer', label: 'Customer' },
+        { key: 'branch',   label: 'Branch',     format: bl },
+        { key: 'payment',  label: 'Payment' },
+        { key: 'itemName', label: 'Item' },
+        { key: 'qty',      label: 'Qty',        align: 'tc' },
+        { key: 'unit',     label: 'Unit',       align: 'tc' },
+        { key: 'price',    label: 'Unit Price', align: 'tr', format: v => formatCurrency(v, currency) },
+        { key: 'amount',   label: 'Amount',     align: 'tr', format: v => formatCurrency(v, currency) },
       ],
       getSummary: rows => {
-        const totalRev    = rows.reduce((s, x) => s + (x.total     || 0), 0);
-        const totalVat    = rows.reduce((s, x) => s + (x.vat       || 0), 0);
-        const totalSub    = rows.reduce((s, x) => s + (x.subtotal  || 0), 0);
-        const totalCost   = rows.reduce((s, x) => s + (x.totalCost || 0), 0);
-        const totalProfit = rows.reduce((s, x) => s + (x.profit    || 0), 0);
+        const uniqueSales  = new Set(rows.map(r => r.saleId)).size;
+        const totalAmt     = rows.reduce((s, r) => s + (r.amount || 0), 0);
+        const totalVat     = [...new Set(rows.map(r => r.saleId))].reduce((s, id) => {
+          const r = rows.find(x => x.saleId === id); return s + (r?.vat || 0);
+        }, 0);
+        const totalRevenue = [...new Set(rows.map(r => r.saleId))].reduce((s, id) => {
+          const r = rows.find(x => x.saleId === id); return s + (r?.saleTotal || 0);
+        }, 0);
         return [
-          { label: 'Number of Sales',      value: rows.length },
-          { label: 'Total Actual Cost',    value: formatCurrency(totalCost, currency) },
-          { label: 'Total VAT Collected',  value: formatCurrency(totalVat, currency) },
-          { label: 'Net Revenue (ex-VAT)', value: formatCurrency(totalSub, currency) },
-          { label: 'Total Gross Profit',   value: formatCurrency(totalProfit, currency) },
-          { label: 'Total Revenue',        value: formatCurrency(totalRev, currency), bold: true },
+          { label: 'Number of Sales',     value: uniqueSales },
+          { label: 'Total Items Sold',    value: rows.filter(r => r.itemName !== '—').length },
+          { label: 'Total VAT Collected', value: formatCurrency(totalVat, currency) },
+          { label: 'Net Sales Amount',    value: formatCurrency(totalAmt, currency) },
+          { label: 'Total Revenue',       value: formatCurrency(totalRevenue, currency), bold: true },
         ];
       },
     },
 
-    // ── Customers ──────────────────────────────────────────────────────────────
+    // ── Customers — one row per customer with totals ───────────────────────────
     {
       id: 'customers',
       label: 'Customers',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-      ),
+      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
       dateKey: 'createdAt',
-      getData: () => customers.filter(c => branch ? (!c.branch || c.branch === branch) : true),
+      getData: () => {
+        const src = customers.filter(c => branch ? (!c.branch || c.branch === branch) : true);
+        return src.map(c => {
+          const cSales    = sales.filter(s => s.customer === c.name || s.customerId === c.id);
+          const cBookings = bookings.filter(b => b.customer === c.name || b.customerId === c.id);
+          const totalSpent   = cSales.reduce((s, x) => s + (x.total || 0), 0);
+          const totalBooked  = cBookings.reduce((s, x) => s + (x.total || 0), 0);
+          const hasFF = cBookings.some(b => b.bookingType === 'full_factory');
+          return {
+            ...c,
+            salesCount:   cSales.length,
+            totalSpent,
+            bookingCount: cBookings.length,
+            totalBooked,
+            type: hasFF ? 'Full Factory' : cBookings.length > 0 ? 'Others' : '—',
+          };
+        });
+      },
       columns: [
-        { key: 'name',      label: 'Name' },
-        { key: 'phone',     label: 'Phone',   format: v => v || '—' },
-        { key: 'email',     label: 'Email',   format: v => v || '—' },
-        { key: 'address',   label: 'Address', format: v => v || '—' },
-        { key: 'createdAt', label: 'Added',   format: v => v ? fmtDate(v) : '—' },
+        { key: 'name',         label: 'Name' },
+        { key: 'phone',        label: 'Phone',          format: v => v || '—' },
+        { key: 'email',        label: 'Email',          format: v => v || '—' },
+        { key: 'address',      label: 'Address',        format: v => v || '—' },
+        { key: 'type',         label: 'Booking Type' },
+        { key: 'salesCount',   label: 'Sales',          align: 'tc' },
+        { key: 'totalSpent',   label: 'Total Spent',    align: 'tr', format: v => formatCurrency(v, currency) },
+        { key: 'bookingCount', label: 'Bookings',       align: 'tc' },
+        { key: 'totalBooked',  label: 'Total Booked',   align: 'tr', format: v => formatCurrency(v, currency) },
+        { key: 'createdAt',    label: 'Registered',     format: v => v ? fmtDate(v) : '—' },
       ],
       getSummary: rows => {
-        const totalPurchases = rows.reduce((sum, c) => {
-          return sum + sales.filter(s => s.customerId === c.id || s.customer === c.name).reduce((s, x) => s + (x.total || 0), 0);
-        }, 0);
+        const totalSpent  = rows.reduce((s, c) => s + (c.totalSpent || 0), 0);
+        const totalBooked = rows.reduce((s, c) => s + (c.totalBooked || 0), 0);
+        const ffCount     = rows.filter(c => c.type === 'Full Factory').length;
         return [
-          { label: 'Total Customers',    value: rows.length },
-          { label: 'Total Purchases',    value: formatCurrency(totalPurchases, currency), bold: true },
+          { label: 'Total Customers',     value: rows.length },
+          { label: 'Full Factory',         value: ffCount },
+          { label: 'Others',               value: rows.length - ffCount },
+          { label: 'Total Sales Value',    value: formatCurrency(totalSpent, currency) },
+          { label: 'Total Bookings Value', value: formatCurrency(totalBooked, currency), bold: true },
         ];
       },
     },
 
-    // ── Expenses ───────────────────────────────────────────────────────────────
+    // ── Expenses ──────────────────────────────────────────────────────────────
     {
       id: 'expenses',
       label: 'Expenses',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-        </svg>
-      ),
+      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>,
       dateKey: 'date',
       getData: () => expenses.filter(e => branch ? e.branch === branch : true),
       columns: [
-        { key: 'date',     label: 'Date',     format: v => fmtDate(v) },
+        { key: 'date',     label: 'Date',        format: v => fmtDate(v) },
         { key: 'desc',     label: 'Description' },
         { key: 'category', label: 'Category' },
-        { key: 'branch',   label: 'Branch',   format: branchLabel },
-        { key: 'amount',   label: 'Amount',   align: 'tr', format: v => formatCurrency(v || 0, currency) },
+        { key: 'branch',   label: 'Branch',      format: bl },
+        { key: 'amount',   label: 'Amount',      align: 'tr', format: v => formatCurrency(v || 0, currency) },
       ],
       getSummary: rows => {
         const total = rows.reduce((s, e) => s + (e.amount || 0), 0);
-        const CATS = ['Operations', 'Logistics', 'Salaries', 'Utilities', 'Maintenance', 'Marketing', 'Office', 'Other'];
+        const CATS  = ['Operations','Logistics','Salaries','Utilities','Maintenance','Marketing','Office','Other'];
         const byCat = CATS
           .map(cat => ({ label: cat, value: formatCurrency(rows.filter(e => e.category === cat).reduce((s, e) => s + (e.amount || 0), 0), currency) }))
           .filter(x => rows.some(e => e.category === x.label));
@@ -154,93 +209,112 @@ function makeReportConfigs(state) {
       },
     },
 
-    // ── Inventory ──────────────────────────────────────────────────────────────
+    // ── Inventory — merged Dubai + Kubwa per item ─────────────────────────────
     {
       id: 'inventory',
       label: 'Inventory',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-        </svg>
-      ),
-      dateKey: null, // snapshot
-      getData: () => inventory.filter(i => branch ? i.branch === branch : true),
+      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>,
+      dateKey: null,
+      getData: () => mergedInv,
       columns: [
         { key: 'name',     label: 'Item Name' },
         { key: 'category', label: 'Category' },
-        { key: 'branch',   label: 'Branch',      format: branchLabel },
-        { key: 'qty',      label: 'Qty',          align: 'tc' },
-        { key: 'unit',     label: 'Unit',         align: 'tc' },
-        { key: 'price',    label: 'Unit Price',   align: 'tr', format: v => formatCurrency(v || 0, currency) },
-        { key: 'qty',      label: 'Total Value',  align: 'tr', format: (v, row) => formatCurrency((v || 0) * (row.price || 0), currency) },
-        { key: 'qty',      label: 'Status',       align: 'tc', format: (v, row) => v === 0 ? 'Out of Stock' : v <= (row.minQty || thr) ? 'Low Stock' : 'In Stock' },
+        { key: 'supplier', label: 'Source',      format: v => v || '—' },
+        { key: 'dubQty',   label: 'Dubai Qty',   align: 'tc' },
+        { key: 'kubQty',   label: 'Kubwa Qty',   align: 'tc' },
+        { key: 'totalQty', label: 'Total Qty',   align: 'tc' },
+        { key: 'unit',     label: 'Unit',        align: 'tc' },
+        { key: 'price',    label: 'Unit Price',  align: 'tr', format: v => formatCurrency(v || 0, currency) },
+        { key: 'totalQty', label: 'Total Value', align: 'tr', format: (v, row) => formatCurrency((v || 0) * (row.price || 0), currency) },
+        { key: 'totalQty', label: 'Status',      align: 'tc', format: (v, row) => v === 0 ? 'Out of Stock' : v <= (row.minQty || thr) ? 'Low Stock' : 'In Stock' },
       ],
       getSummary: rows => {
-        const totalVal = rows.reduce((s, i) => s + (i.qty || 0) * (i.price || 0), 0);
-        const lowCount = rows.filter(i => i.qty > 0 && i.qty <= (i.minQty || thr)).length;
-        const outCount = rows.filter(i => i.qty === 0).length;
+        const totalVal = rows.reduce((s, i) => s + (i.totalQty || 0) * (i.price || 0), 0);
+        const low  = rows.filter(i => i.totalQty > 0 && i.totalQty <= (i.minQty || thr)).length;
+        const out  = rows.filter(i => i.totalQty === 0).length;
         return [
-          { label: 'Total Items',      value: rows.length },
-          { label: 'Low Stock Items',  value: lowCount },
-          { label: 'Out of Stock',     value: outCount },
+          { label: 'Total Items',       value: rows.length },
+          { label: 'Low Stock',         value: low },
+          { label: 'Out of Stock',      value: out },
           { label: 'Total Stock Value', value: formatCurrency(totalVal, currency), bold: true },
         ];
       },
     },
 
-    // ── Booked Items ───────────────────────────────────────────────────────────
+    // ── Booked Items — one row per line item in each booking ──────────────────
     {
       id: 'booked',
       label: 'Booked Items',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-        </svg>
-      ),
-      dateKey: 'date',
-      getData: () => bookings.filter(b => branch ? (!b.branch || b.branch === branch) : true),
+      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>,
+      dateKey: '_date',
+      getData: () => {
+        const src = bookings.filter(b => branch ? (!b.branch || b.branch === branch) : true);
+        return src.flatMap(b =>
+          (b.items || []).length > 0
+            ? (b.items || []).map(item => ({
+                _date:       b.date,
+                bookingId:   b.id,
+                customer:    b.customer || '—',
+                branch:      b.branch,
+                status:      cap(b.status),
+                bookingType: b.bookingType === 'full_factory' ? 'Full Factory' : 'Others',
+                itemName:    item.name,
+                qty:         item.qty || 1,
+                unit:        item.unit || '',
+                unitPrice:   item.price || 0,
+                lineTotal:   (item.qty || 1) * (item.price || 0),
+                bookingTotal: b.total || 0,
+              }))
+            : [{ _date: b.date, bookingId: b.id, customer: b.customer || '—', branch: b.branch, status: cap(b.status), bookingType: b.bookingType === 'full_factory' ? 'Full Factory' : 'Others', itemName: '—', qty: 0, unit: '', unitPrice: 0, lineTotal: 0, bookingTotal: b.total || 0 }]
+        );
+      },
       columns: [
-        { key: 'id',       label: 'Booking ID' },
-        { key: 'date',     label: 'Date',       format: v => v ? fmtDate(v) : '—' },
-        { key: 'customer', label: 'Customer',   format: v => v || '—' },
-        { key: 'branch',   label: 'Branch',     format: branchLabel },
-        { key: 'status',   label: 'Status',     format: v => v ? v.charAt(0).toUpperCase() + v.slice(1) : '—' },
-        { key: 'items',    label: 'Items',      align: 'tc', format: v => Array.isArray(v) ? v.length : 0 },
-        { key: 'total',    label: 'Total',      align: 'tr', format: v => formatCurrency(v || 0, currency) },
+        { key: '_date',       label: 'Date',         format: v => v ? fmtDate(v) : '—' },
+        { key: 'bookingId',   label: 'Booking ID' },
+        { key: 'customer',    label: 'Customer' },
+        { key: 'branch',      label: 'Branch',       format: bl },
+        { key: 'bookingType', label: 'Type' },
+        { key: 'status',      label: 'Status' },
+        { key: 'itemName',    label: 'Item' },
+        { key: 'qty',         label: 'Qty',          align: 'tc' },
+        { key: 'unit',        label: 'Unit',         align: 'tc' },
+        { key: 'unitPrice',   label: 'Unit Price',   align: 'tr', format: v => formatCurrency(v, currency) },
+        { key: 'lineTotal',   label: 'Line Total',   align: 'tr', format: v => formatCurrency(v, currency) },
       ],
       getSummary: rows => {
-        const totalVal = rows.reduce((s, b) => s + (b.total || 0), 0);
+        const uniqueBookings = new Set(rows.map(r => r.bookingId)).size;
+        const totalVal       = [...new Set(rows.map(r => r.bookingId))].reduce((s, id) => {
+          const r = rows.find(x => x.bookingId === id); return s + (r?.bookingTotal || 0);
+        }, 0);
+        const ff = new Set(rows.filter(r => r.bookingType === 'Full Factory').map(r => r.bookingId)).size;
         return [
-          { label: 'Total Bookings', value: rows.length },
-          { label: 'Pending',        value: rows.filter(b => b.status === 'pending').length },
-          { label: 'Confirmed',      value: rows.filter(b => b.status === 'confirmed').length },
-          { label: 'Delivered',      value: rows.filter(b => b.status === 'delivered').length },
-          { label: 'Cancelled',      value: rows.filter(b => b.status === 'cancelled').length },
-          { label: 'Total Value',    value: formatCurrency(totalVal, currency), bold: true },
+          { label: 'Total Bookings',  value: uniqueBookings },
+          { label: 'Full Factory',    value: ff },
+          { label: 'Others',          value: uniqueBookings - ff },
+          { label: 'Items Booked',    value: rows.filter(r => r.itemName !== '—').length },
+          { label: 'Total Value',     value: formatCurrency(totalVal, currency), bold: true },
         ];
       },
     },
 
-    // ── Purchase List ──────────────────────────────────────────────────────────
+    // ── Purchase List ─────────────────────────────────────────────────────────
     {
       id: 'purchase',
       label: 'Purchase List',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-        </svg>
-      ),
+      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>,
       dateKey: 'date',
       getData: () => purchaseList.filter(p => branch ? (!p.branch || p.branch === branch) : true),
       columns: [
-        { key: 'date',          label: 'Date',     format: v => v ? fmtDate(v) : '—' },
+        { key: 'date',          label: 'Date',       format: v => v ? fmtDate(v) : '—' },
         { key: 'name',          label: 'Item' },
-        { key: 'qty',           label: 'Qty',      align: 'tc' },
-        { key: 'unit',          label: 'Unit',     align: 'tc' },
-        { key: 'supplier',      label: 'Supplier', format: v => v || '—' },
-        { key: 'priority',      label: 'Priority', format: v => v ? v.charAt(0).toUpperCase() + v.slice(1) : '—' },
-        { key: 'status',        label: 'Status',   format: v => v ? v.charAt(0).toUpperCase() + v.slice(1) : '—' },
-        { key: 'estimatedCost', label: 'Est. Cost', align: 'tr', format: v => v ? formatCurrency(v, currency) : '—' },
+        { key: 'bookingId',     label: 'Booking #',  format: v => v || '—' },
+        { key: 'branch',        label: 'Branch',     format: bl },
+        { key: 'qty',           label: 'Qty',        align: 'tc' },
+        { key: 'unit',          label: 'Unit',       align: 'tc' },
+        { key: 'supplier',      label: 'Supplier',   format: v => v || '—' },
+        { key: 'priority',      label: 'Priority',   format: cap },
+        { key: 'status',        label: 'Status',     format: cap },
+        { key: 'estimatedCost', label: 'Est. Cost',  align: 'tr', format: v => v ? formatCurrency(v, currency) : '—' },
       ],
       getSummary: rows => {
         const total = rows.filter(p => p.status !== 'cancelled').reduce((s, p) => s + (p.estimatedCost || 0), 0);
@@ -254,61 +328,57 @@ function makeReportConfigs(state) {
       },
     },
 
-    // ── Goods Received ─────────────────────────────────────────────────────────
+    // ── Goods Received — one row per received line item ───────────────────────
     {
       id: 'goods',
       label: 'Goods Received',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-        </svg>
-      ),
-      dateKey: 'date',
-      getData: () => goodsReceived.filter(g => branch ? g.branch === branch : true),
+      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>,
+      dateKey: '_date',
+      getData: () => {
+        const src = goodsReceived.filter(g => branch ? g.branch === branch : true);
+        return src.flatMap(g =>
+          (g.items || []).length > 0
+            ? (g.items || []).map(item => ({
+                _date:      g.date,
+                grnId:      g.id,
+                supplier:   g.supplier || '—',
+                branch:     g.branch,
+                invoiceNo:  g.invoiceNo || '—',
+                receivedBy: g.receivedBy || '—',
+                itemName:   item.name,
+                qty:        item.qty || 0,
+                unit:       item.unit || '',
+                itemCost:   item.cost || (item.qty || 0) * (item.price || 0),
+                grnTotal:   g.totalCost || 0,
+              }))
+            : [{ _date: g.date, grnId: g.id, supplier: g.supplier || '—', branch: g.branch, invoiceNo: g.invoiceNo || '—', receivedBy: g.receivedBy || '—', itemName: '—', qty: 0, unit: '', itemCost: 0, grnTotal: g.totalCost || 0 }]
+        );
+      },
       columns: [
-        { key: 'id',         label: 'GRN #' },
-        { key: 'date',       label: 'Date',       format: v => v ? fmtDate(v) : '—' },
-        { key: 'supplier',   label: 'Supplier',   format: v => v || '—' },
-        { key: 'branch',     label: 'Branch',     format: branchLabel },
-        { key: 'invoiceNo',  label: 'Invoice #',  format: v => v || '—' },
-        { key: 'items',      label: 'Items',      align: 'tc', format: v => Array.isArray(v) ? v.length : 0 },
-        { key: 'totalCost',  label: 'Total Cost', align: 'tr', format: v => formatCurrency(v || 0, currency) },
-        { key: 'receivedBy', label: 'Received By', format: v => v || '—' },
+        { key: '_date',      label: 'Date',        format: v => v ? fmtDate(v) : '—' },
+        { key: 'grnId',      label: 'GRN #' },
+        { key: 'supplier',   label: 'Supplier' },
+        { key: 'branch',     label: 'Branch',      format: bl },
+        { key: 'invoiceNo',  label: 'Invoice #' },
+        { key: 'receivedBy', label: 'Received By' },
+        { key: 'itemName',   label: 'Item' },
+        { key: 'qty',        label: 'Qty',         align: 'tc' },
+        { key: 'unit',       label: 'Unit',        align: 'tc' },
+        { key: 'itemCost',   label: 'Item Cost',   align: 'tr', format: v => v ? formatCurrency(v, currency) : '—' },
       ],
       getSummary: rows => {
-        const total = rows.reduce((s, g) => s + (g.totalCost || 0), 0);
+        const uniqueGRNs = new Set(rows.map(r => r.grnId)).size;
+        const totalVal   = [...new Set(rows.map(r => r.grnId))].reduce((s, id) => {
+          const r = rows.find(x => x.grnId === id); return s + (r?.grnTotal || 0);
+        }, 0);
         return [
-          { label: 'Total GRNs',           value: rows.length },
-          { label: 'Total Value Received', value: formatCurrency(total, currency), bold: true },
+          { label: 'Total GRNs',           value: uniqueGRNs },
+          { label: 'Items Received',        value: rows.filter(r => r.itemName !== '—').length },
+          { label: 'Total Value Received',  value: formatCurrency(totalVal, currency), bold: true },
         ];
       },
     },
 
-    // ── Suppliers ──────────────────────────────────────────────────────────────
-    {
-      id: 'suppliers',
-      label: 'Suppliers',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-        </svg>
-      ),
-      dateKey: null, // snapshot
-      getData: () => suppliers,
-      columns: [
-        { key: 'name',     label: 'Name' },
-        { key: 'contact',  label: 'Contact',  format: v => v || '—' },
-        { key: 'phone',    label: 'Phone',    format: v => v || '—' },
-        { key: 'email',    label: 'Email',    format: v => v || '—' },
-        { key: 'category', label: 'Category' },
-        { key: 'status',   label: 'Status',   format: v => v ? v.charAt(0).toUpperCase() + v.slice(1) : '—' },
-      ],
-      getSummary: rows => [
-        { label: 'Total Suppliers', value: rows.length },
-        { label: 'Active',          value: rows.filter(s => s.status === 'active').length },
-        { label: 'Inactive',        value: rows.filter(s => s.status !== 'active').length },
-      ],
-    },
   ];
 }
 
