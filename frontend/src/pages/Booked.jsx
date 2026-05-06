@@ -265,6 +265,8 @@ export default function Booked() {
   const [deleteReq, setDeleteReq] = useState(null);
   const [showPayForm, setShowPayForm] = useState(false);
   const [payForm, setPayForm] = useState(EMPTY_PAY);
+  const [editingPaymentId, setEditingPaymentId] = useState(null);
+  const [editPayForm, setEditPayForm] = useState({ amount: '', date: '', method: 'Cash', note: '' });
 
   // Always derive live booking so payment additions reflect instantly in the view modal
   const currentSelected = selected
@@ -407,6 +409,17 @@ export default function Booked() {
     setShowPayForm(false);
   }
 
+  function updatePayment(bookingId, paymentId, updated) {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+    const updatedPayments = (booking.payments || []).map(p =>
+      p.id === paymentId ? { ...p, ...updated, amount: parseFloat(updated.amount) || p.amount } : p
+    );
+    const amountPaid = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
+    dispatch({ type: 'UPDATE_BOOKING', payload: { ...booking, payments: updatedPayments, amountPaid } });
+    setEditingPaymentId(null);
+  }
+
   function del(id) {
     if (user?.role === 'super_admin') {
       if (window.confirm('Delete this booking?')) {
@@ -544,7 +557,7 @@ export default function Booked() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2 justify-end">
-                        <button onClick={() => { setSelected(b); setShowPayForm(false); setPayForm(EMPTY_PAY); setModal('view'); }} className="text-gray-500 hover:text-white transition-colors" title="View">
+                        <button onClick={() => { setSelected(b); setShowPayForm(false); setPayForm(EMPTY_PAY); setEditingPaymentId(null); setModal('view'); }} className="text-gray-500 hover:text-white transition-colors" title="View">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                         </button>
                         <button onClick={() => openEdit(b)} className="text-gray-500 hover:text-blue-400 transition-colors" title="Edit">
@@ -657,7 +670,7 @@ export default function Booked() {
         const balance       = effectiveTotal - paid;
 
         return (
-          <Modal title={`Booking · ${b.id}`} onClose={() => setModal(null)} wide>
+          <Modal title={`Booking · ${b.id}`} onClose={() => { setModal(null); setEditingPaymentId(null); }} wide>
             <div className="space-y-5">
 
               {/* Info grid */}
@@ -743,16 +756,75 @@ export default function Booked() {
                           <th className="text-left text-gray-500 font-medium px-4 py-2.5">Method</th>
                           <th className="text-left text-gray-500 font-medium px-4 py-2.5">Note</th>
                           <th className="text-right text-gray-500 font-medium px-4 py-2.5">Amount</th>
+                          <th className="w-6 px-2 py-2.5"></th>
                         </tr>
                       </thead>
                       <tbody>
                         {payments.map(p => (
-                          <tr key={p.id} className="border-b border-gray-700 last:border-0">
-                            <td className="px-4 py-2.5 text-gray-300">{fmtDate(p.date)}</td>
-                            <td className="px-4 py-2.5 text-gray-300">{p.method}</td>
-                            <td className="px-4 py-2.5 text-gray-500">{p.note || '—'}</td>
-                            <td className="px-4 py-2.5 text-right text-green-400 font-mono font-semibold">{formatCurrency(p.amount, currency)}</td>
-                          </tr>
+                          editingPaymentId === p.id ? (
+                            <tr key={p.id} className="border-b border-gray-700 last:border-0 bg-gray-700/40">
+                              <td className="px-2 py-2">
+                                <input
+                                  type="date"
+                                  value={editPayForm.date}
+                                  onChange={e => setEditPayForm(x => ({ ...x, date: e.target.value }))}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <select
+                                  value={editPayForm.method}
+                                  onChange={e => setEditPayForm(x => ({ ...x, method: e.target.value }))}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                >
+                                  {PAYMENT_METHODS.map(m => <option key={m}>{m}</option>)}
+                                </select>
+                              </td>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="text"
+                                  value={editPayForm.note}
+                                  onChange={e => setEditPayForm(x => ({ ...x, note: e.target.value }))}
+                                  placeholder="Note…"
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="number"
+                                  min={0.01}
+                                  step="0.01"
+                                  value={editPayForm.amount}
+                                  onChange={e => setEditPayForm(x => ({ ...x, amount: e.target.value }))}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <div className="flex flex-col items-center gap-1">
+                                  <button onClick={() => updatePayment(b.id, p.id, editPayForm)} className="text-green-400 hover:text-green-300 font-bold leading-none" title="Save">✓</button>
+                                  <button onClick={() => setEditingPaymentId(null)} className="text-gray-500 hover:text-white leading-none" title="Cancel">✕</button>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            <tr key={p.id} className="border-b border-gray-700 last:border-0">
+                              <td className="px-4 py-2.5 text-gray-300">{fmtDate(p.date)}</td>
+                              <td className="px-4 py-2.5 text-gray-300">{p.method}</td>
+                              <td className="px-4 py-2.5 text-gray-500">{p.note || '—'}</td>
+                              <td className="px-4 py-2.5 text-right text-green-400 font-mono font-semibold">{formatCurrency(p.amount, currency)}</td>
+                              <td className="px-2 py-2.5">
+                                <button
+                                  onClick={() => { setEditingPaymentId(p.id); setEditPayForm({ amount: String(p.amount), date: p.date ? p.date.split('T')[0] : '', method: p.method || 'Cash', note: p.note || '' }); }}
+                                  className="text-gray-500 hover:text-blue-400 transition-colors"
+                                  title="Edit payment"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                  </svg>
+                                </button>
+                              </td>
+                            </tr>
+                          )
                         ))}
                       </tbody>
                     </table>
