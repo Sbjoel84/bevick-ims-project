@@ -130,15 +130,15 @@ export default function Expenses() {
 
       {/* Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 lg:col-span-2">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 lg:col-span-2 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Expenses</p>
-          <p className="font-syne text-2xl font-bold text-white">{formatCurrency(total, currency)}</p>
+          <p className="font-syne text-xs sm:text-sm md:text-2xl font-bold text-white break-all">{formatCurrency(total, currency)}</p>
           <p className="text-gray-600 text-xs mt-1">{filtered.length} entries</p>
         </div>
         {byCategory.slice(0, 2).map(x => (
-          <div key={x.cat} className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+          <div key={x.cat} className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
             <p className="text-gray-500 text-xs font-medium mb-1">{x.cat}</p>
-            <p className="font-syne text-lg font-bold text-white">{formatCurrency(x.total, currency)}</p>
+            <p className="font-syne text-xs sm:text-sm md:text-lg font-bold text-white break-all">{formatCurrency(x.total, currency)}</p>
           </div>
         ))}
       </div>

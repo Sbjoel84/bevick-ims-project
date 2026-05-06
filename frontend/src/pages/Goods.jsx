@@ -187,17 +187,17 @@ export default function Goods() {
 
       {/* Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total GRNs</p>
-          <p className="font-syne text-2xl font-bold text-white">{filtered.length}</p>
+          <p className="font-syne text-sm sm:text-xl md:text-2xl font-bold text-white">{filtered.length}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Value Received</p>
-          <p className="font-syne text-xl font-bold text-white">{formatCurrency(filtered.reduce((s, g) => s + (g.totalCost || 0), 0), currency)}</p>
+          <p className="font-syne text-xs sm:text-sm md:text-xl font-bold text-white break-all">{formatCurrency(filtered.reduce((s, g) => s + (g.totalCost || 0), 0), currency)}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">This Month</p>
-          <p className="font-syne text-2xl font-bold text-white">{filtered.filter(g => new Date(g.createdAt).getMonth() === new Date().getMonth()).length}</p>
+          <p className="font-syne text-sm sm:text-xl md:text-2xl font-bold text-white">{filtered.filter(g => new Date(g.createdAt).getMonth() === new Date().getMonth()).length}</p>
         </div>
       </div>
 

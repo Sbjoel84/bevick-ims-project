@@ -277,25 +277,25 @@ export default function Inventory() {
 
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Items</p>
-          <p className="font-syne text-xl md:text-2xl font-bold text-white">{filtered.length}</p>
+          <p className="font-syne text-sm sm:text-xl md:text-2xl font-bold text-white">{filtered.length}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Quantity</p>
-          <p className="font-syne text-xl md:text-2xl font-bold text-white">{totalQty}</p>
+          <p className="font-syne text-sm sm:text-xl md:text-2xl font-bold text-white">{totalQty}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Stock Value</p>
-          <p className="font-syne text-lg md:text-xl font-bold text-white">{formatCurrency(totalValue, currency)}</p>
+          <p className="font-syne text-xs sm:text-sm md:text-xl font-bold text-white break-all">{formatCurrency(totalValue, currency)}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Low Stock</p>
-          <p className={`font-syne text-xl md:text-2xl font-bold ${lowCount > 0 ? 'text-amber-400' : 'text-white'}`}>{lowCount}</p>
+          <p className={`font-syne text-sm sm:text-xl md:text-2xl font-bold ${lowCount > 0 ? 'text-amber-400' : 'text-white'}`}>{lowCount}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 md:p-5 col-span-2 md:col-span-1">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0 col-span-2 md:col-span-1">
           <p className="text-gray-500 text-xs font-medium mb-1">Out of Stock</p>
-          <p className={`font-syne text-xl md:text-2xl font-bold ${outCount > 0 ? 'text-red-400' : 'text-white'}`}>{outCount}</p>
+          <p className={`font-syne text-sm sm:text-xl md:text-2xl font-bold ${outCount > 0 ? 'text-red-400' : 'text-white'}`}>{outCount}</p>
         </div>
       </div>
 

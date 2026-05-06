@@ -174,21 +174,21 @@ export default function Customers() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Customers</p>
-          <p className="font-syne text-2xl font-bold text-white">{filtered.length}</p>
+          <p className="font-syne text-sm sm:text-xl md:text-2xl font-bold text-white">{filtered.length}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Goods Value</p>
-          <p className="font-syne text-xl font-bold text-white">{formatCurrency(totalGoods, currency)}</p>
+          <p className="font-syne text-xs sm:text-sm md:text-xl font-bold text-white break-all">{formatCurrency(totalGoods, currency)}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Amount Paid</p>
-          <p className="font-syne text-xl font-bold text-green-400">{formatCurrency(totalPaid, currency)}</p>
+          <p className="font-syne text-xs sm:text-sm md:text-xl font-bold text-green-400 break-all">{formatCurrency(totalPaid, currency)}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Balance Due</p>
-          <p className={`font-syne text-xl font-bold ${totalBalance > 0.005 ? 'text-orange-400' : 'text-white'}`}>
+          <p className={`font-syne text-xs sm:text-sm md:text-xl font-bold break-all ${totalBalance > 0.005 ? 'text-orange-400' : 'text-white'}`}>
             {formatCurrency(totalBalance, currency)}
           </p>
         </div>

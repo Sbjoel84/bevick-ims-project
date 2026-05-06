@@ -236,9 +236,9 @@ export default function Purchase() {
           { label: 'Ordered', value: filtered.filter(p => p.status === 'ordered').length, color: 'text-blue-400' },
           { label: 'Est. Cost', value: formatCurrency(totalEstimated, currency), color: 'text-red-400', small: true },
         ].map(s => (
-          <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+          <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
             <p className="text-gray-500 text-xs font-medium mb-1">{s.label}</p>
-            <p className={`font-syne font-bold ${s.small ? 'text-lg' : 'text-2xl'} ${s.color}`}>{s.value}</p>
+            <p className={`font-syne font-bold break-all ${s.small ? 'text-xs sm:text-sm md:text-lg' : 'text-sm sm:text-lg md:text-2xl'} ${s.color}`}>{s.value}</p>
           </div>
         ))}
       </div>
