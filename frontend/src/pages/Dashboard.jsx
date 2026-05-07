@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useApp, formatCurrency, fmtDate } from '../context/AppContext';
-import { refreshInventory, refreshSales, refreshExpenses, refreshCustomers, refreshBookings } from '../lib/refresh';
+import { refreshInventory, refreshSales, refreshExpenses, refreshCustomers, refreshBookings, refreshCommissions } from '../lib/refresh';
 
 function StatCard({ label, value, sub, color = 'blue', icon }) {
   const colors = {
@@ -69,7 +69,7 @@ function SimpleBarChart({ data, currency }) {
 
 export default function Dashboard() {
   const { state, dispatch } = useApp();
-  const { sales, expenses, inventory, bookings, customers, currency, thr, branch, bname, user } = state;
+  const { sales, expenses, inventory, bookings, customers, commissions = [], currency, thr, branch, bname, user } = state;
   const isAdmin = user?.role === 'super_admin';
 
   useEffect(() => {
@@ -78,6 +78,7 @@ export default function Dashboard() {
     refreshExpenses(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'expenses', data } }));
     refreshCustomers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'customers', data } }));
     refreshBookings(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'bookings', data } }));
+    refreshCommissions(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'commissions', data } }));
   }, []);
 
   // Filter by branch — null branch means admin (sees all)
@@ -102,6 +103,10 @@ export default function Dashboard() {
   const netProfit = totalRevenue - totalExpenses;
   const lowStock = filteredInventory.filter(i => i.qty <= (i.minQty || thr));
   const outOfStock = filteredInventory.filter(i => i.qty === 0);
+
+  // Commission stats
+  const filteredCommissions = branch ? commissions.filter(c => c.branch === branch) : commissions;
+  const totalCommissions = filteredCommissions.reduce((s, c) => s + (c.commission || 0), 0);
 
   // Today's sales
   const today = new Date().toDateString();
@@ -168,6 +173,44 @@ export default function Dashboard() {
             color="purple"
             icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>}
           />
+        </div>
+      )}
+
+      {/* Commission KPIs — admin only */}
+      {isAdmin && (
+        <div className="grid grid-cols-2 gap-3 md:gap-4">
+          <StatCard
+            label="Total Commissions"
+            value={formatCurrency(totalCommissions, currency)}
+            sub={`${filteredCommissions.length} referral${filteredCommissions.length !== 1 ? 's' : ''}`}
+            color="blue"
+            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>}
+          />
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+            <p className="text-xs text-gray-500 font-medium mb-2">Top Referrers</p>
+            {filteredCommissions.length === 0 ? (
+              <p className="text-gray-600 text-xs">No referrals recorded</p>
+            ) : (
+              <div className="space-y-1.5">
+                {[...new Map(filteredCommissions.map(c => [c.partner, c])).values()]
+                  .map(c => c.partner)
+                  .slice(0, 3)
+                  .map(partner => {
+                    const total = filteredCommissions.filter(c => c.partner === partner).reduce((s, c) => s + (c.commission || 0), 0);
+                    const count = filteredCommissions.filter(c => c.partner === partner).length;
+                    return (
+                      <div key={partner} className="flex items-center justify-between gap-2">
+                        <span className="text-white text-xs font-medium truncate">{partner}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-gray-500 text-xs">{count}x</span>
+                          <span className="text-emerald-400 text-xs font-mono">{formatCurrency(total, currency)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

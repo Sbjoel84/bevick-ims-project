@@ -18,6 +18,7 @@ import {
   refreshDeleteRequests,
   refreshPermissions,
   refreshAppSettings,
+  refreshCommissions,
 } from './lib/refresh';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -33,6 +34,7 @@ import RecycleBin from './pages/RecycleBin';
 import Settings from './pages/Settings';
 import AdminPanel from './pages/AdminPanel';
 import Reports from './pages/Reports';
+import Commission from './pages/Commission';
 
 const PAGES = {
   dashboard: Dashboard,
@@ -48,6 +50,7 @@ const PAGES = {
   settings: Settings,
   admin: AdminPanel,
   reports: Reports,
+  commission: Commission,
 };
 
 function LoadingScreen() {
@@ -117,6 +120,7 @@ export default function App() {
       delete_requests: (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'deleteRequests', data } }),
       permissions:     (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'permissions',    data } }),
       app_settings:    (data) => dispatch({ type: 'REFRESH_SETTINGS', payload: data }),
+      commissions:     (data) => dispatch({ type: 'REFRESH_TABLE',    payload: { key: 'commissions',    data } }),
     };
 
     // Maps each table to its dedicated refresh function from /lib/refresh.js
@@ -136,6 +140,7 @@ export default function App() {
       delete_requests: refreshDeleteRequests,
       permissions:     refreshPermissions,
       app_settings:    refreshAppSettings,
+      commissions:     refreshCommissions,
     };
 
     startRealtime((payload) => {

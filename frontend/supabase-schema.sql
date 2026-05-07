@@ -89,6 +89,11 @@ create table if not exists permissions (
   pages jsonb not null default '[]'::jsonb
 );
 
+create table if not exists commissions (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb
+);
+
 -- Disable Row Level Security for all tables
 -- (the app uses its own user/role system, not Supabase Auth)
 alter table app_settings    disable row level security;
@@ -106,6 +111,7 @@ alter table audit_log       disable row level security;
 alter table pending_users   disable row level security;
 alter table delete_requests disable row level security;
 alter table permissions     disable row level security;
+alter table commissions     disable row level security;
 
 -- Seed default settings row (do nothing if already exists)
 insert into app_settings (id, data) values (

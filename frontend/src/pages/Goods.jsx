@@ -321,12 +321,15 @@ export default function Goods() {
                   onFocus={() => setItemDropdown(true)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                {itemDropdown && itemSearch && availableItems.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-700 rounded-xl mt-1 z-10 max-h-48 overflow-y-auto">
-                    {availableItems.slice(0, 8).map(item => (
+                {itemDropdown && availableItems.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-700 rounded-xl mt-1 z-10 max-h-60 overflow-y-auto shadow-xl">
+                    {availableItems.map(item => (
                       <button key={item.id} type="button" onClick={() => addItem(item)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-700 text-left transition-colors">
-                        <span className="text-white text-sm truncate">{item.name}</span>
-                        <span className="text-gray-400 text-xs ml-2 shrink-0">{item.qty} {item.unit} in stock</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm truncate">{item.name}</p>
+                          <p className="text-gray-500 text-xs">{item.category} · {item.branch === 'DUB' ? 'Dubai' : 'Kubwa'}</p>
+                        </div>
+                        <span className="text-gray-400 text-xs ml-2 shrink-0">{item.qty} {item.unit}</span>
                       </button>
                     ))}
                   </div>
@@ -443,12 +446,15 @@ export default function Goods() {
                   onFocus={() => setItemDropdown(true)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                {itemDropdown && itemSearch && availableItems.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-700 rounded-xl mt-1 z-10 max-h-48 overflow-y-auto">
-                    {availableItems.slice(0, 8).map(item => (
+                {itemDropdown && availableItems.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-700 rounded-xl mt-1 z-10 max-h-60 overflow-y-auto shadow-xl">
+                    {availableItems.map(item => (
                       <button key={item.id} type="button" onClick={() => addItem(item)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-700 text-left transition-colors">
-                        <span className="text-white text-sm truncate">{item.name}</span>
-                        <span className="text-gray-400 text-xs ml-2 shrink-0">{item.qty} {item.unit} in stock</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm truncate">{item.name}</p>
+                          <p className="text-gray-500 text-xs">{item.category} · {item.branch === 'DUB' ? 'Dubai' : 'Kubwa'}</p>
+                        </div>
+                        <span className="text-gray-400 text-xs ml-2 shrink-0">{item.qty} {item.unit}</span>
                       </button>
                     ))}
                   </div>

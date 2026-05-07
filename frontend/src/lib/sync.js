@@ -250,6 +250,17 @@ export async function syncAction(action, prevState, nextState) {
         break;
       }
 
+      // ── COMMISSIONS ──────────────────────────────────────────
+      case 'ADD_COMMISSION':
+        await upsert('commissions', action.payload);
+        break;
+      case 'UPDATE_COMMISSION':
+        await upsert('commissions', action.payload);
+        break;
+      case 'DELETE_COMMISSION':
+        await remove('commissions', action.payload);
+        break;
+
       // ── SUPPLIERS ─────────────────────────────────────────────
       case 'ADD_SUPPLIER':
         await upsert('suppliers', action.payload);
@@ -371,6 +382,7 @@ export async function syncAction(action, prevState, nextState) {
             sale: 'sales', customer: 'customers', expense: 'expenses',
             inventory: 'inventory', booking: 'bookings',
             purchase: 'purchase_list', supplier: 'suppliers',
+            commission: 'commissions',
           };
           const tbl = tableMap[req.type];
           if (tbl) {

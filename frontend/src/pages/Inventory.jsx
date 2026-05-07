@@ -4,7 +4,7 @@ import { refreshInventory } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
 
-const CATEGORIES = ['Machinery', 'Spare Parts', 'Chemicals', 'Safety', 'Others'];
+const CATEGORIES = ['Machinery', 'Spare Parts', 'Chemicals', 'Consumables', 'Others'];
 const UNITS = ['Unit', 'Pcs', 'Roll', 'Set', 'Meter', 'Kg', 'Litre', 'Box', 'Carton'];
 const BRANCHES = [{ id: 'DUB', label: 'Dubai Market' }, { id: 'KUB', label: 'Kubwa Office' }];
 const SOURCES = ['China', 'Lagos', 'Abuja', 'Others'];

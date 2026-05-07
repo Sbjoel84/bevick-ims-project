@@ -104,6 +104,12 @@ export const refreshPermissions = async (setState) => {
   setState(perms);
 };
 
+export const refreshCommissions = async (setState) => {
+  const { data, error } = await supabase.from('commissions').select('data');
+  if (error) { console.error('[refresh] commissions:', error.message); return; }
+  setState(extract(data));
+};
+
 export const refreshProfiles = async (setState) => {
   const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
   if (error) { console.error('[refresh] profiles:', error.message); return; }

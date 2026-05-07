@@ -160,7 +160,8 @@ export default function Login() {
         return;
       }
 
-      const appUser = users.find(u => u.em?.toLowerCase() === email);
+      const appUser = users.find(u => u.em?.toLowerCase() === email)
+        || DEMO_USERS.find(u => u.em?.toLowerCase() === email);
       const isPending = pendingUsers.find(u => u.em?.toLowerCase() === email);
 
       if (!appUser && !isPending) {

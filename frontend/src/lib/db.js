@@ -68,6 +68,7 @@ export async function loadData() {
     pendingRes,
     deleteReqRes,
     permissionsRes,
+    commissionsRes,
   ] = await Promise.all([
     supabase.from('app_settings').select('data').eq('id', 'main').maybeSingle(),
     supabase.from('app_users').select('data'),
@@ -84,6 +85,7 @@ export async function loadData() {
     supabase.from('pending_users').select('data'),
     supabase.from('delete_requests').select('data'),
     supabase.from('permissions').select('role, pages'),
+    supabase.from('commissions').select('data'),
   ]);
 
   // ── Settings ─────────────────────────────────────────────────
@@ -168,5 +170,6 @@ export async function loadData() {
     auditLog:       extract(auditRes),
     pendingUsers:   extract(pendingRes),
     deleteRequests: extract(deleteReqRes),
+    commissions:    extract(commissionsRes),
   };
 }

@@ -40,6 +40,7 @@ const initialState = {
   users: [],
   auditLog: [],
   pendingUsers: [],
+  commissions: [],
   permissions: JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS)),
   // Filters
   sF: 'all',
@@ -109,6 +110,7 @@ function reducer(state, action) {
         users:          state.users,
         auditLog:       state.auditLog,
         pendingUsers:   state.pendingUsers,
+        commissions:    state.commissions,
         permissions:    state.permissions,
         deleteRequests: state.deleteRequests,
         vat:            state.vat,
@@ -471,6 +473,32 @@ function reducer(state, action) {
       };
     }
 
+    // ── COMMISSIONS ────────────────────────────────────────────
+    case 'ADD_COMMISSION': {
+      const c = action.payload;
+      return {
+        ...state,
+        commissions: [c, ...state.commissions],
+        auditLog: [{ id: Date.now(), action: 'Commission added', user: state.user?.name, ts: new Date().toISOString(), detail: `${c.partner} → ${c.customer}` }, ...state.auditLog],
+      };
+    }
+    case 'UPDATE_COMMISSION': {
+      const c = action.payload;
+      return {
+        ...state,
+        commissions: state.commissions.map(x => x.id === c.id ? c : x),
+        auditLog: [{ id: Date.now(), action: 'Commission updated', user: state.user?.name, ts: new Date().toISOString(), detail: `${c.partner} → ${c.customer}` }, ...state.auditLog],
+      };
+    }
+    case 'DELETE_COMMISSION': {
+      const c = state.commissions.find(x => x.id === action.payload);
+      return {
+        ...state,
+        commissions: state.commissions.filter(x => x.id !== action.payload),
+        auditLog: [{ id: Date.now(), action: 'Commission deleted', user: state.user?.name, ts: new Date().toISOString(), detail: c ? `${c.partner} → ${c.customer}` : action.payload }, ...state.auditLog],
+      };
+    }
+
     // ── SUPPLIERS ──────────────────────────────────────────────
     case 'ADD_SUPPLIER':
       return { ...state, suppliers: [action.payload, ...state.suppliers] };
@@ -498,7 +526,7 @@ function reducer(state, action) {
       const typeMap = {
         sale: 'DELETE_SALE', customer: 'DELETE_CUSTOMER', expense: 'DELETE_EXPENSE',
         inventory: 'DELETE_ITEM', booking: 'DELETE_BOOKING', purchase: 'DELETE_PURCHASE',
-        supplier: 'DELETE_SUPPLIER',
+        supplier: 'DELETE_SUPPLIER', commission: 'DELETE_COMMISSION',
       };
       const deleteType = typeMap[req.type];
       const afterDelete = deleteType ? reducer(state, { type: deleteType, payload: req.targetId }) : state;
@@ -609,6 +637,7 @@ function reducer(state, action) {
         goods_received: 'goodsReceived', suppliers: 'suppliers',
         recycle_bin: 'recycleBin', app_users: 'users',
         pending_users: 'pendingUsers', delete_requests: 'deleteRequests',
+        commissions: 'commissions',
       };
       // permissions table has a special structure (role/pages columns, not id/data)
       if (table === 'permissions') {
@@ -760,7 +789,7 @@ export function AppProvider({ children }) {
       'inventory', 'sales', 'customers', 'expenses', 'bookings',
       'purchase_list', 'goods_received', 'suppliers', 'recycle_bin',
       'audit_log', 'app_users', 'pending_users', 'delete_requests',
-      'permissions', 'app_settings',
+      'permissions', 'app_settings', 'commissions',
     ];
 
     const channel = supabase.channel('realtime:all-tables');

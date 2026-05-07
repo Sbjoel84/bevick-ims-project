@@ -132,11 +132,17 @@ export default function Purchase() {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [selectedOrderable, setSelectedOrderable] = useState('');
+  const [itemNameSearch, setItemNameSearch] = useState('');
+  const [itemNameDropdown, setItemNameDropdown] = useState(false);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [reportOpen, setReportOpen] = useState(false);
   const [deleteReq, setDeleteReq] = useState(null);
+
+  const filteredInvItems = inventory.filter(i =>
+    !itemNameSearch || i.name.toLowerCase().includes(itemNameSearch.toLowerCase())
+  );
 
   const purchaseColumns = [
     { key: 'date',     label: 'Date',     format: v => fmtDate(v) },
@@ -353,27 +359,24 @@ export default function Purchase() {
       </div>
 
       {modal && (
-        <Modal title="Purchase Request" onClose={() => { setModal(false); setForm(EMPTY); setSelectedOrderable(''); }}>
+        <Modal title="Purchase Request" onClose={() => { setModal(false); setForm(EMPTY); setSelectedOrderable(''); setItemNameSearch(''); }}>
           <div className="space-y-4">
 
-            {/* Booked item picker */}
-            <div>
-              <label className="text-gray-400 text-xs font-medium block mb-1.5">
-                Select Booked Item <span className="text-red-400">*</span>
-              </label>
-              {orderableItems.length === 0 ? (
-                <div className="bg-gray-800 rounded-lg px-4 py-3 text-gray-500 text-sm">
-                  All booked items are either in stock or already have a pending order.
-                </div>
-              ) : (
+            {/* Optional: pre-fill from booked items */}
+            {orderableItems.length > 0 && (
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">
+                  Quick-fill from Bookings <span className="text-gray-600">(optional)</span>
+                </label>
                 <select
                   value={selectedOrderable}
                   onChange={e => {
                     const val = e.target.value;
                     setSelectedOrderable(val);
-                    if (!val) { setForm(f => ({ ...f, name: '', itemId: '', bookingId: '', qty: '', unit: '', category: 'Spare Parts', estimatedCost: '' })); return; }
+                    if (!val) { setForm(f => ({ ...f, name: '', itemId: '', bookingId: '', qty: '', unit: '', category: 'Spare Parts', estimatedCost: '' })); setItemNameSearch(''); return; }
                     const found = orderableItems.find(o => o.itemId === val);
                     if (found) {
+                      setItemNameSearch(found.name);
                       setForm(f => ({
                         ...f,
                         name: found.name,
@@ -390,76 +393,130 @@ export default function Purchase() {
                   }}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">— Pick a booked item —</option>
+                  <option value="">— Select a booked item needing stock —</option>
                   {orderableItems.map(o => (
                     <option key={o.itemId} value={o.itemId}>
                       {o.name} · need {o.needed} {o.unit} · {o.branch === 'DUB' ? 'Dubai' : 'Kubwa'} (booking #{o.bookingId})
                     </option>
                   ))}
                 </select>
-              )}
-            </div>
-
-            {/* Show filled details only after an item is selected */}
-            {selectedOrderable && (
-              <>
-                {/* Info strip */}
-                {(() => { const o = orderableItems.find(x => x.itemId === selectedOrderable); return o ? (
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2.5 text-xs text-amber-400 flex flex-wrap gap-x-4 gap-y-1">
+                {selectedOrderable && (() => { const o = orderableItems.find(x => x.itemId === selectedOrderable); return o ? (
+                  <div className="mt-1.5 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2 text-xs text-amber-400 flex flex-wrap gap-x-4 gap-y-0.5">
                     <span>Customer: <strong>{o.customer || '—'}</strong></span>
                     <span>In stock: <strong>{o.inStock}</strong></span>
                     <span>Needed: <strong>{o.needed} {o.unit}</strong></span>
                     <span>Branch: <strong>{o.branch === 'DUB' ? 'Dubai' : 'Kubwa'}</strong></span>
                   </div>
                 ) : null; })()}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-gray-400 text-xs font-medium block mb-1.5">Category</label>
-                    <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-gray-400 text-xs font-medium block mb-1.5">Priority</label>
-                    <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      {PRIORITIES.map(p => <option key={p}>{p}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-gray-400 text-xs font-medium block mb-1.5">Quantity</label>
-                    <input type="number" min={1} value={form.qty} onChange={e => setForm(f => ({ ...f, qty: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                  </div>
-                  <div>
-                    <label className="text-gray-400 text-xs font-medium block mb-1.5">Unit</label>
-                    <input type="text" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                  </div>
-                  <div>
-                    <label className="text-gray-400 text-xs font-medium block mb-1.5">Est. Cost</label>
-                    <input type="number" min={0} value={form.estimatedCost} onChange={e => setForm(f => ({ ...f, estimatedCost: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-gray-400 text-xs font-medium block mb-1.5">Supplier (optional)</label>
-                  <input type="text" list="supplier-list" value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                  <datalist id="supplier-list">
-                    {suppliers.map(s => <option key={s.id} value={s.name}/>)}
-                  </datalist>
-                </div>
-
-                <div>
-                  <label className="text-gray-400 text-xs font-medium block mb-1.5">Note</label>
-                  <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} rows={2} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"/>
-                </div>
-              </>
+              </div>
             )}
 
+            {/* Item name — searchable inventory dropdown */}
+            <div>
+              <label className="text-gray-400 text-xs font-medium block mb-1.5">
+                Item Name <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search inventory or type item name…"
+                  value={itemNameSearch}
+                  onChange={e => {
+                    setItemNameSearch(e.target.value);
+                    setForm(f => ({ ...f, name: e.target.value }));
+                    setItemNameDropdown(true);
+                    setSelectedOrderable('');
+                  }}
+                  onFocus={() => setItemNameDropdown(true)}
+                  onBlur={() => setTimeout(() => setItemNameDropdown(false), 150)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {itemNameDropdown && filteredInvItems.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-700 rounded-xl mt-1 z-20 max-h-56 overflow-y-auto shadow-xl">
+                    {filteredInvItems.map(i => (
+                      <button
+                        key={i.id}
+                        type="button"
+                        onMouseDown={() => {
+                          setItemNameSearch(i.name);
+                          setItemNameDropdown(false);
+                          setForm(f => ({
+                            ...f,
+                            name:          i.name,
+                            itemId:        i.id,
+                            unit:          i.unit || f.unit,
+                            category:      i.category || f.category,
+                            estimatedCost: i.price ? String(i.price) : f.estimatedCost,
+                            supplier:      i.supplier || f.supplier,
+                          }));
+                        }}
+                        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-700 text-left transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm truncate">{i.name}</p>
+                          <p className="text-gray-500 text-xs">{i.category} · {i.branch === 'DUB' ? 'Dubai' : 'Kubwa'}</p>
+                        </div>
+                        <span className="text-gray-400 text-xs ml-2 shrink-0">{i.qty} {i.unit} in stock</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Category</label>
+                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Priority</label>
+                <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {PRIORITIES.map(p => <option key={p}>{p}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Quantity</label>
+                <input type="number" min={1} value={form.qty} onChange={e => setForm(f => ({ ...f, qty: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Unit</label>
+                <input type="text" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Est. Cost</label>
+                <input type="number" min={0} value={form.estimatedCost} onChange={e => setForm(f => ({ ...f, estimatedCost: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Branch</label>
+                <select value={form.branch} onChange={e => setForm(f => ({ ...f, branch: e.target.value }))} disabled={!!branch} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
+                  {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Supplier (optional)</label>
+                <input type="text" list="supplier-list" value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                <datalist id="supplier-list">
+                  {suppliers.map(s => <option key={s.id} value={s.name}/>)}
+                </datalist>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-gray-400 text-xs font-medium block mb-1.5">Note</label>
+              <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} rows={2} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"/>
+            </div>
+
             <div className="flex gap-3 pt-2">
-              <button onClick={() => { setModal(false); setForm(EMPTY); setSelectedOrderable(''); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
+              <button onClick={() => { setModal(false); setForm(EMPTY); setSelectedOrderable(''); setItemNameSearch(''); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
               <button onClick={submit} disabled={!form.name.trim()} className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">Add Request</button>
             </div>
           </div>
