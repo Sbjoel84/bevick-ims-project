@@ -217,6 +217,8 @@ function reducer(state, action) {
       const e = action.payload;
       return { ...state, expenses: [e, ...state.expenses], auditLog: [{ id: Date.now(), action: 'Expense added', user: state.user?.name, ts: new Date().toISOString(), detail: e.desc }, ...state.auditLog] };
     }
+    case 'UPDATE_EXPENSE':
+      return { ...state, expenses: state.expenses.map(e => e.id === action.payload.id ? action.payload : e) };
     case 'DELETE_EXPENSE': {
       const e = state.expenses.find(x => x.id === action.payload);
       return {

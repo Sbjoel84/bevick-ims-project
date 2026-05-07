@@ -34,6 +34,7 @@ export default function Expenses() {
   }, []);
 
   const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState(null); // expense being edited, or null for add
   const [form, setForm] = useState(EMPTY);
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('all');
@@ -75,22 +76,51 @@ export default function Expenses() {
     total: filtered.filter(e => e.category === cat).reduce((s, e) => s + (e.amount || 0), 0),
   })).filter(x => x.total > 0);
 
+  function openEdit(e) {
+    setEditing(e);
+    setForm({
+      desc: e.desc || '',
+      amount: String(e.amount || ''),
+      category: e.category || 'Operations',
+      branch: e.branch || 'DUB',
+      date: e.date ? e.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      note: e.note || '',
+    });
+    setModal(true);
+  }
+
   function submit() {
     if (!form.desc.trim() || !form.amount) return;
-    dispatch({
-      type: 'ADD_EXPENSE',
-      payload: {
-        id: genId('E'),
-        desc: form.desc,
-        amount: parseFloat(form.amount),
-        category: form.category,
-        branch: branch || form.branch,
-        date: form.date || new Date().toISOString(),
-        note: form.note,
-        createdBy: user?.name,
-      },
-    });
+    if (editing) {
+      dispatch({
+        type: 'UPDATE_EXPENSE',
+        payload: {
+          ...editing,
+          desc: form.desc,
+          amount: parseFloat(form.amount),
+          category: form.category,
+          branch: branch || form.branch,
+          date: form.date || editing.date,
+          note: form.note,
+        },
+      });
+    } else {
+      dispatch({
+        type: 'ADD_EXPENSE',
+        payload: {
+          id: genId('E'),
+          desc: form.desc,
+          amount: parseFloat(form.amount),
+          category: form.category,
+          branch: branch || form.branch,
+          date: form.date || new Date().toISOString(),
+          note: form.note,
+          createdBy: user?.name,
+        },
+      });
+    }
     setModal(false);
+    setEditing(null);
     setForm(EMPTY);
   }
 
@@ -119,7 +149,7 @@ export default function Expenses() {
             Report
           </button>
           <button
-            onClick={() => { setForm({ ...EMPTY, branch: branch || 'DUB' }); setModal(true); }}
+            onClick={() => { setEditing(null); setForm({ ...EMPTY, branch: branch || 'DUB' }); setModal(true); }}
             className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
@@ -191,9 +221,14 @@ export default function Expenses() {
                   <td className="px-5 py-3.5 text-gray-400">{e.branch === 'DUB' ? 'Dubai' : 'Kubwa'}</td>
                   <td className="px-5 py-3.5 text-right font-mono text-red-400 font-medium">{formatCurrency(e.amount, currency)}</td>
                   <td className="px-5 py-3.5">
-                    <button onClick={() => del(e.id)} className="text-gray-500 hover:text-red-400 transition-colors float-right">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => openEdit(e)} className="text-gray-500 hover:text-blue-400 transition-colors">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                      </button>
+                      <button onClick={() => del(e.id)} className="text-gray-500 hover:text-red-400 transition-colors">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -215,7 +250,7 @@ export default function Expenses() {
       )}
 
       {modal && (
-        <Modal title="Add Expense" onClose={() => setModal(false)}>
+        <Modal title={editing ? 'Edit Expense' : 'Add Expense'} onClose={() => { setModal(false); setEditing(null); setForm(EMPTY); }}>
           <div className="space-y-4">
             <div>
               <label className="text-gray-400 text-xs font-medium block mb-1.5">Description <span className="text-red-400">*</span></label>
@@ -282,13 +317,13 @@ export default function Expenses() {
               />
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setModal(false)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
+              <button onClick={() => { setModal(false); setEditing(null); setForm(EMPTY); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
               <button
                 onClick={submit}
                 disabled={!form.desc.trim() || !form.amount}
                 className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
               >
-                Add Expense
+                {editing ? 'Save Changes' : 'Add Expense'}
               </button>
             </div>
           </div>

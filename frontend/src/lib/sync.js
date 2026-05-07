@@ -129,6 +129,9 @@ export async function syncAction(action, prevState, nextState) {
       case 'ADD_EXPENSE':
         await upsert('expenses', action.payload);
         break;
+      case 'UPDATE_EXPENSE':
+        await upsert('expenses', action.payload);
+        break;
       case 'DELETE_EXPENSE': {
         await remove('expenses', action.payload);
         await toRecycleBin(nextState, action.payload);
