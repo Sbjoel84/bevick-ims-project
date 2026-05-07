@@ -90,15 +90,23 @@ export default function AdminPanel() {
   const { state, dispatch } = useApp();
   const { users, pendingUsers, deleteRequests, permissions, auditLog, branch, bname, user: currentUser } = state;
 
+  function syncUsers() {
+    refreshAppUsers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'users', data } }));
+    refreshPendingUsers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'pendingUsers', data } }));
+  }
+
   useEffect(() => {
-    // Do NOT refresh app_users here — doing so races with the async ADD_USER sync
-    // and overwrites optimistically-added users before they land in Supabase.
-    // app_users is kept current by the Realtime subscription in AppContext.
+    // Refresh users from Supabase on every Admin Panel load so the list stays current.
+    // A short delay avoids overwriting any in-flight optimistic ADD_USER writes.
+    const t = setTimeout(() => {
+      refreshAppUsers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'users', data } }));
+    }, 800);
     refreshPendingUsers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'pendingUsers', data } }));
     refreshDeleteRequests(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'deleteRequests', data } }));
     refreshPermissions(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'permissions', data } }));
     refreshAuditLog(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'auditLog', data } }));
     refreshProfiles(setProfiles);
+    return () => clearTimeout(t);
   }, []);
 
   const [profiles, setProfiles] = useState([]);
@@ -193,11 +201,26 @@ export default function AdminPanel() {
       {/* Users Tab */}
       {tab === 'Users' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <button onClick={openAddUser} className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-              Add User
-            </button>
+          <div className="flex items-center justify-between">
+            <p className="text-gray-500 text-sm">
+              <span className="text-white font-semibold">{users.length}</span> user{users.length !== 1 ? 's' : ''} in Supabase
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={syncUsers}
+                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+                title="Refresh users from Supabase"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Sync
+              </button>
+              <button onClick={openAddUser} className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                Add User
+              </button>
+            </div>
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
             <table className="w-full text-sm">
@@ -211,7 +234,9 @@ export default function AdminPanel() {
                 </tr>
               </thead>
               <tbody>
-                {users.map(u => (
+                {users.length === 0 ? (
+                  <tr><td colSpan={5} className="text-center text-gray-600 py-12">No users found — click Sync to load from Supabase</td></tr>
+                ) : users.map(u => (
                   <tr key={u.id} className={`border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors ${u.id === currentUser?.id ? 'bg-blue-500/5' : ''}`}>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
@@ -221,11 +246,12 @@ export default function AdminPanel() {
                         <div>
                           <p className="text-white font-medium">{u.name} {u.id === currentUser?.id && <span className="text-gray-500 text-xs">(you)</span>}</p>
                           <p className="text-gray-500 text-xs">{u.em}</p>
+                          {u.phone && <p className="text-gray-600 text-xs">{u.phone}</p>}
                         </div>
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg capitalize">{u.role?.replace('_', ' ')}</span>
+                      <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg capitalize">{u.role?.replace(/_/g, ' ')}</span>
                     </td>
                     <td className="px-5 py-3.5 text-gray-400">{u.bid === 'DUB' ? 'Dubai Market' : u.bid === 'KUB' ? 'Kubwa Office' : 'All'}</td>
                     <td className="px-5 py-3.5">

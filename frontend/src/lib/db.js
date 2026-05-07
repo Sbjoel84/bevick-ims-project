@@ -88,6 +88,14 @@ export async function loadData() {
     supabase.from('commissions').select('data'),
   ]);
 
+  // ── Write access test — detect RLS or permission issues on startup ───────────
+  let _writeError = null;
+  const { error: _wErr } = await supabase.from('app_settings').upsert({ id: 'main', data: settingsRes.data?.data || {} });
+  if (_wErr) {
+    _writeError = _wErr.message || _wErr.error_description || JSON.stringify(_wErr);
+    console.error('[db] WRITE TEST FAILED — all saves will silently fail:', _writeError);
+  }
+
   // ── Settings ─────────────────────────────────────────────────
   const settingsData = settingsRes.data?.data || {};
 
@@ -143,6 +151,7 @@ export async function loadData() {
   }
 
   return {
+    _writeError,
     // Settings fields (spread directly into state)
     vat:            settingsData.vat            ?? 0.075,
     thr:            settingsData.thr            ?? 5,

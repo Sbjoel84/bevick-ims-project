@@ -50,6 +50,8 @@ const initialState = {
   notifySales: true,
   notifyLowStock: true,
   notifyExpenses: false,
+  // Sync error toasts
+  toasts: [],
   // Current page
   page: 'login',
 };
@@ -66,6 +68,12 @@ function reducer(state, action) {
       return { ...state, user: null, recoveryMode: true, page: 'login' };
     case 'EXIT_RECOVERY':
       return { ...state, recoveryMode: false };
+
+    // ── TOASTS ─────────────────────────────────────────────────────────────────
+    case 'ADD_TOAST':
+      return { ...state, toasts: [...state.toasts, action.payload] };
+    case 'REMOVE_TOAST':
+      return { ...state, toasts: state.toasts.filter(t => t.id !== action.payload) };
 
     // ── REFRESH — bulk-set a single table from a manual Supabase fetch ─────────
     case 'REFRESH_TABLE':
@@ -725,7 +733,12 @@ export function AppProvider({ children }) {
     rawDispatch(action);
     // Compute nextState using the reducer (pure, safe to run twice)
     const nextState = reducer(prevState, action);
-    syncAction(action, prevState, nextState);
+    syncAction(action, prevState, nextState).catch((err) => {
+      const id = Date.now();
+      const detail = err?.message || err?.error_description || String(err) || 'unknown error';
+      rawDispatch({ type: 'ADD_TOAST', payload: { id, message: `Save failed (${action.type}): ${detail}` } });
+      setTimeout(() => rawDispatch({ type: 'REMOVE_TOAST', payload: id }), 15000);
+    });
     // Sign out of Supabase Auth on logout
     if (action.type === 'LOGOUT') {
       supabase.auth.signOut();
@@ -737,6 +750,18 @@ export function AppProvider({ children }) {
     loadData()
       .then(async (data) => {
         rawDispatch({ type: 'INIT', payload: data });
+
+        // Surface write permission error immediately so user knows saves won't work
+        if (data._writeError) {
+          const id = Date.now();
+          rawDispatch({
+            type: 'ADD_TOAST',
+            payload: {
+              id,
+              message: `⚠️ Database writes are blocked: "${data._writeError}". Nothing you enter will be saved. Fix Row Level Security in your Supabase dashboard.`,
+            },
+          });
+        }
 
         // Try to restore session from localStorage first (cross-browser persistence)
         const savedSessionToken = localStorage.getItem('bevick_session_token');
@@ -768,6 +793,15 @@ export function AppProvider({ children }) {
       .catch(err => {
         console.error('[AppContext] Failed to load data from Supabase:', err);
         rawDispatch({ type: 'INIT', payload: {} });
+        // Show a persistent toast so the user knows the DB is unreachable
+        const id = Date.now();
+        rawDispatch({
+          type: 'ADD_TOAST',
+          payload: {
+            id,
+            message: 'Could not connect to the database. Your data may not load correctly. Please check your internet connection or contact support if this persists.',
+          },
+        });
       });
 
     // Listen for auth events (password recovery link click → redirect to app)
@@ -821,6 +855,26 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{ state, dispatch }}>
       {children}
+      {state.toasts.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+          {state.toasts.map(t => (
+            <div key={t.id} className="flex items-start gap-3 bg-red-950 border border-red-700 text-white px-4 py-3 rounded-xl shadow-2xl pointer-events-auto animate-fade-in">
+              <svg className="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-red-200">Database sync failed</p>
+                <p className="text-xs text-red-300 mt-0.5 leading-relaxed">{t.message}</p>
+              </div>
+              <button onClick={() => rawDispatch({ type: 'REMOVE_TOAST', payload: t.id })} className="text-red-500 hover:text-red-200 shrink-0 ml-1 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </AppContext.Provider>
   );
 }

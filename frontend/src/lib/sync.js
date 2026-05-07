@@ -405,5 +405,6 @@ export async function syncAction(action, prevState, nextState) {
 
   } catch (err) {
     console.error('[sync] Error syncing action', action.type, ':', err?.message || err);
+    throw err;
   }
 }
