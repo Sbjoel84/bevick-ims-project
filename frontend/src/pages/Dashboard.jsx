@@ -48,19 +48,19 @@ function SimpleBarChart({ data, currency }) {
   ];
   
   return (
-    <div className="flex items-end justify-between gap-2 h-48 pb-4">
+    <div className="flex flex-col gap-2">
       {data.map((item, idx) => (
-        <div key={idx} className="flex-1 flex flex-col items-center gap-1">
-          <span className="text-gray-400 text-xs font-mono font-semibold">{item.qty}</span>
-          <div className="w-full bg-gray-800 rounded-t-lg overflow-hidden relative" style={{ height: '140px' }}>
-            <div 
-              className={`absolute bottom-0 w-full bg-gradient-to-t ${colors[idx % colors.length]} rounded-t-lg transition-all duration-500`}
-              style={{ height: `${(item.qty / maxQty) * 100}%` }}
+        <div key={idx} className="flex items-center gap-3">
+          <span className="text-gray-400 text-xs w-28 shrink-0 truncate text-right" title={item.name}>
+            {item.name}
+          </span>
+          <div className="flex-1 bg-gray-800 rounded-full overflow-hidden h-5 relative">
+            <div
+              className={`h-full bg-gradient-to-r ${colors[idx % colors.length]} rounded-full transition-all duration-500`}
+              style={{ width: `${(item.qty / maxQty) * 100}%` }}
             />
           </div>
-          <span className="text-gray-500 text-[10px] text-center truncate w-full" title={item.name}>
-            {item.name.length > 8 ? item.name.slice(0, 8) + '...' : item.name}
-          </span>
+          <span className="text-gray-400 text-xs font-mono font-semibold w-8 shrink-0">{item.qty}</span>
         </div>
       ))}
     </div>

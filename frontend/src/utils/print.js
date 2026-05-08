@@ -142,7 +142,8 @@ th:nth-child(3),td:nth-child(3),th:nth-child(4),td:nth-child(4){ text-align:righ
   </div>
   ${sale.note ? `<p style="font-size:11px;color:#555;margin-top:8px;">Note: ${esc(sale.note)}</p>` : ''}
   <div class="foot">
-    <p>** Thank you for your business! **</p>
+    <p style="font-size:13px;font-weight:bold;letter-spacing:1px;">${esc(bizName) || 'Bevick Packaging Machineries'}</p>
+    <p style="margin-top:4px;">** Thank you for your business! **</p>
     <p style="margin-top:8px;font-size:10px;">${fmtDateTime(new Date().toISOString())}</p>
   </div>
 </div>
