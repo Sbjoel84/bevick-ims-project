@@ -94,6 +94,16 @@ function ThemeToggle() {
 export default function App() {
   const { state, dispatch } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem('sidebarCollapsed') === 'true'
+  );
+
+  function toggleSidebar() {
+    setSidebarCollapsed(c => {
+      localStorage.setItem('sidebarCollapsed', String(!c));
+      return !c;
+    });
+  }
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', state.theme || 'dark');
@@ -169,10 +179,15 @@ export default function App() {
   return (
     <div className="flex h-screen bg-gray-950 overflow-hidden">
       <ThemeToggle />
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggle={toggleSidebar}
+      />
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col lg:ml-64 min-w-0">
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
         {/* Top bar (mobile) */}
         <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-gray-950 border-b border-gray-800 shrink-0">
           <button

@@ -27,25 +27,26 @@ function Modal({ title, onClose, children }) {
 // Normalise legacy records that stored items as a string or string[]
 function normItems(c) {
   if (!c) return [];
-  // New format: items is array of objects with name/customerPrice/engineerPrice
+  // New format: items is array of objects with name/qty/customerPrice/engineerPrice
   if (Array.isArray(c.items) && c.items.length > 0 && typeof c.items[0] === 'object') {
-    return c.items;
+    return c.items.map(i => ({ ...i, qty: i.qty || 1 }));
   }
   // Legacy: has top-level prices → one item row
   if (c.customerPrice || c.engineerPrice) {
     const name = Array.isArray(c.items)
       ? c.items.filter(Boolean).join(', ')
       : (typeof c.items === 'string' ? c.items : '');
-    return [{ name, customerPrice: c.customerPrice || 0, engineerPrice: c.engineerPrice || 0 }];
+    return [{ name, qty: 1, customerPrice: c.customerPrice || 0, engineerPrice: c.engineerPrice || 0 }];
   }
   return [];
 }
 
 function itemCommission(item) {
-  return (parseFloat(item.customerPrice) || 0) - (parseFloat(item.engineerPrice) || 0);
+  const qty = parseInt(item.qty) || 1;
+  return ((parseFloat(item.customerPrice) || 0) - (parseFloat(item.engineerPrice) || 0)) * qty;
 }
 
-const EMPTY_ITEM = () => ({ id: genId('I'), name: '', customerPrice: '', engineerPrice: '' });
+const EMPTY_ITEM = () => ({ id: genId('I'), name: '', qty: 1, customerPrice: '', engineerPrice: '' });
 
 const EMPTY_FORM = {
   partner: '',
@@ -91,8 +92,8 @@ export default function Commission() {
   }
 
   // ── Totals (live) ───────────────────────────────────────────
-  const totalCustomerPrice = form.items.reduce((s, i) => s + (parseFloat(i.customerPrice) || 0), 0);
-  const totalEngineerPrice = form.items.reduce((s, i) => s + (parseFloat(i.engineerPrice) || 0), 0);
+  const totalCustomerPrice  = form.items.reduce((s, i) => s + (parseFloat(i.customerPrice) || 0) * (parseInt(i.qty) || 1), 0);
+  const totalEngineerPrice  = form.items.reduce((s, i) => s + (parseFloat(i.engineerPrice) || 0) * (parseInt(i.qty) || 1), 0);
   const totalCommissionForm = totalCustomerPrice - totalEngineerPrice;
 
   // ── Filtered table data ─────────────────────────────────────
@@ -153,7 +154,7 @@ export default function Commission() {
       customer: c.customer || '',
       date:     c.date?.slice(0, 10) || new Date().toISOString().slice(0, 10),
       items:    items.length
-        ? items.map(i => ({ id: genId('I'), name: i.name || '', customerPrice: i.customerPrice || '', engineerPrice: i.engineerPrice || '' }))
+        ? items.map((i, idx) => ({ id: `${genId('I')}_${idx}`, name: i.name || '', qty: i.qty || 1, customerPrice: i.customerPrice || '', engineerPrice: i.engineerPrice || '' }))
         : [EMPTY_ITEM()],
       branch: c.branch || 'DUB',
       note:   c.note   || '',
@@ -169,14 +170,20 @@ export default function Commission() {
     if (!form.partner.trim() || !form.customer.trim()) return;
     const validItems = form.items
       .filter(i => i.name.trim() || i.customerPrice || i.engineerPrice)
-      .map(i => ({
-        name:          i.name.trim(),
-        customerPrice: parseFloat(i.customerPrice) || 0,
-        engineerPrice: parseFloat(i.engineerPrice) || 0,
-        commission:    (parseFloat(i.customerPrice) || 0) - (parseFloat(i.engineerPrice) || 0),
-      }));
-    const totCust = validItems.reduce((s, i) => s + i.customerPrice, 0);
-    const totEng  = validItems.reduce((s, i) => s + i.engineerPrice,  0);
+      .map(i => {
+        const qty = parseInt(i.qty) || 1;
+        const cp  = parseFloat(i.customerPrice) || 0;
+        const ep  = parseFloat(i.engineerPrice) || 0;
+        return {
+          name:          i.name.trim(),
+          qty,
+          customerPrice: cp,
+          engineerPrice: ep,
+          commission:    (cp - ep) * qty,
+        };
+      });
+    const totCust = validItems.reduce((s, i) => s + i.customerPrice * i.qty, 0);
+    const totEng  = validItems.reduce((s, i) => s + i.engineerPrice  * i.qty, 0);
     dispatch({
       type: editing ? 'UPDATE_COMMISSION' : 'ADD_COMMISSION',
       payload: {
@@ -410,8 +417,9 @@ export default function Commission() {
             </div>
 
             {/* Column headers */}
-            <div className="grid grid-cols-[1fr_130px_130px_90px_32px] gap-2 px-1 mb-1">
+            <div className="grid grid-cols-[1fr_60px_110px_110px_90px_32px] gap-2 px-1 mb-1">
               <span className="text-gray-600 text-xs">Item name</span>
+              <span className="text-gray-600 text-xs text-center">Qty</span>
               <span className="text-gray-600 text-xs text-right">Customer Price</span>
               <span className="text-gray-600 text-xs text-right">Engineer Price</span>
               <span className="text-gray-600 text-xs text-right">Commission</span>
@@ -420,10 +428,10 @@ export default function Commission() {
 
             {/* Item rows */}
             <div className="space-y-2">
-              {form.items.map((item, index) => {
+              {form.items.map((item) => {
                 const comm = itemCommission(item);
                 return (
-                  <div key={item.id} className="grid grid-cols-[1fr_130px_130px_90px_32px] gap-2 items-center">
+                  <div key={item.id} className="grid grid-cols-[1fr_60px_110px_110px_90px_32px] gap-2 items-center">
                     {/* Item name — native datalist for autocomplete */}
                     <div>
                       <input
@@ -438,6 +446,16 @@ export default function Commission() {
                         {allItemNames.map(n => <option key={n} value={n} />)}
                       </datalist>
                     </div>
+
+                    {/* Quantity */}
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="1"
+                      value={item.qty}
+                      onChange={e => updateItemRow(item.id, 'qty', e.target.value)}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-white text-sm text-center placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
 
                     {/* Customer Price */}
                     <input
@@ -501,8 +519,9 @@ export default function Commission() {
 
             {/* Totals row */}
             {form.items.some(i => i.customerPrice || i.engineerPrice) && (
-              <div className="mt-3 grid grid-cols-[1fr_130px_130px_90px_32px] gap-2 border-t border-gray-800 pt-3">
+              <div className="mt-3 grid grid-cols-[1fr_60px_110px_110px_90px_32px] gap-2 border-t border-gray-800 pt-3">
                 <span className="text-gray-500 text-xs font-medium self-center">Total</span>
+                <span />
                 <span className="text-right text-xs font-mono text-gray-300">
                   {formatCurrency(totalCustomerPrice, currency)}
                 </span>
@@ -583,8 +602,8 @@ export default function Commission() {
       {/* ── View Commission Modal ── */}
       {viewing && (() => {
         const items = normItems(viewing);
-        const totCust = items.reduce((s, i) => s + (i.customerPrice || 0), 0);
-        const totEng  = items.reduce((s, i) => s + (i.engineerPrice  || 0), 0);
+        const totCust = items.reduce((s, i) => s + (i.customerPrice || 0) * (i.qty || 1), 0);
+        const totEng  = items.reduce((s, i) => s + (i.engineerPrice  || 0) * (i.qty || 1), 0);
         const totComm = totCust - totEng;
         return (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
@@ -645,6 +664,7 @@ export default function Commission() {
                       <thead>
                         <tr className="border-b border-gray-700">
                           <th className="text-left text-gray-500 font-medium px-4 py-2.5 text-xs">Item</th>
+                          <th className="text-center text-gray-500 font-medium px-4 py-2.5 text-xs">Qty</th>
                           <th className="text-right text-gray-500 font-medium px-4 py-2.5 text-xs">Customer Price</th>
                           <th className="text-right text-gray-500 font-medium px-4 py-2.5 text-xs">Engineer Price</th>
                           <th className="text-right text-emerald-500 font-medium px-4 py-2.5 text-xs">Commission</th>
@@ -653,15 +673,17 @@ export default function Commission() {
                       <tbody>
                         {items.length === 0 ? (
                           <tr>
-                            <td colSpan={4} className="text-center text-gray-600 py-6 text-xs">No items recorded</td>
+                            <td colSpan={5} className="text-center text-gray-600 py-6 text-xs">No items recorded</td>
                           </tr>
                         ) : items.map((item, idx) => {
-                          const comm = (item.customerPrice || 0) - (item.engineerPrice || 0);
+                          const qty  = item.qty || 1;
+                          const comm = ((item.customerPrice || 0) - (item.engineerPrice || 0)) * qty;
                           return (
                             <tr key={idx} className="border-b border-gray-700 last:border-0">
                               <td className="px-4 py-2.5 text-white text-xs">{item.name || <span className="text-gray-600 italic">—</span>}</td>
-                              <td className="px-4 py-2.5 text-right text-gray-300 text-xs font-mono">{formatCurrency(item.customerPrice || 0, currency)}</td>
-                              <td className="px-4 py-2.5 text-right text-gray-300 text-xs font-mono">{formatCurrency(item.engineerPrice || 0, currency)}</td>
+                              <td className="px-4 py-2.5 text-center text-gray-400 text-xs font-mono">{qty}</td>
+                              <td className="px-4 py-2.5 text-right text-gray-300 text-xs font-mono">{formatCurrency((item.customerPrice || 0) * qty, currency)}</td>
+                              <td className="px-4 py-2.5 text-right text-gray-300 text-xs font-mono">{formatCurrency((item.engineerPrice || 0) * qty, currency)}</td>
                               <td className={`px-4 py-2.5 text-right text-xs font-mono font-medium ${comm >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {formatCurrency(comm, currency)}
                               </td>

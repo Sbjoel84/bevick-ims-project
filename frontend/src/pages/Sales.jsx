@@ -230,10 +230,10 @@ export default function Sales() {
     setForm(f => ({ ...f, items: f.items.map(i => i.id === id ? { ...i, commission: isNaN(n) ? 0 : n } : i) }));
   }
 
-  const subtotal           = form.items.reduce((s, i) => s + i.price * (1 - (i.discount || 0) / 100) * i.qty, 0);
+  const subtotal           = form.items.reduce((s, i) => s + i.price * i.qty - (i.discount || 0), 0);
   const totalCostAmt       = form.items.reduce((s, i) => s + (i.costPrice || 0) * i.qty, 0);
-  const totalDiscountAmt   = form.items.reduce((s, i) => s + i.price * ((i.discount || 0) / 100) * i.qty, 0);
-  const totalCommissionAmt = form.items.reduce((s, i) => s + i.price * (1 - (i.discount || 0) / 100) * i.qty * ((i.commission || 0) / 100), 0);
+  const totalDiscountAmt   = form.items.reduce((s, i) => s + (i.discount || 0), 0);
+  const totalCommissionAmt = form.items.reduce((s, i) => s + (i.commission || 0), 0);
   const grossProfit        = subtotal - totalCostAmt - totalCommissionAmt;
   const vatAmount          = form.applyVat ? subtotal * vat : 0;
   const total              = subtotal + vatAmount;
@@ -689,24 +689,22 @@ export default function Sales() {
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div className="w-20">
-                  <label className="text-gray-500 text-xs block mb-1">Disc %</label>
+                <div className="w-24">
+                  <label className="text-gray-500 text-xs block mb-1">Disc (₦)</label>
                   <input
                     type="number"
                     min={0}
-                    max={100}
                     value={pickerDiscount}
                     onChange={e => setPickerDiscount(e.target.value)}
                     placeholder="0"
                     className="w-full bg-gray-700 border border-orange-900/40 rounded-lg px-3 py-2 text-orange-300 text-sm text-right focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
-                <div className="w-20">
-                  <label className="text-gray-500 text-xs block mb-1">Comm %</label>
+                <div className="w-24">
+                  <label className="text-gray-500 text-xs block mb-1">Comm (₦)</label>
                   <input
                     type="number"
                     min={0}
-                    max={100}
                     value={pickerCommission}
                     onChange={e => setPickerCommission(e.target.value)}
                     placeholder="0"
@@ -763,17 +761,17 @@ export default function Sales() {
                       <th className="text-center text-gray-500 font-medium px-4 py-2.5 text-xs">Qty</th>
                       <th className="text-right text-amber-600 font-medium px-4 py-2.5 text-xs">Actual Cost</th>
                       <th className="text-right text-blue-500 font-medium px-4 py-2.5 text-xs">Sale Price</th>
-                      <th className="text-right text-orange-500 font-medium px-4 py-2.5 text-xs">Disc %</th>
-                      <th className="text-right text-purple-500 font-medium px-4 py-2.5 text-xs">Comm %</th>
+                      <th className="text-right text-orange-500 font-medium px-4 py-2.5 text-xs">Disc (₦)</th>
+                      <th className="text-right text-purple-500 font-medium px-4 py-2.5 text-xs">Comm (₦)</th>
                       <th className="text-right text-green-600 font-medium px-4 py-2.5 text-xs">Profit</th>
                       <th className="px-4 py-2.5"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {form.items.map(item => {
-                      const effPrice   = item.price * (1 - (item.discount || 0) / 100);
-                      const commAmt    = effPrice * item.qty * ((item.commission || 0) / 100);
-                      const itemProfit = (effPrice - (item.costPrice || 0)) * item.qty - commAmt;
+                      const lineRevenue = item.price * item.qty - (item.discount || 0);
+                      const commAmt     = item.commission || 0;
+                      const itemProfit  = lineRevenue - (item.costPrice || 0) * item.qty - commAmt;
                       return (
                         <tr key={item.id} className="border-b border-gray-700 last:border-0">
                           <td className="px-4 py-2.5 text-white text-xs truncate max-w-[140px]">{item.name}</td>
@@ -809,22 +807,20 @@ export default function Sales() {
                             <input
                               type="number"
                               min={0}
-                              max={100}
                               value={item.discount || ''}
                               onChange={e => updateItemDiscount(item.id, e.target.value)}
                               placeholder="0"
-                              className="w-16 text-right bg-gray-700 border border-orange-900/40 rounded-lg px-2 py-1 text-orange-300 text-xs focus:outline-none focus:ring-1 focus:ring-orange-500"
+                              className="w-20 text-right bg-gray-700 border border-orange-900/40 rounded-lg px-2 py-1 text-orange-300 text-xs focus:outline-none focus:ring-1 focus:ring-orange-500"
                             />
                           </td>
                           <td className="px-4 py-2.5">
                             <input
                               type="number"
                               min={0}
-                              max={100}
                               value={item.commission || ''}
                               onChange={e => updateItemCommission(item.id, e.target.value)}
                               placeholder="0"
-                              className="w-16 text-right bg-gray-700 border border-purple-900/40 rounded-lg px-2 py-1 text-purple-300 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              className="w-20 text-right bg-gray-700 border border-purple-900/40 rounded-lg px-2 py-1 text-purple-300 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
                             />
                           </td>
                           <td className={`px-4 py-2.5 text-right text-xs font-mono font-medium ${itemProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -970,16 +966,16 @@ export default function Sales() {
                       <th className="text-center text-gray-500 font-medium px-4 py-2.5 text-xs">Qty</th>
                       <th className="text-right text-amber-600 font-medium px-4 py-2.5 text-xs">Actual Cost</th>
                       <th className="text-right text-blue-500 font-medium px-4 py-2.5 text-xs">Sale Price</th>
-                      <th className="text-right text-orange-500 font-medium px-4 py-2.5 text-xs">Disc %</th>
-                      <th className="text-right text-purple-500 font-medium px-4 py-2.5 text-xs">Comm %</th>
+                      <th className="text-right text-orange-500 font-medium px-4 py-2.5 text-xs">Disc (₦)</th>
+                      <th className="text-right text-purple-500 font-medium px-4 py-2.5 text-xs">Comm (₦)</th>
                       <th className="text-right text-green-600 font-medium px-4 py-2.5 text-xs">Profit</th>
                     </tr>
                   </thead>
                   <tbody>
                     {currentSelected.items?.map(item => {
-                      const effPrice   = item.price * (1 - (item.discount || 0) / 100);
-                      const commAmt    = effPrice * item.qty * ((item.commission || 0) / 100);
-                      const itemProfit = (effPrice - (item.costPrice || 0)) * item.qty - commAmt;
+                      const lineRevenue = item.price * item.qty - (item.discount || 0);
+                      const commAmt     = item.commission || 0;
+                      const itemProfit  = lineRevenue - (item.costPrice || 0) * item.qty - commAmt;
                       return (
                         <tr key={item.id} className="border-b border-gray-700 last:border-0">
                           <td className="px-4 py-2.5 text-white text-xs">{item.name}</td>
@@ -987,12 +983,12 @@ export default function Sales() {
                           <td className="px-4 py-2.5 text-right text-amber-300 text-xs font-mono">
                             {item.costPrice != null ? formatCurrency(item.costPrice * item.qty, currency) : '—'}
                           </td>
-                          <td className="px-4 py-2.5 text-right text-blue-400 text-xs font-mono">{formatCurrency(effPrice * item.qty, currency)}</td>
+                          <td className="px-4 py-2.5 text-right text-blue-400 text-xs font-mono">{formatCurrency(lineRevenue, currency)}</td>
                           <td className="px-4 py-2.5 text-right text-xs font-mono text-orange-300">
-                            {item.discount ? `${item.discount}%` : '—'}
+                            {item.discount ? formatCurrency(item.discount, currency) : '—'}
                           </td>
                           <td className="px-4 py-2.5 text-right text-xs font-mono text-purple-300">
-                            {item.commission ? `${item.commission}%` : '—'}
+                            {item.commission ? formatCurrency(item.commission, currency) : '—'}
                           </td>
                           <td className={`px-4 py-2.5 text-right text-xs font-mono font-medium ${itemProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                             {item.costPrice != null ? formatCurrency(itemProfit, currency) : '—'}

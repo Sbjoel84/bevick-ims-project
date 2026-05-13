@@ -46,19 +46,15 @@ const NAV = [
   )},
 ];
 
-export default function Sidebar({ open, onClose }) {
+export default function Sidebar({ open, onClose, collapsed, onToggle }) {
   const { state, dispatch } = useApp();
   const { user, page, permissions, recycleBin, branch } = state;
 
-  // Get allowed pages for user - use DEFAULT_PERMISSIONS as fallback
   let allowed = user?.customPages;
   if (!allowed) {
-    // If no custom pages, use role-based permissions
-    // Fallback to DEFAULT_PERMISSIONS if permissions haven't loaded yet
     allowed = permissions[user?.role] || DEFAULT_PERMISSIONS[user?.role] || [];
   }
 
-  // Count only the recycle bin items visible to the current branch
   const binCount = branch
     ? recycleBin.filter(i => !i.branch || i.branch === branch).length
     : recycleBin.length;
@@ -82,41 +78,79 @@ export default function Sidebar({ open, onClose }) {
 
       {/* Sidebar */}
       <aside className={`
-        fixed top-0 left-0 h-full w-64 bg-gray-950 border-r border-gray-800 z-40 flex flex-col
-        transition-transform duration-200
+        fixed top-0 left-0 h-full bg-gray-950 border-r border-gray-800 z-40 flex flex-col
+        transition-all duration-300 ease-in-out
+        ${collapsed ? 'w-16' : 'w-64'}
         ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        {/* Brand */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800">
+
+        {/* Brand + toggle row */}
+        <div className={`flex items-center border-b border-gray-800 shrink-0 ${collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-3'}`}>
           <img
             src="/Bevick logo.jpeg"
-            alt="Bevick Packaging Machineries"
-            className="h-10 w-auto rounded-lg object-contain shrink-0"
+            alt="Bevick"
+            className={`rounded-lg object-contain shrink-0 transition-all duration-300 ${collapsed ? 'h-8 w-8' : 'h-10 w-auto'}`}
           />
+          {/* Toggle button — desktop only */}
+          {!collapsed && (
+            <button
+              onClick={onToggle}
+              title="Collapse sidebar"
+              className="ml-auto text-gray-600 hover:text-gray-300 transition-colors hidden lg:flex items-center justify-center w-7 h-7 rounded-lg hover:bg-gray-800"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7M18 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
         </div>
 
+        {/* Expand button (collapsed state) — desktop only */}
+        {collapsed && (
+          <button
+            onClick={onToggle}
+            title="Expand sidebar"
+            className="hidden lg:flex mx-auto mt-2 mb-1 items-center justify-center w-8 h-8 rounded-lg text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M6 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
+
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
+        <nav className={`flex-1 overflow-y-auto py-2 space-y-0.5 ${collapsed ? 'px-2' : 'px-3'}`}>
           {visibleNav.map(n => {
             const active = page === n.id;
-            const isBin = n.id === 'recycle' && binCount > 0;
+            const isBin  = n.id === 'recycle' && binCount > 0;
             return (
               <button
                 key={n.id}
                 onClick={() => go(n.id)}
+                title={collapsed ? n.label : undefined}
                 className={`
-                  w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left
+                  w-full flex items-center rounded-xl text-sm font-medium transition-colors
+                  ${collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5 text-left'}
                   ${active
                     ? 'bg-blue-500 text-white'
                     : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}
                 `}
               >
-                <span className="shrink-0">{n.icon}</span>
-                <span className="flex-1 truncate">{n.label}</span>
-                {isBin && !active && (
-                  <span className="bg-gray-700 text-gray-300 text-xs rounded-full px-1.5 py-0.5 font-mono">
-                    {recycleBin.length}
-                  </span>
+                <span className="shrink-0 relative">
+                  {n.icon}
+                  {isBin && !active && collapsed && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                  )}
+                </span>
+                {!collapsed && (
+                  <>
+                    <span className="flex-1 truncate">{n.label}</span>
+                    {isBin && !active && (
+                      <span className="bg-gray-700 text-gray-300 text-xs rounded-full px-1.5 py-0.5 font-mono">
+                        {binCount}
+                      </span>
+                    )}
+                  </>
                 )}
               </button>
             );
@@ -124,25 +158,42 @@ export default function Sidebar({ open, onClose }) {
         </nav>
 
         {/* User footer */}
-        <div className="px-4 py-4 border-t border-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-              {user?.initials || user?.name?.slice(0,2).toUpperCase()}
+        <div className={`border-t border-gray-800 ${collapsed ? 'px-2 py-3' : 'px-4 py-4'}`}>
+          {collapsed ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                {user?.initials || user?.name?.slice(0, 2).toUpperCase()}
+              </div>
+              <button
+                onClick={() => dispatch({ type: 'LOGOUT' })}
+                title="Sign out"
+                className="text-gray-600 hover:text-red-400 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-gray-500 text-xs truncate capitalize">{user?.role?.replace('_', ' ')}</p>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                {user?.initials || user?.name?.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-medium truncate">{user?.name}</p>
+                <p className="text-gray-500 text-xs truncate capitalize">{user?.role?.replace('_', ' ')}</p>
+              </div>
+              <button
+                onClick={() => dispatch({ type: 'LOGOUT' })}
+                title="Sign out"
+                className="text-gray-600 hover:text-red-400 transition-colors shrink-0"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
             </div>
-            <button
-              onClick={() => dispatch({ type: 'LOGOUT' })}
-              title="Sign out"
-              className="text-gray-600 hover:text-red-400 transition-colors shrink-0"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </button>
-          </div>
+          )}
         </div>
       </aside>
     </>
