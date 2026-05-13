@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp, fmtDateTime, fmtDate, genId } from '../context/AppContext';
-import { refreshAppUsers, refreshPendingUsers, refreshDeleteRequests, refreshPermissions, refreshAuditLog, refreshProfiles } from '../lib/refresh';
+import { refreshAppUsers, refreshPendingUsers, refreshPermissions, refreshAuditLog, refreshProfiles } from '../lib/refresh';
 import { ROLES, ALL_PAGES } from '../data/users';
 
 const ALL_ROLES = [
@@ -82,13 +82,13 @@ function Modal({ title, onClose, children }) {
   );
 }
 
-const TABS = ['Users', 'Pending', 'Requests', 'Permissions', 'Audit Log', 'Branch', 'Auth Users'];
+const TABS = ['Users', 'Pending', 'Permissions', 'Audit Log', 'Branch', 'Auth Users'];
 
 const EMPTY_USER = { name: '', em: '', pw: '', role: 'sales', bid: 'KUB', phone: '', status: 'active' };
 
 export default function AdminPanel() {
   const { state, dispatch } = useApp();
-  const { users, pendingUsers, deleteRequests, permissions, auditLog, branch, bname, user: currentUser } = state;
+  const { users, pendingUsers, permissions, auditLog, branch, bname, user: currentUser } = state;
 
   function syncUsers() {
     refreshAppUsers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'users', data } }));
@@ -102,8 +102,7 @@ export default function AdminPanel() {
       refreshAppUsers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'users', data } }));
     }, 800);
     refreshPendingUsers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'pendingUsers', data } }));
-    refreshDeleteRequests(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'deleteRequests', data } }));
-    refreshPermissions(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'permissions', data } }));
+refreshPermissions(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'permissions', data } }));
     refreshAuditLog(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'auditLog', data } }));
     refreshProfiles(setProfiles);
     return () => clearTimeout(t);
@@ -190,9 +189,6 @@ export default function AdminPanel() {
             {t}
             {t === 'Pending' && pendingUsers.length > 0 && (
               <span className="ml-1.5 bg-amber-500 text-black text-xs rounded-full px-1.5 py-0.5 font-bold">{pendingUsers.length}</span>
-            )}
-            {t === 'Requests' && (deleteRequests || []).length > 0 && (
-              <span className="ml-1.5 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold">{(deleteRequests || []).length}</span>
             )}
           </button>
         ))}
@@ -288,57 +284,6 @@ export default function AdminPanel() {
           ) : pendingUsers.map(u => (
             <PendingCard key={u.id} u={u} dispatch={dispatch} />
           ))}
-        </div>
-      )}
-
-      {/* Requests Tab */}
-      {tab === 'Requests' && (
-        <div className="space-y-4">
-          {(deleteRequests || []).length === 0 ? (
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl py-12 text-center text-gray-600">No pending delete requests</div>
-          ) : (
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-800">
-                      <th className="text-left text-gray-500 font-medium px-5 py-3">Item</th>
-                      <th className="text-left text-gray-500 font-medium px-5 py-3">Type</th>
-                      <th className="text-left text-gray-500 font-medium px-5 py-3">Requested By</th>
-                      <th className="text-left text-gray-500 font-medium px-5 py-3">Reason</th>
-                      <th className="text-left text-gray-500 font-medium px-5 py-3">Date</th>
-                      <th className="px-5 py-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(deleteRequests || []).map(req => (
-                      <tr key={req.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40">
-                        <td className="px-5 py-3.5 text-white font-medium">{req.label}</td>
-                        <td className="px-5 py-3.5">
-                          <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg capitalize">{req.type}</span>
-                        </td>
-                        <td className="px-5 py-3.5 text-gray-400">{req.requestedBy || '—'}</td>
-                        <td className="px-5 py-3.5 text-gray-400 max-w-xs truncate">{req.reason}</td>
-                        <td className="px-5 py-3.5 text-gray-500 text-xs">{fmtDateTime(req.requestedAt)}</td>
-                        <td className="px-5 py-3.5">
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => dispatch({ type: 'APPROVE_DELETE', payload: req.id })}
-                              className="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1.5 rounded-lg font-medium transition-colors"
-                            >Approve &amp; Delete</button>
-                            <button
-                              onClick={() => dispatch({ type: 'REJECT_DELETE', payload: req.id })}
-                              className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg font-medium transition-colors"
-                            >Reject</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
