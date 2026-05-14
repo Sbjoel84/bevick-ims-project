@@ -84,7 +84,8 @@ export default function Goods() {
     .filter(g => {
       const q = search.toLowerCase();
       return !q || g.supplier?.toLowerCase().includes(q) || g.id?.toLowerCase().includes(q) || g.invoiceNo?.toLowerCase().includes(q);
-    });
+    })
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const availableItems = inventory.filter(i =>
     itemSearch === '' || i.name.toLowerCase().includes(itemSearch.toLowerCase())

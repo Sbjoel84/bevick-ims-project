@@ -213,7 +213,8 @@ export default function Purchase() {
     .filter(p => {
       const q = search.toLowerCase();
       return !q || p.name?.toLowerCase().includes(q) || p.supplier?.toLowerCase().includes(q);
-    });
+    })
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   function submit() {
     if (!form.name.trim()) return;

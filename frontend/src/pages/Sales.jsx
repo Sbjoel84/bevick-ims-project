@@ -110,7 +110,8 @@ export default function Sales() {
       const q = search.toLowerCase();
       return !q || s.customer?.toLowerCase().includes(q) || s.id?.toLowerCase().includes(q);
     })
-    .filter(s => filterPayment === 'all' || s.payment === filterPayment);
+    .filter(s => filterPayment === 'all' || s.payment === filterPayment)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   // All inventory items — no branch filter so newly added items always appear
   const availableItems = inventory;
@@ -1037,6 +1038,14 @@ export default function Sales() {
                 <div className="flex justify-between">
                   <span className="text-gray-400">Total Cost</span>
                   <span className="text-white font-mono">{formatCurrency(currentSelected.total || 0, currency)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-purple-400">Total Comm</span>
+                  <span className="text-purple-300 font-mono">{formatCurrency(currentSelected.totalCommission || 0, currency)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-orange-400">Total Disc</span>
+                  <span className="text-orange-300 font-mono">{formatCurrency(currentSelected.totalDiscount || 0, currency)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Amount Paid</span>

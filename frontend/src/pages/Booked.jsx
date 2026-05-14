@@ -316,7 +316,8 @@ export default function Booked() {
     .filter(b => {
       const q = search.toLowerCase();
       return !q || b.customer?.toLowerCase().includes(q) || b.id?.toLowerCase().includes(q);
-    });
+    })
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   function submitNew() {
     const validItems = form.items.filter(i => i.id).map(({ _rowId, ...rest }) => ({

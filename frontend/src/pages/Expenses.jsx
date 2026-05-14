@@ -66,7 +66,8 @@ export default function Expenses() {
     .filter(e => {
       const q = search.toLowerCase();
       return !q || e.desc?.toLowerCase().includes(q) || e.category?.toLowerCase().includes(q);
-    });
+    })
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const total = filtered.reduce((s, e) => s + (e.amount || 0), 0);
 
