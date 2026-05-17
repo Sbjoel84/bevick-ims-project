@@ -434,7 +434,7 @@ export default function Booked() {
   }
 
   function del(id) {
-    if (user?.role === 'super_admin') {
+    if (['main_super_admin', 'super_admin', 'admin'].includes(user?.role)) {
       if (window.confirm('Delete this booking?')) {
         dispatch({ type: 'DELETE_BOOKING', payload: id });
         if (modal) setModal(null);

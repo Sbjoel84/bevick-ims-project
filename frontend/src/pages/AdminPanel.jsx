@@ -21,7 +21,7 @@ function PendingCard({ u, dispatch }) {
       payload: u.id,
       // Pass overridden role/bid so reducer can apply them
       role,
-      bid: role === 'super_admin' ? null : bid,
+      bid: ['main_super_admin', 'super_admin'].includes(role) ? null : bid,
     });
   }
 
@@ -39,7 +39,7 @@ function PendingCard({ u, dispatch }) {
             className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
             {ALL_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
           </select>
-          {role !== 'super_admin' && (
+          {!['main_super_admin', 'super_admin'].includes(role) && (
             <select value={bid} onChange={e => setBid(e.target.value)}
               className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="DUB">Dubai Market</option>

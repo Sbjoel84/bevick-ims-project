@@ -70,7 +70,7 @@ function SimpleBarChart({ data, currency }) {
 export default function Dashboard() {
   const { state, dispatch } = useApp();
   const { sales, expenses, inventory, bookings, customers, commissions = [], currency, thr, branch, bname, user } = state;
-  const isAdmin = user?.role === 'super_admin';
+  const isAdmin = ['main_super_admin', 'super_admin', 'admin'].includes(user?.role);
 
   useEffect(() => {
     refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
@@ -176,44 +176,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Commission KPIs — admin only */}
-      {isAdmin && (
-        <div className="grid grid-cols-2 gap-3 md:gap-4">
-          <StatCard
-            label="Total Commissions"
-            value={formatCurrency(totalCommissions, currency)}
-            sub={`${filteredCommissions.length} referral${filteredCommissions.length !== 1 ? 's' : ''}`}
-            color="blue"
-            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>}
-          />
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
-            <p className="text-xs text-gray-500 font-medium mb-2">Top Referrers</p>
-            {filteredCommissions.length === 0 ? (
-              <p className="text-gray-600 text-xs">No referrals recorded</p>
-            ) : (
-              <div className="space-y-1.5">
-                {[...new Map(filteredCommissions.map(c => [c.partner, c])).values()]
-                  .map(c => c.partner)
-                  .slice(0, 3)
-                  .map(partner => {
-                    const total = filteredCommissions.filter(c => c.partner === partner).reduce((s, c) => s + (c.commission || 0), 0);
-                    const count = filteredCommissions.filter(c => c.partner === partner).length;
-                    return (
-                      <div key={partner} className="flex items-center justify-between gap-2">
-                        <span className="text-white text-xs font-medium truncate">{partner}</span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-gray-500 text-xs">{count}x</span>
-                          <span className="text-emerald-400 text-xs font-mono">{formatCurrency(total, currency)}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Second row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -244,6 +206,42 @@ export default function Dashboard() {
           color="blue"
           icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>}
         />
+      </div>
+
+      {/* Commission Summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 lg:col-span-2 overflow-hidden min-w-0">
+          <p className="text-gray-500 text-xs font-medium mb-1">Total Commissions</p>
+          <p className="font-syne text-xs sm:text-sm md:text-2xl font-bold text-emerald-400 break-all">
+            {formatCurrency(totalCommissions, currency)}
+          </p>
+          <p className="text-gray-600 text-xs mt-1">
+            {filteredCommissions.length} referral{filteredCommissions.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        {(() => {
+          const byPartner = Object.entries(
+            filteredCommissions.reduce((acc, c) => {
+              if (!acc[c.partner]) acc[c.partner] = { total: 0, count: 0 };
+              acc[c.partner].total += c.commission || 0;
+              acc[c.partner].count += 1;
+              return acc;
+            }, {})
+          ).sort((a, b) => b[1].total - a[1].total).slice(0, 2);
+          return byPartner.length > 0 ? byPartner.map(([partner, { total, count }]) => (
+            <div key={partner} className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+              <p className="text-gray-500 text-xs font-medium mb-1 truncate">{partner}</p>
+              <p className="font-syne text-xs sm:text-sm md:text-lg font-bold text-white break-all">
+                {formatCurrency(total, currency)}
+              </p>
+              <p className="text-gray-600 text-xs mt-1">{count} referral{count !== 1 ? 's' : ''}</p>
+            </div>
+          )) : (
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0 lg:col-span-2 flex items-center justify-center">
+              <p className="text-gray-600 text-xs">No referrals recorded yet</p>
+            </div>
+          );
+        })()}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

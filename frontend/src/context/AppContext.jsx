@@ -291,7 +291,7 @@ function reducer(state, action) {
     // Admin (super_admin/admin) sees all branches, non-admin sees only their assigned branch
     case 'SYNC_PURCHASES_FROM_BOOKINGS': {
       const userBranch = state.user?.bid;
-      const canEditAll = state.user?.role === 'super_admin' || state.user?.role === 'admin';
+      const canEditAll = ['main_super_admin', 'super_admin', 'admin'].includes(state.user?.role);
       
       // Filter bookings based on user role - admin sees all, non-admin sees only their branch
       const visibleBookings = state.bookings.filter(b => {

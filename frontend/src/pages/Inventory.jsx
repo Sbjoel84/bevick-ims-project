@@ -36,7 +36,7 @@ export default function Inventory() {
   }, []);
 
   const userBranch = user?.bid;
-  const canEditAll = user?.role === 'super_admin' || user?.role === 'admin';
+  const canEditAll = ['main_super_admin', 'super_admin', 'admin'].includes(user?.role);
 
   const [tab, setTab] = useState('inventory');
   const [recordSearch, setRecordSearch] = useState('');
@@ -332,7 +332,7 @@ export default function Inventory() {
   }
 
   function del(item) {
-    if (user?.role === 'super_admin') {
+    if (['main_super_admin', 'super_admin', 'admin'].includes(user?.role)) {
       if (window.confirm('Delete this item from both branches? It will be moved to the recycle bin.')) {
         item.items.forEach(i => dispatch({ type: 'DELETE_ITEM', payload: i.id }));
         if (modal) setModal(null);

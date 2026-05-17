@@ -134,7 +134,7 @@ export default function Customers() {
   }
 
   function del(id) {
-    if (user?.role === 'super_admin') {
+    if (['main_super_admin', 'super_admin', 'admin'].includes(user?.role)) {
       if (window.confirm('Delete this customer? They will be moved to the recycle bin.')) {
         dispatch({ type: 'DELETE_CUSTOMER', payload: id });
         if (modal) setModal(null);

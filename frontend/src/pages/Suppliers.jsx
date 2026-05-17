@@ -59,7 +59,7 @@ export default function Suppliers() {
   }
 
   function del(id) {
-    if (user?.role === 'super_admin') {
+    if (['main_super_admin', 'super_admin', 'admin'].includes(user?.role)) {
       if (window.confirm('Delete this supplier?')) {
         dispatch({ type: 'DELETE_SUPPLIER', payload: id });
         if (modal) setModal(null);

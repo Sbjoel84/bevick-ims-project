@@ -345,7 +345,7 @@ export default function Sales() {
   }
 
   function deleteSale(id) {
-    if (user?.role === 'super_admin') {
+    if (['main_super_admin', 'super_admin', 'admin'].includes(user?.role)) {
       if (window.confirm('Delete this sale? It will be moved to the recycle bin.')) {
         dispatch({ type: 'DELETE_SALE', payload: id });
         if (modal === 'view') setModal(null);

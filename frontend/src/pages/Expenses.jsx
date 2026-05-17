@@ -126,7 +126,7 @@ export default function Expenses() {
   }
 
   function del(id) {
-    if (user?.role === 'super_admin') {
+    if (['main_super_admin', 'super_admin', 'admin'].includes(user?.role)) {
       if (window.confirm('Delete this expense?')) dispatch({ type: 'DELETE_EXPENSE', payload: id });
     } else {
       const e = expenses.find(x => x.id === id);

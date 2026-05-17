@@ -47,7 +47,7 @@ export default function Purchase() {
   // Compute items in active bookings that exceed available stock and have no pending/ordered purchase yet
   // Admin (super_admin/admin) sees all branches, non-admin sees only their assigned branch
   const userBranch = user?.bid;
-  const canEditAll = user?.role === 'super_admin' || user?.role === 'admin';
+  const canEditAll = ['main_super_admin', 'super_admin', 'admin'].includes(user?.role);
   
   // Filter bookings based on user role - admin sees all, non-admin sees only their branch
   const visibleBookings = bookings.filter(b => {
