@@ -93,6 +93,8 @@ export default function Sales() {
     items: [],
     applyVat: false,
     amountPaid: '',
+    transactionDiscount: '',
+    transactionCommission: '',
     date: new Date().toISOString().split('T')[0],
   });
 
@@ -101,8 +103,6 @@ export default function Sales() {
   const [pickerQty, setPickerQty] = useState(1);
   const [pickerPrice, setPickerPrice] = useState('');
   const [pickerCostPrice, setPickerCostPrice] = useState('');
-  const [pickerDiscount, setPickerDiscount] = useState('');
-  const [pickerCommission, setPickerCommission] = useState('');
   const [pickerManualName, setPickerManualName] = useState('');
 
   const filteredSales = sales
@@ -131,26 +131,20 @@ export default function Sales() {
     if (id === '__manual__') {
       setPickerPrice('');
       setPickerCostPrice('');
-      setPickerDiscount('');
-      setPickerCommission('');
       setPickerQty(1);
       return;
     }
     const item = availableItems.find(i => i.id === id);
     setPickerPrice(item ? item.price : '');
     setPickerCostPrice('');
-    setPickerDiscount('');
-    setPickerCommission('');
     setPickerManualName('');
     setPickerQty(1);
   }
 
   function handleAddItem() {
-    const qty        = parseInt(pickerQty) || 1;
-    const price      = parseFloat(pickerPrice) || 0;
-    const costPrice  = parseFloat(pickerCostPrice) || 0;
-    const discount   = parseFloat(pickerDiscount) || 0;
-    const commission = parseFloat(pickerCommission) || 0;
+    const qty       = parseInt(pickerQty) || 1;
+    const price     = parseFloat(pickerPrice) || 0;
+    const costPrice = parseFloat(pickerCostPrice) || 0;
 
     // ── Manual / custom item ───────────────────────────────────────────────
     if (pickerItemId === '__manual__') {
@@ -160,7 +154,7 @@ export default function Sales() {
         ...f,
         items: [
           ...f.items,
-          { id: `CUST_${Date.now()}`, name, price, costPrice, discount, commission, qty, unit: '', _custom: true },
+          { id: `CUST_${Date.now()}`, name, price, costPrice, qty, unit: '', _custom: true },
         ],
       }));
       setPickerItemId('');
@@ -168,8 +162,6 @@ export default function Sales() {
       setPickerQty(1);
       setPickerPrice('');
       setPickerCostPrice('');
-      setPickerDiscount('');
-      setPickerCommission('');
       return;
     }
 
@@ -189,7 +181,7 @@ export default function Sales() {
         ...f,
         items: [
           ...f.items,
-          { id: pickerSelected.id, name: pickerSelected.name, price: salePrice, costPrice, discount, commission, qty, unit: pickerSelected.unit },
+          { id: pickerSelected.id, name: pickerSelected.name, price: salePrice, costPrice, qty, unit: pickerSelected.unit },
         ],
       }));
     }
@@ -197,8 +189,6 @@ export default function Sales() {
     setPickerQty(1);
     setPickerPrice('');
     setPickerCostPrice('');
-    setPickerDiscount('');
-    setPickerCommission('');
   }
 
   function removeItem(id) {
@@ -222,27 +212,17 @@ export default function Sales() {
     setForm(f => ({ ...f, items: f.items.map(i => i.id === id ? { ...i, costPrice: isNaN(n) ? 0 : n } : i) }));
   }
 
-  function updateItemDiscount(id, discount) {
-    const n = parseFloat(discount);
-    setForm(f => ({ ...f, items: f.items.map(i => i.id === id ? { ...i, discount: isNaN(n) ? 0 : n } : i) }));
-  }
-
-  function updateItemCommission(id, commission) {
-    const n = parseFloat(commission);
-    setForm(f => ({ ...f, items: f.items.map(i => i.id === id ? { ...i, commission: isNaN(n) ? 0 : n } : i) }));
-  }
-
-  const subtotal           = form.items.reduce((s, i) => s + i.price * i.qty - (i.discount || 0), 0);
-  const totalCostAmt       = form.items.reduce((s, i) => s + (i.costPrice || 0) * i.qty, 0);
-  const totalDiscountAmt   = form.items.reduce((s, i) => s + (i.discount || 0), 0);
-  const totalCommissionAmt = form.items.reduce((s, i) => s + (i.commission || 0), 0);
-  const grossProfit        = subtotal - totalCostAmt - totalCommissionAmt;
-  const vatAmount          = form.applyVat ? subtotal * vat : 0;
-  const total              = subtotal + vatAmount;
+  const subtotal              = form.items.reduce((s, i) => s + i.price * i.qty, 0);
+  const totalCostAmt          = form.items.reduce((s, i) => s + (i.costPrice || 0) * i.qty, 0);
+  const transactionDiscount   = parseFloat(form.transactionDiscount) || 0;
+  const transactionCommission = parseFloat(form.transactionCommission) || 0;
+  const grossProfit           = subtotal - totalCostAmt - transactionDiscount - transactionCommission;
+  const vatAmount             = form.applyVat ? subtotal * vat : 0;
+  const total                 = subtotal - transactionDiscount + vatAmount;
 
   function resetForm() {
-    setForm({ customer: '', branch: 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '', date: new Date().toISOString().split('T')[0] });
-    setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName(''); setPickerSearch(''); setPickerDiscount(''); setPickerCommission('');
+    setForm({ customer: '', branch: 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '', transactionDiscount: '', transactionCommission: '', date: new Date().toISOString().split('T')[0] });
+    setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName(''); setPickerSearch('');
   }
 
   function submitSale() {
@@ -266,8 +246,8 @@ export default function Sales() {
       items: form.items,
       subtotal,
       totalCost: totalCostAmt,
-      totalDiscount: totalDiscountAmt,
-      totalCommission: totalCommissionAmt,
+      totalDiscount: transactionDiscount,
+      totalCommission: transactionCommission,
       profit: grossProfit,
       vat: vatAmount,
       total,
@@ -291,10 +271,12 @@ export default function Sales() {
       items: sale.items || [],
       applyVat: (sale.vat || 0) > 0,
       amountPaid: '',
+      transactionDiscount: sale.totalDiscount ? String(sale.totalDiscount) : '',
+      transactionCommission: sale.totalCommission ? String(sale.totalCommission) : '',
       date: sale.date ? sale.date.split('T')[0] : new Date().toISOString().split('T')[0],
     });
     setEditSaleId(sale.id);
-    setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName(''); setPickerSearch(''); setPickerDiscount(''); setPickerCommission('');
+    setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName(''); setPickerSearch('');
     setModal('edit');
   }
 
@@ -310,8 +292,8 @@ export default function Sales() {
       items: form.items,
       subtotal,
       totalCost: totalCostAmt,
-      totalDiscount: totalDiscountAmt,
-      totalCommission: totalCommissionAmt,
+      totalDiscount: transactionDiscount,
+      totalCommission: transactionCommission,
       profit: grossProfit,
       vat: vatAmount,
       total,
@@ -664,7 +646,7 @@ export default function Sales() {
                   : 'Quick Search'}
               </button>
 
-              {/* Qty + Cost + Price + Discount + Commission + Add Item */}
+              {/* Qty + Cost + Price + Add Item */}
               <div className="flex gap-2 items-end flex-wrap">
                 <div className="w-20">
                   <label className="text-gray-500 text-xs block mb-1">Qty</label>
@@ -696,28 +678,6 @@ export default function Sales() {
                     onChange={e => setPickerPrice(e.target.value)}
                     placeholder={pickerSelected ? pickerSelected.price : '0'}
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="w-24">
-                  <label className="text-gray-500 text-xs block mb-1">Disc (₦)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={pickerDiscount}
-                    onChange={e => setPickerDiscount(e.target.value)}
-                    placeholder="0"
-                    className="w-full bg-gray-700 border border-orange-900/40 rounded-lg px-3 py-2 text-orange-300 text-sm text-right focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-                <div className="w-24">
-                  <label className="text-gray-500 text-xs block mb-1">Comm (₦)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={pickerCommission}
-                    onChange={e => setPickerCommission(e.target.value)}
-                    placeholder="0"
-                    className="w-full bg-gray-700 border border-purple-900/40 rounded-lg px-3 py-2 text-purple-300 text-sm text-right focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
                 <button
@@ -763,24 +723,21 @@ export default function Sales() {
             {/* Items table */}
             {form.items.length > 0 && (
               <div className="bg-gray-800 rounded-xl overflow-hidden overflow-x-auto">
-                <table className="w-full text-sm min-w-[780px]">
+                <table className="w-full text-sm min-w-[520px]">
                   <thead>
                     <tr className="border-b border-gray-700">
                       <th className="text-left text-gray-500 font-medium px-4 py-2.5 text-xs">Item</th>
                       <th className="text-center text-gray-500 font-medium px-4 py-2.5 text-xs">Qty</th>
                       <th className="text-right text-amber-600 font-medium px-4 py-2.5 text-xs">Actual Cost</th>
                       <th className="text-right text-blue-500 font-medium px-4 py-2.5 text-xs">Sale Price</th>
-                      <th className="text-right text-orange-500 font-medium px-4 py-2.5 text-xs">Disc (₦)</th>
-                      <th className="text-right text-purple-500 font-medium px-4 py-2.5 text-xs">Comm (₦)</th>
                       <th className="text-right text-green-600 font-medium px-4 py-2.5 text-xs">Profit</th>
                       <th className="px-4 py-2.5"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {form.items.map(item => {
-                      const lineRevenue = item.price * item.qty - (item.discount || 0);
-                      const commAmt     = item.commission || 0;
-                      const itemProfit  = lineRevenue - (item.costPrice || 0) * item.qty - commAmt;
+                      const lineRevenue = item.price * item.qty;
+                      const itemProfit  = lineRevenue - (item.costPrice || 0) * item.qty;
                       return (
                         <tr key={item.id} className="border-b border-gray-700 last:border-0">
                           <td className="px-4 py-2.5 text-white text-xs truncate max-w-[140px]">{item.name}</td>
@@ -812,26 +769,6 @@ export default function Sales() {
                               className="w-28 text-right bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-blue-300 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                           </td>
-                          <td className="px-4 py-2.5">
-                            <input
-                              type="number"
-                              min={0}
-                              value={item.discount || ''}
-                              onChange={e => updateItemDiscount(item.id, e.target.value)}
-                              placeholder="0"
-                              className="w-20 text-right bg-gray-700 border border-orange-900/40 rounded-lg px-2 py-1 text-orange-300 text-xs focus:outline-none focus:ring-1 focus:ring-orange-500"
-                            />
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <input
-                              type="number"
-                              min={0}
-                              value={item.commission || ''}
-                              onChange={e => updateItemCommission(item.id, e.target.value)}
-                              placeholder="0"
-                              className="w-20 text-right bg-gray-700 border border-purple-900/40 rounded-lg px-2 py-1 text-purple-300 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            />
-                          </td>
                           <td className={`px-4 py-2.5 text-right text-xs font-mono font-medium ${itemProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                             {formatCurrency(itemProfit, currency)}
                           </td>
@@ -858,16 +795,41 @@ export default function Sales() {
                 <span className="text-gray-400">Sales Revenue (subtotal)</span>
                 <span className="text-white font-mono">{formatCurrency(subtotal, currency)}</span>
               </div>
-              {totalDiscountAmt > 0 && (
+              {/* Transaction-level discount & commission */}
+              <div className="grid grid-cols-2 gap-3 border-t border-gray-700 pt-2">
+                <div>
+                  <label className="text-orange-400 text-xs block mb-1">Discount (optional)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.transactionDiscount}
+                    onChange={e => setForm(f => ({ ...f, transactionDiscount: e.target.value }))}
+                    placeholder="0"
+                    className="w-full text-right bg-gray-700 border border-orange-900/40 rounded-lg px-2.5 py-1.5 text-orange-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500 placeholder-gray-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-purple-400 text-xs block mb-1">Commission (optional)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.transactionCommission}
+                    onChange={e => setForm(f => ({ ...f, transactionCommission: e.target.value }))}
+                    placeholder="0"
+                    className="w-full text-right bg-gray-700 border border-purple-900/40 rounded-lg px-2.5 py-1.5 text-purple-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-600"
+                  />
+                </div>
+              </div>
+              {transactionDiscount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-orange-400">Total Discount</span>
-                  <span className="text-orange-300 font-mono">−{formatCurrency(totalDiscountAmt, currency)}</span>
+                  <span className="text-orange-400">Discount Applied</span>
+                  <span className="text-orange-300 font-mono">−{formatCurrency(transactionDiscount, currency)}</span>
                 </div>
               )}
-              {totalCommissionAmt > 0 && (
+              {transactionCommission > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-purple-400">Total Commission</span>
-                  <span className="text-purple-300 font-mono">−{formatCurrency(totalCommissionAmt, currency)}</span>
+                  <span className="text-purple-400">Commission</span>
+                  <span className="text-purple-300 font-mono">−{formatCurrency(transactionCommission, currency)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm font-medium">
@@ -968,23 +930,20 @@ export default function Sales() {
               </div>
 
               <div className="bg-gray-800 rounded-xl overflow-hidden overflow-x-auto">
-                <table className="w-full text-sm min-w-[580px]">
+                <table className="w-full text-sm min-w-[420px]">
                   <thead>
                     <tr className="border-b border-gray-700">
                       <th className="text-left text-gray-500 font-medium px-4 py-2.5 text-xs">Item</th>
                       <th className="text-center text-gray-500 font-medium px-4 py-2.5 text-xs">Qty</th>
                       <th className="text-right text-amber-600 font-medium px-4 py-2.5 text-xs">Actual Cost</th>
                       <th className="text-right text-blue-500 font-medium px-4 py-2.5 text-xs">Sale Price</th>
-                      <th className="text-right text-orange-500 font-medium px-4 py-2.5 text-xs">Disc (₦)</th>
-                      <th className="text-right text-purple-500 font-medium px-4 py-2.5 text-xs">Comm (₦)</th>
                       <th className="text-right text-green-600 font-medium px-4 py-2.5 text-xs">Profit</th>
                     </tr>
                   </thead>
                   <tbody>
                     {currentSelected.items?.map(item => {
-                      const lineRevenue = item.price * item.qty - (item.discount || 0);
-                      const commAmt     = item.commission || 0;
-                      const itemProfit  = lineRevenue - (item.costPrice || 0) * item.qty - commAmt;
+                      const lineRevenue = item.price * item.qty;
+                      const itemProfit  = lineRevenue - (item.costPrice || 0) * item.qty;
                       return (
                         <tr key={item.id} className="border-b border-gray-700 last:border-0">
                           <td className="px-4 py-2.5 text-white text-xs">{item.name}</td>
@@ -993,12 +952,6 @@ export default function Sales() {
                             {item.costPrice != null ? formatCurrency(item.costPrice * item.qty, currency) : '—'}
                           </td>
                           <td className="px-4 py-2.5 text-right text-blue-400 text-xs font-mono">{formatCurrency(lineRevenue, currency)}</td>
-                          <td className="px-4 py-2.5 text-right text-xs font-mono text-orange-300">
-                            {item.discount ? formatCurrency(item.discount, currency) : '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-right text-xs font-mono text-purple-300">
-                            {item.commission ? formatCurrency(item.commission, currency) : '—'}
-                          </td>
                           <td className={`px-4 py-2.5 text-right text-xs font-mono font-medium ${itemProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                             {item.costPrice != null ? formatCurrency(itemProfit, currency) : '—'}
                           </td>
@@ -1020,13 +973,13 @@ export default function Sales() {
                 <div className="flex justify-between"><span className="text-gray-400">Sales Revenue</span><span className="text-white font-mono">{formatCurrency(currentSelected.subtotal || 0, currency)}</span></div>
                 {currentSelected.totalDiscount > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-orange-400">Total Discount</span>
+                    <span className="text-orange-400">Discount</span>
                     <span className="text-orange-300 font-mono">−{formatCurrency(currentSelected.totalDiscount, currency)}</span>
                   </div>
                 )}
                 {currentSelected.totalCommission > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-purple-400">Total Commission</span>
+                    <span className="text-purple-400">Commission</span>
                     <span className="text-purple-300 font-mono">−{formatCurrency(currentSelected.totalCommission, currency)}</span>
                   </div>
                 )}
@@ -1044,16 +997,16 @@ export default function Sales() {
               <div className="bg-gray-800 rounded-xl p-4 space-y-1.5 text-sm">
                 <p className="text-gray-500 text-xs font-medium uppercase tracking-wide mb-2">Payment Status</p>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Total Cost</span>
+                  <span className="text-gray-400">Total Charged to Customer</span>
                   <span className="text-white font-mono">{formatCurrency(currentSelected.total || 0, currency)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-purple-400">Total Comm</span>
-                  <span className="text-purple-300 font-mono">{formatCurrency(currentSelected.totalCommission || 0, currency)}</span>
+                  <span className="text-orange-400">Discount</span>
+                  <span className="text-orange-300 font-mono">{(currentSelected.totalDiscount || 0) > 0 ? `−${formatCurrency(currentSelected.totalDiscount, currency)}` : '—'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-orange-400">Total Disc</span>
-                  <span className="text-orange-300 font-mono">{formatCurrency(currentSelected.totalDiscount || 0, currency)}</span>
+                  <span className="text-purple-400">Commission</span>
+                  <span className="text-purple-300 font-mono">{(currentSelected.totalCommission || 0) > 0 ? `−${formatCurrency(currentSelected.totalCommission, currency)}` : '—'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Amount Paid</span>
