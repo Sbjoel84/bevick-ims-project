@@ -39,6 +39,7 @@ export default function Sales() {
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState('');
   const [filterPayment, setFilterPayment] = useState('all');
+  const [filterBranch, setFilterBranch] = useState('all');
   const [reportOpen, setReportOpen] = useState(false);
   const [deleteReq, setDeleteReq] = useState(null);
   const [showPayForm, setShowPayForm] = useState(false);
@@ -86,7 +87,7 @@ export default function Sales() {
 
   const [form, setForm] = useState({
     customer: '',
-    branch: branch || 'DUB',
+    branch: 'DUB',
     payment: 'Cash',
     note: '',
     items: [],
@@ -105,7 +106,7 @@ export default function Sales() {
   const [pickerManualName, setPickerManualName] = useState('');
 
   const filteredSales = sales
-    .filter(s => branch ? s.branch === branch : true)
+    .filter(s => filterBranch === 'all' || s.branch === filterBranch)
     .filter(s => {
       const q = search.toLowerCase();
       return !q || s.customer?.toLowerCase().includes(q) || s.id?.toLowerCase().includes(q);
@@ -240,7 +241,7 @@ export default function Sales() {
   const total              = subtotal + vatAmount;
 
   function resetForm() {
-    setForm({ customer: '', branch: branch || 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '', date: new Date().toISOString().split('T')[0] });
+    setForm({ customer: '', branch: 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '', date: new Date().toISOString().split('T')[0] });
     setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName(''); setPickerSearch(''); setPickerDiscount(''); setPickerCommission('');
   }
 
@@ -409,6 +410,14 @@ export default function Sales() {
           <option value="all">All Payments</option>
           {PAYMENT_METHODS.map(m => <option key={m}>{m}</option>)}
         </select>
+        <select
+          value={filterBranch}
+          onChange={e => setFilterBranch(e.target.value)}
+          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">All Branches</option>
+          {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+        </select>
       </div>
 
       {/* Table - Mobile Card Layout */}
@@ -535,8 +544,7 @@ export default function Sales() {
                     setForm(f => ({ ...f, branch: e.target.value, items: [] }));
                     setPickerItemId(''); setPickerQty(1); setPickerPrice('');
                   }}
-                  disabled={!!branch}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
                 </select>

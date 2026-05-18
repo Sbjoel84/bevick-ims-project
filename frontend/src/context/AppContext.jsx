@@ -158,7 +158,7 @@ function reducer(state, action) {
         ...state,
         sales: [sale, ...state.sales],
         inventory,
-        auditLog: [{ id: Date.now(), action: 'Sale recorded', user: state.user?.name, ts: new Date().toISOString(), detail: `#${sale.id}` }, ...state.auditLog],
+        auditLog: [{ id: Date.now(), action: 'Sale recorded', user: state.user?.name, ts: new Date().toISOString(), detail: `#${sale.id} · ${sale.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office'}` }, ...state.auditLog],
       };
     }
 
@@ -167,7 +167,7 @@ function reducer(state, action) {
       return {
         ...state,
         sales: state.sales.map(s => s.id === updated.id ? updated : s),
-        auditLog: [{ id: Date.now(), action: 'Sale updated', user: state.user?.name, ts: new Date().toISOString(), detail: `#${updated.id}` }, ...state.auditLog],
+        auditLog: [{ id: Date.now(), action: 'Sale updated', user: state.user?.name, ts: new Date().toISOString(), detail: `#${updated.id} · ${updated.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office'}` }, ...state.auditLog],
       };
     }
 
@@ -232,10 +232,17 @@ function reducer(state, action) {
     // ── INVENTORY ──────────────────────────────────────────────
     case 'ADD_ITEM': {
       const item = action.payload;
-      return { ...state, inventory: [item, ...state.inventory], auditLog: [{ id: Date.now(), action: 'Item added', user: state.user?.name, ts: new Date().toISOString(), detail: item.name }, ...state.auditLog] };
+      return { ...state, inventory: [item, ...state.inventory], auditLog: [{ id: Date.now(), action: 'Item added', user: state.user?.name, ts: new Date().toISOString(), detail: `${item.name} · ${item.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office'}` }, ...state.auditLog] };
     }
-    case 'UPDATE_ITEM':
-      return { ...state, inventory: state.inventory.map(i => i.id === action.payload.id ? action.payload : i) };
+    case 'UPDATE_ITEM': {
+      const updItem = action.payload;
+      const bname = updItem.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office';
+      return {
+        ...state,
+        inventory: state.inventory.map(i => i.id === updItem.id ? updItem : i),
+        auditLog: [{ id: Date.now(), action: 'Item updated', user: state.user?.name, ts: new Date().toISOString(), detail: `${updItem.name} · ${bname}` }, ...state.auditLog],
+      };
+    }
     case 'DELETE_ITEM': {
       const item = state.inventory.find(x => x.id === action.payload);
       return {
@@ -245,12 +252,15 @@ function reducer(state, action) {
         auditLog: [{ id: Date.now(), action: 'Item deleted', user: state.user?.name, ts: new Date().toISOString(), detail: item.name }, ...state.auditLog],
       };
     }
-    case 'RESTOCK_ITEM':
+    case 'RESTOCK_ITEM': {
+      const restockedItem = state.inventory.find(i => i.id === action.payload.id);
+      const rbname = restockedItem?.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office';
       return {
         ...state,
         inventory: state.inventory.map(i => i.id === action.payload.id ? { ...i, qty: i.qty + action.payload.qty } : i),
-        auditLog: [{ id: Date.now(), action: 'Item restocked', user: state.user?.name, ts: new Date().toISOString(), detail: `${action.payload.id} +${action.payload.qty}` }, ...state.auditLog],
+        auditLog: [{ id: Date.now(), action: 'Item restocked', user: state.user?.name, ts: new Date().toISOString(), detail: `${restockedItem?.name || action.payload.id} +${action.payload.qty} · ${rbname}` }, ...state.auditLog],
       };
+    }
 
     // ── BOOKINGS ───────────────────────────────────────────────
     case 'ADD_BOOKING': {
