@@ -301,7 +301,8 @@ export default function Sales() {
     };
     dispatch({ type: 'UPDATE_SALE', payload: updatedSale });
     setEditSaleId(null);
-    setModal(null);
+    setSelected(updatedSale);
+    setModal('view');
     resetForm();
   }
 

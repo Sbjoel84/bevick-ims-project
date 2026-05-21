@@ -608,12 +608,12 @@ export default function Inventory() {
                     <th className="bg-indigo-950 text-indigo-400 font-bold px-3 py-2.5 text-center border border-gray-700 min-w-[120px]">Stocks in Dubai</th>
                     <th className="bg-orange-950 text-orange-400 font-bold px-3 py-2.5 text-center border border-gray-700 min-w-[120px]">Goods to Order</th>
                     <th className="bg-emerald-950 text-emerald-400 font-bold px-3 py-2.5 text-center border border-gray-700 min-w-[120px]">Goods for Sales</th>
-                    <th className="bg-gray-800 text-gray-400 font-medium px-3 py-2.5 text-center border border-gray-700 w-12"></th>
+                    {canEditAll && <th className="bg-gray-800 text-gray-400 font-medium px-3 py-2.5 text-center border border-gray-700 w-12"></th>}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredRecord.length === 0 ? (
-                    <tr><td colSpan={10} className="text-center text-gray-600 py-12">No items found</td></tr>
+                    <tr><td colSpan={canEditAll ? 10 : 9} className="text-center text-gray-600 py-12">No items found</td></tr>
                   ) : filteredRecord.map((item, idx) => (
                     <tr key={item.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/30 transition-colors">
                       <td className="px-3 py-2.5 text-center text-gray-500 font-mono text-xs border border-gray-800">{idx + 1}</td>
@@ -642,15 +642,17 @@ export default function Inventory() {
                       <td className="px-3 py-2.5 text-center border border-gray-800">
                         <span className={`font-mono font-bold text-sm ${item.goodsForSales > 0 ? 'text-emerald-400' : 'text-gray-600'}`}>{item.goodsForSales}</span>
                       </td>
-                      <td className="px-3 py-2.5 text-center border border-gray-800">
-                        <button
-                          onClick={() => openRecordEdit(item)}
-                          title="Edit stock quantities"
-                          className="text-gray-500 hover:text-blue-400 transition-colors p-1"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                        </button>
-                      </td>
+                      {canEditAll && (
+                        <td className="px-3 py-2.5 text-center border border-gray-800">
+                          <button
+                            onClick={() => openRecordEdit(item)}
+                            title="Edit stock quantities"
+                            className="text-gray-500 hover:text-blue-400 transition-colors p-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
