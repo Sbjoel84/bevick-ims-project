@@ -190,6 +190,9 @@ export default function Inventory() {
   }
 
   function printGeneralRecord() {
+    const { bizName, bizRC } = state;
+    const logo = `${window.location.origin}/Bevick%20logo.jpeg`;
+    const now = new Date().toLocaleString('en-NG');
     const rows = filteredRecord.map((item, idx) => `
       <tr>
         <td style="text-align:center">${idx + 1}</td>
@@ -202,29 +205,60 @@ export default function Inventory() {
         <td style="text-align:center">${item.goodsToOrder}</td>
         <td style="text-align:center">${item.goodsForSales}</td>
       </tr>`).join('');
-    const html = `<!DOCTYPE html><html><head><title>General Record</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>General Record</title>
       <style>
-        body{font-family:Arial,sans-serif;font-size:11px;margin:20px}
-        h2{text-align:center;margin-bottom:4px}
-        p.sub{text-align:center;color:#666;margin-bottom:14px;font-size:10px}
-        table{width:100%;border-collapse:collapse}
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:Arial,sans-serif;font-size:11px;color:#111;background:#fff;padding-top:18mm}
+        .logo-bar{text-align:center;padding:6px 0 5px;border-bottom:1.5px solid #e5e7eb;margin-bottom:14px;background:#fff}
+        .logo-bar img{height:44px;width:auto;object-fit:contain}
+        .page{padding:0 20px 20px}
+        .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px}
+        .biz-name{font-size:16px;font-weight:700}
+        .biz-sub{font-size:10px;color:#555;margin-top:2px}
+        .doc-title{font-size:14px;font-weight:700;text-align:right}
+        .doc-sub{font-size:10px;color:#555;text-align:right;margin-top:2px}
+        table{width:100%;border-collapse:collapse;margin-top:6px}
         th,td{border:1px solid #bbb;padding:5px 8px}
-        th{background:#e8e8e8;font-weight:bold;text-align:center}
-        tr:nth-child(even){background:#f5f5f5}
+        th{background:#e8e8e8;font-weight:bold;text-align:center;font-size:10px;text-transform:uppercase}
+        tr:nth-child(even) td{background:#f5f5f5}
+        .footer{margin-top:20px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:9px;color:#9ca3af;display:flex;justify-content:space-between}
+        @media print{
+          @page{size:A4 landscape;margin:8mm 10mm 12mm}
+          body{padding-top:18mm}
+          .logo-bar{position:fixed;top:0;left:0;right:0;padding:2mm 0 2mm;border-bottom:1px solid #e5e7eb;margin-bottom:0}
+          img{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+        }
       </style></head><body>
-      <h2>General Record</h2>
-      <p class="sub">Printed: ${new Date().toLocaleString('en-NG')}</p>
-      <table><thead><tr>
-        <th>S/N</th><th style="text-align:left">Item Name</th>
-        <th>Full Factory</th><th>Others</th><th>Items Sold</th>
-        <th>Stocks in Kubwa</th><th>Stocks in Dubai</th>
-        <th>Goods to Order</th><th>Goods for Sales</th>
-      </tr></thead><tbody>${rows}</tbody></table>
+      <div class="logo-bar"><img src="${logo}" alt="Bevick Logo"/></div>
+      <div class="page">
+        <div class="header">
+          <div>
+            <div class="biz-name">${bizName || 'Bevick Packaging Machineries'}</div>
+            <div class="biz-sub">${bizRC || 'RC: 967373'}</div>
+          </div>
+          <div>
+            <div class="doc-title">General Record</div>
+            <div class="doc-sub">Generated: ${now}</div>
+            <div class="doc-sub">${filteredRecord.length} item(s)</div>
+          </div>
+        </div>
+        <table><thead><tr>
+          <th>S/N</th><th style="text-align:left">Item Name</th>
+          <th>Full Factory</th><th>Others</th><th>Items Sold</th>
+          <th>Stocks in Kubwa</th><th>Stocks in Dubai</th>
+          <th>Goods to Order</th><th>Goods for Sales</th>
+        </tr></thead><tbody>${rows}</tbody></table>
+        <div class="footer">
+          <span>${bizName || 'Bevick IMS'} · Confidential</span>
+          <span>Printed: ${now}</span>
+        </div>
+      </div>
+      <script>window.onload=function(){ window.print(); window.onafterprint=function(){ window.close(); }; }</script>
       </body></html>`;
-    const win = window.open('', '_blank');
+    const win = window.open('', '_blank', 'width=1000,height=920,scrollbars=yes');
+    if (!win) { alert('Please allow pop-ups to print.'); return; }
     win.document.write(html);
     win.document.close();
-    win.print();
   }
 
   function canEditBranch(itemBranch) {

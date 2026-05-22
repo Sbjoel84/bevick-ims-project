@@ -671,12 +671,12 @@ function reducer(state, action) {
         }
         return state;
       }
-      // audit_log: only prepend new entries, cap at 200
+      // audit_log: only prepend new entries (no cap — full history kept)
       if (table === 'audit_log') {
         if (event !== 'DELETE' && row?.data) {
           const item = row.data;
           if (!state.auditLog.some(a => String(a.id) === String(item.id))) {
-            return { ...state, auditLog: [item, ...state.auditLog].slice(0, 200) };
+            return { ...state, auditLog: [item, ...state.auditLog] };
           }
         }
         return state;

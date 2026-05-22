@@ -118,6 +118,9 @@ refreshPermissions(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'pe
   const [permPages, setPermPages] = useState([]);
   const [userPermsTarget, setUserPermsTarget] = useState(null);
   const [userPermPages, setUserPermPages] = useState([]);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditSearch, setAuditSearch] = useState('');
+  const AUDIT_PAGE_SIZE = 50;
 
   // Branch switcher (super admin only)
   function setBranch(bid) {
@@ -332,34 +335,73 @@ refreshPermissions(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'pe
       )}
 
       {/* Audit Log Tab */}
-      {tab === 'Audit Log' && (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-800">
-                  <th className="text-left text-gray-500 font-medium px-5 py-3">Action</th>
-                  <th className="text-left text-gray-500 font-medium px-5 py-3">User</th>
-                  <th className="text-left text-gray-500 font-medium px-5 py-3">Detail</th>
-                  <th className="text-left text-gray-500 font-medium px-5 py-3">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLog.length === 0 ? (
-                  <tr><td colSpan={4} className="text-center text-gray-600 py-12">No audit entries yet</td></tr>
-                ) : auditLog.slice(0, 100).map(entry => (
-                  <tr key={entry.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40">
-                    <td className="px-5 py-3 text-white">{entry.action}</td>
-                    <td className="px-5 py-3 text-gray-400">{entry.user || '—'}</td>
-                    <td className="px-5 py-3 text-gray-500 font-mono text-xs">{entry.detail}</td>
-                    <td className="px-5 py-3 text-gray-500 text-xs">{fmtDateTime(entry.ts)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {tab === 'Audit Log' && (() => {
+        const q = auditSearch.trim().toLowerCase();
+        const filtered = q
+          ? auditLog.filter(e =>
+              (e.action || '').toLowerCase().includes(q) ||
+              (e.user || '').toLowerCase().includes(q) ||
+              (e.detail || '').toLowerCase().includes(q)
+            )
+          : auditLog;
+        const totalPages = Math.max(1, Math.ceil(filtered.length / AUDIT_PAGE_SIZE));
+        const safePage = Math.min(auditPage, totalPages);
+        const pageEntries = filtered.slice((safePage - 1) * AUDIT_PAGE_SIZE, safePage * AUDIT_PAGE_SIZE);
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-gray-500 text-xs">{filtered.length.toLocaleString()} total entries</p>
+              <input
+                value={auditSearch}
+                onChange={e => { setAuditSearch(e.target.value); setAuditPage(1); }}
+                placeholder="Search action, user, or detail…"
+                className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+              />
+            </div>
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-800">
+                      <th className="text-left text-gray-500 font-medium px-5 py-3">Action</th>
+                      <th className="text-left text-gray-500 font-medium px-5 py-3">User</th>
+                      <th className="text-left text-gray-500 font-medium px-5 py-3">Detail</th>
+                      <th className="text-left text-gray-500 font-medium px-5 py-3">Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageEntries.length === 0 ? (
+                      <tr><td colSpan={4} className="text-center text-gray-600 py-12">No audit entries found</td></tr>
+                    ) : pageEntries.map(entry => (
+                      <tr key={entry.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40">
+                        <td className="px-5 py-3 text-white">{entry.action}</td>
+                        <td className="px-5 py-3 text-gray-400">{entry.user || '—'}</td>
+                        <td className="px-5 py-3 text-gray-500 font-mono text-xs">{entry.detail}</td>
+                        <td className="px-5 py-3 text-gray-500 text-xs">{fmtDateTime(entry.ts)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  onClick={() => setAuditPage(p => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >← Prev</button>
+                <span className="text-gray-500 text-xs">Page {safePage} of {totalPages}</span>
+                <button
+                  onClick={() => setAuditPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >Next →</button>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Branch Tab */}
       {tab === 'Branch' && (

@@ -44,8 +44,9 @@ const REPORT_CSS = `
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: Arial, Helvetica, sans-serif; font-size:13px; color:#111; background:#fff; }
 .page { padding:28px 36px; }
-.logo-wrap { text-align:center; margin-bottom:12px; }
-.logo-wrap img { height:70px; width:auto; object-fit:contain; }
+/* Logo bar — static on screen, fixed (repeating) on every printed page */
+.logo-bar { text-align:center; padding:6px 0 5px; border-bottom:1.5px solid #e5e7eb; margin-bottom:16px; background:#fff; }
+.logo-bar img { height:44px; width:auto; object-fit:contain; }
 .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2.5px solid #111; padding-bottom:14px; margin-bottom:20px; }
 .biz-name { font-size:20px; font-weight:700; letter-spacing:0.5px; }
 .biz-sub  { font-size:11px; color:#555; margin-top:3px; }
@@ -64,9 +65,15 @@ tr:nth-child(even) td { background:#f9fafb; }
 .sum-bold { font-weight:700; font-size:14px; border-top:1px solid #d1d5db; margin-top:7px; padding-top:7px; color:#111; }
 .footer { margin-top:28px; padding-top:10px; border-top:1px solid #e5e7eb; font-size:10px; color:#9ca3af; display:flex; justify-content:space-between; }
 @media print {
-  @page { size:A4; margin:14mm 12mm; }
-  body { font-size:12px; }
+  @page { size:A4; margin:8mm 12mm 14mm; }
+  body { font-size:12px; padding-top:18mm; }
   .page { padding:0; }
+  .logo-bar {
+    position:fixed; top:0; left:0; right:0;
+    padding:2mm 0 2mm;
+    border-bottom:1px solid #e5e7eb;
+    margin-bottom:0;
+  }
   img { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
 }
 `;
@@ -91,8 +98,9 @@ export function printReceipt(sale, state) {
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Courier New',Courier,monospace; font-size:13px; color:#111; background:#fff; }
 .wrap { max-width:380px; margin:0 auto; padding:20px; }
+.logo-bar { text-align:center; padding:6px 0 5px; border-bottom:1.5px solid #eee; margin-bottom:10px; background:#fff; }
+.logo-bar img { height:44px; width:auto; object-fit:contain; }
 .head { text-align:center; border-bottom:2px dashed #555; padding-bottom:14px; margin-bottom:14px; }
-.logo  { height:64px; width:auto; object-fit:contain; margin-bottom:8px; }
 .biz-name { font-size:17px; font-weight:bold; letter-spacing:1px; }
 .biz-sub  { font-size:11px; color:#555; margin-top:2px; }
 .rtitle   { text-align:center; font-size:12px; font-weight:bold; letter-spacing:3px; margin-bottom:10px; border-bottom:1px solid #aaa; padding-bottom:6px; }
@@ -110,12 +118,16 @@ th:nth-child(3),td:nth-child(3),th:nth-child(4),td:nth-child(4){ text-align:righ
 .foot     { text-align:center; margin-top:16px; font-size:11px; color:#555; border-top:2px dashed #555; padding-top:12px; }
 @media print {
   @page { margin:5mm; size:80mm auto; }
+  .logo-bar { position:fixed; top:0; left:0; right:0; padding:2mm 0 2mm; border-bottom:1px dashed #aaa; margin-bottom:0; }
+  body { padding-top:16mm; }
   img { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
 }
 </style></head><body>
+<div class="logo-bar">
+  <img src="${logo}" alt="Bevick Logo"/>
+</div>
 <div class="wrap">
   <div class="head">
-    <img class="logo" src="${logo}" alt="Bevick Logo"/>
     <div class="biz-name">${esc(bizName) || 'Bevick Packaging Machineries'}</div>
     <div class="biz-sub">${esc(bizRC) || 'RC: 967373'}</div>
     <div class="biz-sub">Tel: ${CONTACT}</div>
@@ -184,10 +196,10 @@ export function printReport({ title, subtitle, columns, rows, summaryRows, dateR
 <html><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>${REPORT_CSS}</style>
 </head><body>
+<div class="logo-bar">
+  <img src="${logo}" alt="Bevick Logo"/>
+</div>
 <div class="page">
-  <div class="logo-wrap">
-    <img src="${logo}" alt="Bevick Logo"/>
-  </div>
   <div class="header">
     <div>
       <div class="biz-name">${esc(bizName) || 'Bevick Packaging Machineries'}</div>

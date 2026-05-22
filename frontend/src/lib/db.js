@@ -81,7 +81,7 @@ export async function loadData() {
     supabase.from('goods_received').select('data'),
     supabase.from('suppliers').select('data'),
     supabase.from('recycle_bin').select('data'),
-    supabase.from('audit_log').select('data').order('id', { ascending: false }).limit(200),
+    supabase.from('audit_log').select('data').order('id', { ascending: false }),
     supabase.from('pending_users').select('data'),
     supabase.from('delete_requests').select('data'),
     supabase.from('permissions').select('role, pages'),

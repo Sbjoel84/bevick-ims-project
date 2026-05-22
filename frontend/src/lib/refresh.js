@@ -71,8 +71,7 @@ export const refreshAuditLog = async (setState) => {
   const { data, error } = await supabase
     .from('audit_log')
     .select('data')
-    .order('id', { ascending: false })
-    .limit(200);
+    .order('id', { ascending: false });
   if (error) { console.error('[refresh] audit_log:', error.message); return; }
   setState(extract(data));
 };
