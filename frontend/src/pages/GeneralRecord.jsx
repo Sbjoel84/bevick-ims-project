@@ -77,7 +77,9 @@ export default function GeneralRecord() {
     const map = new Map();
 
     filteredBookings.forEach(booking => {
-      const isFF = booking.bookingType === 'full_factory';
+      // Support both bookingType field and legacy type field
+      const btype = booking.bookingType || booking.type || 'others';
+      const isFF = btype === 'full_factory';
       (booking.items || []).forEach(item => {
         if (!item.name) return;
         const key = item.name.toLowerCase();

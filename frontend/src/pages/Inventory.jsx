@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useApp, formatCurrency, genId } from '../context/AppContext';
-import { refreshInventory } from '../lib/refresh';
+import { refreshInventory, refreshBookings } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
 
@@ -33,6 +33,7 @@ export default function Inventory() {
 
   useEffect(() => {
     refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
+    refreshBookings(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'bookings', data } }));
   }, []);
 
   const userBranch = user?.bid;
@@ -140,37 +141,32 @@ export default function Inventory() {
   const outCount = filtered.filter(i => (i.dubQty || 0) + (i.kubQty || 0) === 0).length;
 
   const recordData = useMemo(() => {
+    const activeBookings = bookings.filter(b => b.status !== 'cancelled');
     return mergedInventory.map(item => {
+      const itemNameLower = item.name?.toLowerCase();
       const itemIds = new Set(item.items.map(i => i.id));
 
-      const fullFactory = bookings
-        .filter(b => b.bookingType === 'full_factory')
+      const fullFactory = activeBookings
+        .filter(b => (b.bookingType || b.type) === 'full_factory')
         .reduce((sum, b) => {
-          const found = (b.items || []).find(i => itemIds.has(i.id) || i.name === item.name);
+          const found = (b.items || []).find(i => itemIds.has(i.id) || i.name?.toLowerCase() === itemNameLower);
           return sum + (found ? (found.qty || 1) : 0);
         }, 0);
 
-      const others = bookings
-        .filter(b => b.bookingType !== 'full_factory')
+      const others = activeBookings
+        .filter(b => (b.bookingType || b.type) !== 'full_factory')
         .reduce((sum, b) => {
-          const found = (b.items || []).find(i => itemIds.has(i.id) || i.name === item.name);
+          const found = (b.items || []).find(i => itemIds.has(i.id) || i.name?.toLowerCase() === itemNameLower);
           return sum + (found ? (found.qty || 1) : 0);
         }, 0);
 
-      const itemsSold = sales.reduce((sum, sale) => {
-        const found = (sale.items || []).find(i => itemIds.has(i.id) || i.name === item.name);
-        return sum + (found ? (found.qty || 1) : 0);
-      }, 0);
-
-      const goodsToOrder = purchaseList
-        .filter(p => (p.status === 'pending' || p.status === 'ordered') && (itemIds.has(p.itemId) || p.name === item.name))
-        .reduce((sum, p) => sum + (p.qty || 0), 0);
-
+      const itemsSold = fullFactory + others;
       const goodsForSales = (item.dubQty || 0) + (item.kubQty || 0);
+      const goodsToOrder = Math.max(0, itemsSold - goodsForSales);
 
       return { ...item, fullFactory, others, itemsSold, goodsToOrder, goodsForSales };
     });
-  }, [mergedInventory, bookings, sales, purchaseList]);
+  }, [mergedInventory, bookings]);
 
   const filteredRecord = useMemo(() => {
     const q = recordSearch.toLowerCase().trim();
