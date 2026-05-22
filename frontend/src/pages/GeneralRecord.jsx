@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { refreshBookings, refreshInventory } from '../lib/refresh';
+import { printReport } from '../utils/print';
 
 const RANGES = [
   { id: 'today',  label: 'Daily' },
@@ -125,13 +126,55 @@ export default function GeneralRecord() {
     goodsForSales:filtered.reduce((s, r) => s + r.goodsForSales, 0),
   }), [filtered]);
 
+  function handlePrint() {
+    const rangeLabel = RANGES.find(r => r.id === range)?.label || '';
+    const dateRange = range === 'custom'
+      ? (customS && customE ? `${customS} – ${customE}` : rangeLabel)
+      : rangeLabel;
+    printReport({
+      title: 'General Record',
+      subtitle: bname,
+      columns: [
+        { key: 'name',          label: 'Item' },
+        { key: 'ffQty',         label: 'Full Factory',    align: 'tc' },
+        { key: 'othersQty',     label: 'Others',          align: 'tc' },
+        { key: 'itemsSold',     label: 'Items Sold',      align: 'tc' },
+        { key: 'kubQty',        label: 'Stocks (Kubwa)',  align: 'tc' },
+        { key: 'dubQty',        label: 'Stocks (Dubai)',  align: 'tc' },
+        { key: 'goodsToOrder',  label: 'Goods to Order',  align: 'tc' },
+        { key: 'goodsForSales', label: 'Goods for Sales', align: 'tc' },
+      ],
+      rows: filtered,
+      summaryRows: [
+        { label: 'Full Factory',   value: totals.ffQty },
+        { label: 'Others',         value: totals.othersQty },
+        { label: 'Items Sold',     value: totals.itemsSold,     bold: true },
+        { label: 'Goods to Order', value: totals.goodsToOrder },
+        { label: 'Goods for Sales',value: totals.goodsForSales, bold: true },
+      ],
+      dateRange,
+      state,
+    });
+  }
+
   return (
     <div className="p-6 space-y-5">
 
       {/* Header */}
-      <div>
-        <h1 className="font-syne text-2xl font-bold text-white">General Record</h1>
-        <p className="text-gray-500 text-sm mt-0.5">{bname} · Booking-based inventory summary</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="font-syne text-2xl font-bold text-white">General Record</h1>
+          <p className="text-gray-500 text-sm mt-0.5">{bname} · Booking-based inventory summary</p>
+        </div>
+        <button
+          onClick={handlePrint}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 hover:text-white text-sm font-medium transition-colors shrink-0"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+          </svg>
+          Print
+        </button>
       </div>
 
       {/* Controls */}
