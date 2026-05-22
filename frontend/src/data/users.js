@@ -85,17 +85,18 @@ export const ALL_PAGES = [
   { id: 'purchase',   label: 'Purchase List' },
   { id: 'goods',      label: 'Goods Received' },
   { id: 'suppliers',  label: 'Suppliers' },
-  { id: 'recycle',     label: 'Recycle Bin' },
-  { id: 'reports',     label: 'Reports' },
-  { id: 'settings',    label: 'Settings' },
-  { id: 'commission',  label: 'Commissions' },
+  { id: 'recycle',        label: 'Recycle Bin' },
+  { id: 'reports',        label: 'Reports' },
+  { id: 'generalRecord',  label: 'General Record' },
+  { id: 'settings',       label: 'Settings' },
+  { id: 'commission',     label: 'Commissions' },
 ];
 
 // Default page permissions per role
 export const DEFAULT_PERMISSIONS = {
-  main_super_admin: ['dashboard','sales','customers','expenses','inventory','booked','purchase','goods','suppliers','recycle','reports','settings','admin','commission'],
-  super_admin:      ['dashboard','sales','customers','expenses','inventory','booked','purchase','goods','suppliers','recycle','reports','settings','admin','commission'],
-  admin:            ['dashboard','sales','customers','expenses','inventory','booked','purchase','goods','suppliers','recycle','reports','settings','admin','commission'],
-  inventory:        ['dashboard','inventory','booked','purchase','goods','suppliers','reports','settings'],
-  sales:            ['dashboard','sales','customers','expenses','booked','reports','settings'],
+  main_super_admin: ['dashboard','sales','customers','expenses','inventory','booked','purchase','goods','suppliers','recycle','reports','generalRecord','settings','admin','commission'],
+  super_admin:      ['dashboard','sales','customers','expenses','inventory','booked','purchase','goods','suppliers','recycle','reports','generalRecord','settings','admin','commission'],
+  admin:            ['dashboard','sales','customers','expenses','inventory','booked','purchase','goods','suppliers','recycle','reports','generalRecord','settings','admin','commission'],
+  inventory:        ['dashboard','inventory','booked','purchase','goods','suppliers','generalRecord','reports','settings'],
+  sales:            ['dashboard','sales','customers','expenses','booked','generalRecord','reports','settings'],
 };

@@ -35,6 +35,7 @@ import Settings from './pages/Settings';
 import AdminPanel from './pages/AdminPanel';
 import Reports from './pages/Reports';
 import Commission from './pages/Commission';
+import GeneralRecord from './pages/GeneralRecord';
 
 const PAGES = {
   dashboard: Dashboard,
@@ -51,6 +52,7 @@ const PAGES = {
   admin: AdminPanel,
   reports: Reports,
   commission: Commission,
+  generalRecord: GeneralRecord,
 };
 
 function LoadingScreen() {

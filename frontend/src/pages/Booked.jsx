@@ -15,12 +15,91 @@ const STATUS_COLORS = {
 
 const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'POS', 'Cheque', 'Credit'];
 
+// Full Factory template items (China/Lagos order)
+const FULL_FACTORY_TEMPLATE = [
+  // CHINA/LAGOS ITEMS
+  { name: 'Dingli Sachet Machine', qty: 4, unit: 'Unit' },
+  { name: 'Steam Labeler/ Air Conveyor', qty: 5, unit: 'Unit' },
+  { name: 'Fully Automated Labeller', qty: 2, unit: 'Unit' },
+  { name: 'Cap Loader', qty: 4, unit: 'Unit' },
+  { name: '8-S-3 Monoblock Machine', qty: 5, unit: 'Unit' },
+  { name: '2 HP Air Compressor', qty: 3, unit: 'Unit' },
+  { name: 'Pet Blowing Machine', qty: 3, unit: 'Unit' },
+  { name: 'Semi Automated Shrink Wrapping Machine', qty: 6, unit: 'Unit' },
+  { name: 'Decapper and Washer', qty: 2, unit: 'Unit' },
+  { name: 'Dispenser Machine', qty: 1, unit: 'Unit' },
+  { name: 'Table Date Coding Machine', qty: 2, unit: 'Unit' },
+  { name: 'Ink Jet Date Coding Machine (BIG)', qty: 1, unit: 'Unit' },
+  { name: 'Ink Jet Date Coding Machine (SMALL)', qty: 2, unit: 'Unit' },
+  { name: '3Ton Foreign Treatment Plant', qty: 5, unit: 'Unit' },
+  { name: '1665 Fibre Glass', qty: 2, unit: 'Unit' },
+  { name: 'Panamar Membrane', qty: 40, unit: 'Unit' },
+  { name: '6Grams Stainless Ozone Generator', qty: 4, unit: 'Unit' },
+  { name: 'Cation Resin', qty: 4, unit: 'Unit' },
+  { name: 'Anion Resin', qty: 3, unit: 'Unit' },
+  { name: 'Sand', qty: 45, unit: 'Kg' },
+  { name: 'Activated Carbon (France)', qty: 5, unit: 'Unit' },
+  { name: 'Activated Carbon (USA)', qty: 6, unit: 'Unit' },
+  { name: 'Local Carbon (Malaysia)', qty: 5, unit: 'Unit' },
+  { name: '2HP Vertical Pump', qty: 1, unit: 'Unit' },
+  { name: '1Hp Stainless Pump', qty: 4, unit: 'Unit' },
+  { name: '2Hp Stainless Pump', qty: 8, unit: 'Unit' },
+  { name: '20"Complete Filter Cartridge', qty: 44, unit: 'Unit' },
+  { name: 'Jumbo Normal/Threaded Filter Candle', qty: 7, unit: 'Unit' },
+  { name: 'Jumbo Carbon Filter Candle', qty: 1, unit: 'Unit' },
+  { name: 'Jumbo Filter Housing', qty: 6, unit: 'Unit' },
+  { name: 'Single Tube UV Water Sterilizer', qty: 4, unit: 'Unit' },
+  { name: 'Single Tube UV Water Sterilizer with Base', qty: 2, unit: 'Unit' },
+  { name: 'Double Tube UV Water Sterilizer', qty: 5, unit: 'Unit' },
+  { name: 'Heat Gun', qty: 1, unit: 'Unit' },
+  { name: '1HP Water Chiller', qty: 4, unit: 'Unit' },
+  { name: 'Bottle Mould', qty: 17, unit: 'Unit' },
+  { name: '3 Cavity Pet Blowing Mould 50cl and 75cl', qty: 3, unit: 'Unit' },
+  { name: '20"Complete Air Sterilizer', qty: 8, unit: 'Unit' },
+  { name: 'TDS Test Kits', qty: 2, unit: 'Unit' },
+  { name: 'Chlorine Test Kits', qty: 2, unit: 'Unit' },
+  { name: 'PH Test Kit', qty: 2, unit: 'Unit' },
+  { name: 'Electric Insect Killer', qty: 4, unit: 'Unit' },
+  { name: 'Digital Weighing Scale', qty: 2, unit: 'Unit' },
+  { name: 'Dough Spiral Mixer', qty: 1, unit: 'Unit' },
+  { name: 'Deck Oven 16 Trays (Electric)', qty: 1, unit: 'Unit' },
+  { name: 'Deck Oven 9 Trays (Gas)', qty: 1, unit: 'Unit' },
+  { name: 'Cooling Rack 5ft', qty: 2, unit: 'Unit' },
+  { name: 'Bread Slicer', qty: 1, unit: 'Unit' },
+  { name: 'Dough Moulder', qty: 1, unit: 'Unit' },
+  { name: 'Rotary Oven 1 Bag', qty: 1, unit: 'Unit' },
+  { name: 'Extractor Fan', qty: 3, unit: 'Unit' },
+  // CONSUMABLES / SAFETY / PACKAGING
+  { name: 'Dispenser Cap', qty: 1, unit: 'Unit' },
+  { name: 'First Aid Box', qty: 3, unit: 'Unit' },
+  { name: 'Fire Extinguisher', qty: 3, unit: 'Unit' },
+  { name: 'Lab Coat', qty: 15, unit: 'Pcs' },
+  { name: 'Nose Mask/Hand gloves', qty: 4, unit: 'Set' },
+  { name: 'Hair Net', qty: 2, unit: 'Pcs' },
+  { name: 'Plastic Bowl', qty: 6, unit: 'Unit' },
+  { name: 'Shrink Wrapping Film(in kg)', qty: 50, unit: 'Kg' },
+  { name: 'Sachet Water Packaging Bag', qty: 2, unit: 'Unit' },
+  { name: 'Dispenser Packaging Bag', qty: 1, unit: 'Unit' },
+  { name: 'Footwears', qty: 20, unit: 'Pcs' },
+  { name: 'Preform', qty: 2, unit: 'Unit' },
+  { name: 'Bottle Caps', qty: 2, unit: 'Unit' },
+  { name: 'Plastic Dustbin', qty: 6, unit: 'Unit' },
+  { name: 'Plastic Stereo Design', qty: 2, unit: 'Unit' },
+  { name: 'Sachet Nylon', qty: 1, unit: 'Unit' },
+  { name: 'Sticker and Design/Printing', qty: 3, unit: 'Unit' },
+  { name: 'M.block Holding/Receiving Table', qty: 9, unit: 'Unit' },
+  { name: 'Tamper Proof', qty: 1, unit: 'Unit' },
+  { name: 'Plastic Pallet', qty: 30, unit: 'Unit' },
+  // MEMBRANE R.O
+  { name: '10Membrane R.O', qty: 4, unit: 'Unit' },
+];
+
 function blankRow() {
   return { _rowId: Date.now() + Math.random(), id: null, name: '', qty: 1, unit: '', price: '' };
 }
 
 function calcItemsTotal(items) {
-  return items.filter(i => i.id).reduce((s, i) => s + (i.qty || 1) * (parseFloat(i.price) || 0), 0);
+  return items.filter(i => i.id || i.name?.trim()).reduce((s, i) => s + (i.qty || 1) * (parseFloat(i.price) || 0), 0);
 }
 
 function Modal({ title, onClose, children, wide }) {
@@ -278,6 +357,9 @@ export default function Booked() {
   const [payForm, setPayForm] = useState(EMPTY_PAY);
   const [editingPaymentId, setEditingPaymentId] = useState(null);
   const [editPayForm, setEditPayForm] = useState({ amount: '', date: '', method: 'Cash', note: '' });
+  const [ffImportOpen, setFfImportOpen] = useState(false);
+  const [ffCustomer, setFfCustomer] = useState('');
+  const [ffDate, setFfDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Always derive live booking so payment additions reflect instantly in the view modal
   const currentSelected = selected
@@ -320,7 +402,7 @@ export default function Booked() {
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   function submitNew() {
-    const validItems = form.items.filter(i => i.id).map(({ _rowId, ...rest }) => ({
+    const validItems = form.items.filter(i => i.id || i.name?.trim()).map(({ _rowId, ...rest }) => ({
       ...rest,
       price: parseFloat(rest.price) || 0,
     }));
@@ -379,7 +461,7 @@ export default function Booked() {
 
   function submitEdit() {
     const { bookingDate, ...editFormData } = editForm;
-    const validItems = editFormData.items.filter(i => i.id).map(({ _rowId, ...rest }) => ({
+    const validItems = editFormData.items.filter(i => i.id || i.name?.trim()).map(({ _rowId, ...rest }) => ({
       ...rest,
       price: parseFloat(rest.price) || 0,
     }));
@@ -445,6 +527,39 @@ export default function Booked() {
     }
   }
 
+  function submitFFImport() {
+    if (!ffCustomer.trim()) return;
+    const items = FULL_FACTORY_TEMPLATE.map(t => ({
+      id: null,
+      name: t.name,
+      qty: t.qty,
+      unit: t.unit,
+      price: 0,
+    }));
+    dispatch({
+      type: 'ADD_BOOKING',
+      payload: {
+        id: genId('B'),
+        customer: ffCustomer.trim(),
+        branch: branch || 'DUB',
+        bookingType: 'full_factory',
+        deliveryDate: '',
+        note: 'Imported from China/Lagos Full Factory order sheet',
+        items,
+        total: 0,
+        discount: 0,
+        payments: [],
+        amountPaid: 0,
+        status: 'pending',
+        date: ffDate ? new Date(ffDate + 'T12:00:00').toISOString() : new Date().toISOString(),
+        createdBy: user?.name,
+      },
+    });
+    setFfImportOpen(false);
+    setFfCustomer('');
+    setFfDate(new Date().toISOString().split('T')[0]);
+  }
+
   return (
     <div className="p-6 space-y-6" onClick={() => reportStatusPicker && setReportStatusPicker(false)}>
 
@@ -479,6 +594,16 @@ export default function Booked() {
               </div>
             )}
           </div>
+          {['main_super_admin', 'super_admin', 'admin'].includes(user?.role) && (
+            <button
+              onClick={() => setFfImportOpen(true)}
+              className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+              title="Import Full Factory booking from China/Lagos order sheet"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              Import Full Factory
+            </button>
+          )}
           <button
             onClick={() => { setForm({ ...EMPTY_FORM, branch: branch || 'DUB' }); setModal('new'); }}
             className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
@@ -648,7 +773,7 @@ export default function Booked() {
             <button onClick={() => setModal(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
             <button
               onClick={submitNew}
-              disabled={!form.customer.trim() || form.items.filter(i => i.id).length === 0}
+              disabled={!form.customer.trim() || form.items.filter(i => i.id || i.name?.trim()).length === 0}
               className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
             >
               Create Booking
@@ -665,7 +790,7 @@ export default function Booked() {
             <button onClick={() => setModal(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
             <button
               onClick={submitEdit}
-              disabled={!editForm.customer.trim() || editForm.items.filter(i => i.id).length === 0}
+              disabled={!editForm.customer.trim() || editForm.items.filter(i => i.id || i.name?.trim()).length === 0}
               className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
             >
               Save Changes
@@ -976,6 +1101,65 @@ export default function Booked() {
           label={deleteReq.label}
           onClose={() => setDeleteReq(null)}
         />
+      )}
+
+      {/* ── Full Factory Import Modal ─────────────────────────────────────── */}
+      {ffImportOpen && (
+        <Modal title="Import Full Factory Booking" onClose={() => setFfImportOpen(false)}>
+          <div className="space-y-4">
+            <div className="bg-emerald-950/40 border border-emerald-700/40 rounded-xl px-4 py-3 text-xs text-emerald-300">
+              Creates one <span className="font-semibold">Full Factory</span> booking with <span className="font-semibold">{FULL_FACTORY_TEMPLATE.length} items</span> from the China/Lagos order sheet. Prices default to 0 — edit the booking afterwards to fill them in.
+            </div>
+
+            <div>
+              <label className="text-gray-400 text-xs font-medium block mb-1.5">Customer / Order Name <span className="text-red-400">*</span></label>
+              <input
+                type="text"
+                placeholder="e.g. China/Lagos Factory Order"
+                value={ffCustomer}
+                onChange={e => setFfCustomer(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="text-gray-400 text-xs font-medium block mb-1.5">Booking Date</label>
+              <input
+                type="date"
+                value={ffDate}
+                onChange={e => setFfDate(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Item preview */}
+            <div>
+              <p className="text-gray-400 text-xs font-medium mb-2">Items Preview ({FULL_FACTORY_TEMPLATE.length})</p>
+              <div className="bg-gray-800 rounded-xl max-h-48 overflow-y-auto">
+                {FULL_FACTORY_TEMPLATE.map((t, i) => (
+                  <div key={i} className="flex items-center justify-between px-4 py-1.5 border-b border-gray-700/50 last:border-0 text-xs">
+                    <span className="text-gray-300 truncate flex-1">{t.name}</span>
+                    <span className="text-blue-400 font-mono shrink-0 ml-3">{t.qty} {t.unit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setFfImportOpen(false)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={submitFFImport}
+                disabled={!ffCustomer.trim()}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+              >
+                Create Full Factory Booking
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
