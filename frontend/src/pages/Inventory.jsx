@@ -600,6 +600,36 @@ export default function Inventory() {
       {/* ── General Record Tab ── */}
       {tab === 'record' && (
         <div className="space-y-4">
+
+          {/* Summary Cards */}
+          {(() => {
+            const totFF    = filteredRecord.reduce((s, r) => s + r.fullFactory, 0);
+            const totOth   = filteredRecord.reduce((s, r) => s + r.others, 0);
+            const totSold  = filteredRecord.reduce((s, r) => s + r.itemsSold, 0);
+            const totOrder = filteredRecord.reduce((s, r) => s + r.goodsToOrder, 0);
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-gray-900 border border-green-500/30 rounded-xl px-4 py-3">
+                  <p className="text-gray-500 text-xs mb-1">Items Sold</p>
+                  <p className="font-syne font-bold text-green-400 text-2xl">{totSold}</p>
+                  <p className="text-gray-600 text-xs mt-0.5">FF {totFF} · Others {totOth}</p>
+                </div>
+                <div className="bg-gray-900 border border-amber-500/30 rounded-xl px-4 py-3">
+                  <p className="text-gray-500 text-xs mb-1">Full Factory</p>
+                  <p className="font-syne font-bold text-amber-300 text-2xl">{totFF}</p>
+                </div>
+                <div className="bg-gray-900 border border-red-500/30 rounded-xl px-4 py-3">
+                  <p className="text-gray-500 text-xs mb-1">Others</p>
+                  <p className="font-syne font-bold text-red-400 text-2xl">{totOth}</p>
+                </div>
+                <div className={`bg-gray-900 border rounded-xl px-4 py-3 ${totOrder > 0 ? 'border-orange-500/40' : 'border-gray-800'}`}>
+                  <p className="text-gray-500 text-xs mb-1">Goods to Order</p>
+                  <p className={`font-syne font-bold text-2xl ${totOrder > 0 ? 'text-orange-400' : 'text-gray-400'}`}>{totOrder}</p>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="relative flex-1 w-full sm:max-w-xs">
