@@ -106,7 +106,7 @@ export default function GeneralRecord() {
       const itemsSold    = rec.ffQty + rec.othersQty;
       const totalStock   = kubQty + dubQty;
       const goodsToOrder = Math.max(0, itemsSold - totalStock);
-      const goodsForSales = totalStock;
+      const goodsForSales = Math.max(0, totalStock - itemsSold);
 
       return { ...rec, itemsSold, kubQty, dubQty, goodsToOrder, goodsForSales };
     });

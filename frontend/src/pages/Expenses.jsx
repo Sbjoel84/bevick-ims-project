@@ -4,8 +4,21 @@ import { refreshExpenses } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
 
-const CATEGORIES = ['Operations', 'Logistics', 'Salaries', 'Utilities', 'Maintenance', 'Marketing', 'Office', 'Other'];
+const EXPENSE_TYPES = [
+  { id: 'cashIn',    label: 'Cash In' },
+  { id: 'roExpense', label: 'RO Expense' },
+  { id: 'siteTP',    label: 'Site TP & Others' },
+  { id: 'officeExp', label: 'Office Expense' },
+];
+
 const BRANCHES = [{ id: 'DUB', label: 'Dubai Market' }, { id: 'KUB', label: 'Kubwa Office' }];
+
+export function getExpenseType(e) {
+  if (e.expType) return e.expType;
+  if (['Operations', 'Marketing', 'Maintenance'].includes(e.category)) return 'roExpense';
+  if (['Logistics', 'Salaries'].includes(e.category)) return 'siteTP';
+  return 'officeExp';
+}
 
 function Modal({ title, onClose, children }) {
   return (
@@ -23,7 +36,7 @@ function Modal({ title, onClose, children }) {
   );
 }
 
-const EMPTY = { desc: '', amount: '', category: 'Operations', branch: 'DUB', date: new Date().toISOString().slice(0, 10), note: '' };
+const EMPTY = { desc: '', amount: '', expType: 'roExpense', branch: 'DUB', date: new Date().toISOString().slice(0, 10), note: '' };
 
 export default function Expenses() {
   const { state, dispatch } = useApp();
@@ -34,58 +47,71 @@ export default function Expenses() {
   }, []);
 
   const [modal, setModal] = useState(false);
-  const [editing, setEditing] = useState(null); // expense being edited, or null for add
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [search, setSearch] = useState('');
-  const [filterCat, setFilterCat] = useState('all');
+  const [filterType, setFilterType] = useState('all');
   const [reportOpen, setReportOpen] = useState(false);
   const [deleteReq, setDeleteReq] = useState(null);
 
   const expenseColumns = [
-    { key: 'date',     label: 'Date',     format: v => fmtDate(v) },
-    { key: 'desc',     label: 'Description' },
-    { key: 'category', label: 'Category' },
-    { key: 'branch',   label: 'Branch',   format: v => v === 'DUB' ? 'Dubai Market' : 'Kubwa Office' },
-    { key: 'amount',   label: 'Amount',   align: 'tr', format: v => formatCurrency(v || 0, currency) },
+    { key: 'date',   label: 'Date',                              format: v => fmtDate(v) },
+    { key: 'desc',   label: 'Details' },
+    { key: '_ci',    label: 'Cash In (₦)',           align: 'tr', format: (_, row) => getExpenseType(row) === 'cashIn'    ? formatCurrency(row.amount || 0, currency) : '' },
+    { key: '_ro',    label: 'Cash Out RO Expense',   align: 'tr', format: (_, row) => getExpenseType(row) === 'roExpense' ? formatCurrency(row.amount || 0, currency) : '' },
+    { key: '_st',    label: 'Cash Out Site TP & Others', align: 'tr', format: (_, row) => getExpenseType(row) === 'siteTP'    ? formatCurrency(row.amount || 0, currency) : '' },
+    { key: '_oe',    label: 'Cash Out Office Exp.',  align: 'tr', format: (_, row) => getExpenseType(row) === 'officeExp' ? formatCurrency(row.amount || 0, currency) : '' },
+    { key: 'branch', label: 'Branch',                            format: v => v === 'DUB' ? 'Dubai Market' : 'Kubwa Office' },
   ];
 
   function getExpenseSummary(data) {
-    const total = data.reduce((s, e) => s + (e.amount || 0), 0);
-    const byCat = CATEGORIES.map(cat => ({
-      label: cat, value: formatCurrency(data.filter(e => e.category === cat).reduce((s, e) => s + (e.amount || 0), 0), currency),
-    })).filter(x => data.some(e => e.category === x.label));
+    const cashIn = data.filter(e => getExpenseType(e) === 'cashIn').reduce((s, e) => s + (e.amount || 0), 0);
+    const roExp  = data.filter(e => getExpenseType(e) === 'roExpense').reduce((s, e) => s + (e.amount || 0), 0);
+    const siteTP = data.filter(e => getExpenseType(e) === 'siteTP').reduce((s, e) => s + (e.amount || 0), 0);
+    const offExp = data.filter(e => getExpenseType(e) === 'officeExp').reduce((s, e) => s + (e.amount || 0), 0);
+    const total  = roExp + siteTP + offExp;
     return [
-      ...byCat,
-      { label: 'Total Expenses', value: formatCurrency(total, currency), bold: true },
+      { label: 'Cash In',              value: formatCurrency(cashIn, currency) },
+      { label: 'RO Expenses',          value: formatCurrency(roExp, currency) },
+      { label: 'Site TP & Others',     value: formatCurrency(siteTP, currency) },
+      { label: 'Office Expenses',      value: formatCurrency(offExp, currency) },
+      { label: 'Total Expenses',       value: formatCurrency(total, currency), bold: true },
+      { label: 'Net Balance',          value: formatCurrency(cashIn - total, currency) },
     ];
   }
 
   const filtered = expenses
     .filter(e => branch ? e.branch === branch : true)
-    .filter(e => filterCat === 'all' || e.category === filterCat)
+    .filter(e => filterType === 'all' || getExpenseType(e) === filterType)
     .filter(e => {
       const q = search.toLowerCase();
-      return !q || e.desc?.toLowerCase().includes(q) || e.category?.toLowerCase().includes(q);
+      return !q || e.desc?.toLowerCase().includes(q);
     })
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  const total = filtered.reduce((s, e) => s + (e.amount || 0), 0);
+  // Compute running balance and cumulative expenses (ledger-style)
+  let runBalance = 0;
+  let cumExpenses = 0;
+  const ledger = filtered.map(e => {
+    const type = getExpenseType(e);
+    const amt = e.amount || 0;
+    if (type === 'cashIn') { runBalance += amt; }
+    else { runBalance -= amt; cumExpenses += amt; }
+    return { ...e, _type: type, _balance: runBalance, _cumExp: cumExpenses };
+  });
 
-  // Group totals by category
-  const byCategory = CATEGORIES.map(cat => ({
-    cat,
-    total: filtered.filter(e => e.category === cat).reduce((s, e) => s + (e.amount || 0), 0),
-  })).filter(x => x.total > 0);
+  const totalCashIn   = filtered.filter(e => getExpenseType(e) === 'cashIn').reduce((s, e) => s + (e.amount || 0), 0);
+  const totalExpenses = filtered.filter(e => getExpenseType(e) !== 'cashIn').reduce((s, e) => s + (e.amount || 0), 0);
 
   function openEdit(e) {
     setEditing(e);
     setForm({
-      desc: e.desc || '',
-      amount: String(e.amount || ''),
-      category: e.category || 'Operations',
-      branch: e.branch || 'DUB',
-      date: e.date ? e.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
-      note: e.note || '',
+      desc:    e.desc || '',
+      amount:  String(e.amount || ''),
+      expType: getExpenseType(e),
+      branch:  e.branch || 'DUB',
+      date:    e.date ? e.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      note:    e.note || '',
     });
     setModal(true);
   }
@@ -97,25 +123,25 @@ export default function Expenses() {
         type: 'UPDATE_EXPENSE',
         payload: {
           ...editing,
-          desc: form.desc,
-          amount: parseFloat(form.amount),
-          category: form.category,
-          branch: branch || form.branch,
-          date: form.date || editing.date,
-          note: form.note,
+          desc:    form.desc,
+          amount:  parseFloat(form.amount),
+          expType: form.expType,
+          branch:  branch || form.branch,
+          date:    form.date || editing.date,
+          note:    form.note,
         },
       });
     } else {
       dispatch({
         type: 'ADD_EXPENSE',
         payload: {
-          id: genId('E'),
-          desc: form.desc,
-          amount: parseFloat(form.amount),
-          category: form.category,
-          branch: branch || form.branch,
-          date: form.date || new Date().toISOString(),
-          note: form.note,
+          id:        genId('E'),
+          desc:      form.desc,
+          amount:    parseFloat(form.amount),
+          expType:   form.expType,
+          branch:    branch || form.branch,
+          date:      form.date || new Date().toISOString(),
+          note:      form.note,
           createdBy: user?.name,
         },
       });
@@ -127,7 +153,7 @@ export default function Expenses() {
 
   function del(id) {
     if (['main_super_admin', 'super_admin', 'admin'].includes(user?.role)) {
-      if (window.confirm('Delete this expense?')) dispatch({ type: 'DELETE_EXPENSE', payload: id });
+      if (window.confirm('Delete this entry?')) dispatch({ type: 'DELETE_EXPENSE', payload: id });
     } else {
       const e = expenses.find(x => x.id === id);
       setDeleteReq({ type: 'expense', targetId: id, label: e?.desc || id });
@@ -136,6 +162,7 @@ export default function Expenses() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-syne text-2xl font-bold text-white">Expenses</h1>
@@ -154,74 +181,95 @@ export default function Expenses() {
             className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-            Add Expense
+            Add Entry
           </button>
         </div>
       </div>
 
-      {/* Summary */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 lg:col-span-2 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Expenses</p>
-          <p className="font-syne text-xs sm:text-sm md:text-2xl font-bold text-white break-all">{formatCurrency(total, currency)}</p>
-          <p className="text-gray-600 text-xs mt-1">{filtered.length} entries</p>
+          <p className="font-syne text-xs sm:text-sm md:text-2xl font-bold text-red-400 break-all">{formatCurrency(totalExpenses, currency)}</p>
+          <p className="text-gray-600 text-xs mt-1">{filtered.filter(e => getExpenseType(e) !== 'cashIn').length} expense entries</p>
         </div>
-        {byCategory.slice(0, 2).map(x => (
-          <div key={x.cat} className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
-            <p className="text-gray-500 text-xs font-medium mb-1">{x.cat}</p>
-            <p className="font-syne text-xs sm:text-sm md:text-lg font-bold text-white break-all">{formatCurrency(x.total, currency)}</p>
-          </div>
-        ))}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+          <p className="text-gray-500 text-xs font-medium mb-1">Cash In</p>
+          <p className="font-syne text-xs sm:text-sm md:text-lg font-bold text-green-400 break-all">{formatCurrency(totalCashIn, currency)}</p>
+        </div>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+          <p className="text-gray-500 text-xs font-medium mb-1">Net Balance</p>
+          <p className={`font-syne text-xs sm:text-sm md:text-lg font-bold break-all ${totalCashIn - totalExpenses >= 0 ? 'text-white' : 'text-red-400'}`}>
+            {formatCurrency(totalCashIn - totalExpenses, currency)}
+          </p>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <input
           type="text"
-          placeholder="Search expenses…"
+          placeholder="Search entries…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
         />
         <select
-          value={filterCat}
-          onChange={e => setFilterCat(e.target.value)}
+          value={filterType}
+          onChange={e => setFilterType(e.target.value)}
           className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="all">All Categories</option>
-          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          <option value="all">All Types</option>
+          {EXPENSE_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
         </select>
       </div>
 
+      {/* Ledger Table */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800">
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Description</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Category</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Date</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Branch</th>
-                <th className="text-right text-gray-500 font-medium px-5 py-3">Amount</th>
-                <th className="px-5 py-3"></th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3 whitespace-nowrap">Date</th>
+                <th className="text-left text-gray-500 font-medium px-4 py-3">Details</th>
+                <th className="text-right text-gray-500 font-medium px-4 py-3 whitespace-nowrap">Cash In (₦)</th>
+                <th className="text-right text-gray-500 font-medium px-4 py-3 whitespace-nowrap">Cash Out RO Exp.</th>
+                <th className="text-right text-gray-500 font-medium px-4 py-3 whitespace-nowrap">Cash Out Site TP &amp; Others</th>
+                <th className="text-right text-gray-500 font-medium px-4 py-3 whitespace-nowrap">Cash Out Office Exp.</th>
+                <th className="text-right text-gray-500 font-medium px-4 py-3 whitespace-nowrap">Balance</th>
+                <th className="text-right text-gray-500 font-medium px-4 py-3 whitespace-nowrap">Total Expenses</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={6} className="text-center text-gray-600 py-12">No expenses found</td></tr>
-              ) : filtered.map(e => (
+              {ledger.length === 0 ? (
+                <tr><td colSpan={9} className="text-center text-gray-600 py-12">No entries found</td></tr>
+              ) : ledger.map(e => (
                 <tr key={e.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-3.5 text-gray-400 whitespace-nowrap">{fmtDate(e.date)}</td>
+                  <td className="px-4 py-3.5">
                     <p className="text-white font-medium">{e.desc}</p>
                     {e.note && <p className="text-gray-500 text-xs mt-0.5">{e.note}</p>}
                   </td>
-                  <td className="px-5 py-3.5">
-                    <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg">{e.category}</span>
+                  <td className="px-4 py-3.5 text-right font-mono text-green-400">
+                    {e._type === 'cashIn' ? formatCurrency(e.amount, currency) : ''}
                   </td>
-                  <td className="px-5 py-3.5 text-gray-400">{fmtDate(e.date)}</td>
-                  <td className="px-5 py-3.5 text-gray-400">{e.branch === 'DUB' ? 'Dubai' : 'Kubwa'}</td>
-                  <td className="px-5 py-3.5 text-right font-mono text-red-400 font-medium">{formatCurrency(e.amount, currency)}</td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-4 py-3.5 text-right font-mono text-orange-400">
+                    {e._type === 'roExpense' ? formatCurrency(e.amount, currency) : ''}
+                  </td>
+                  <td className="px-4 py-3.5 text-right font-mono text-blue-400">
+                    {e._type === 'siteTP' ? formatCurrency(e.amount, currency) : ''}
+                  </td>
+                  <td className="px-4 py-3.5 text-right font-mono text-yellow-400">
+                    {e._type === 'officeExp' ? formatCurrency(e.amount, currency) : ''}
+                  </td>
+                  <td className={`px-4 py-3.5 text-right font-mono font-semibold ${e._balance >= 0 ? 'text-white' : 'text-red-400'}`}>
+                    {formatCurrency(e._balance, currency)}
+                  </td>
+                  <td className="px-4 py-3.5 text-right font-mono text-red-400">
+                    {formatCurrency(e._cumExp, currency)}
+                  </td>
+                  <td className="px-4 py-3.5">
                     <div className="flex items-center justify-end gap-2">
                       <button onClick={() => openEdit(e)} className="text-gray-500 hover:text-blue-400 transition-colors">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
@@ -251,10 +299,10 @@ export default function Expenses() {
       )}
 
       {modal && (
-        <Modal title={editing ? 'Edit Expense' : 'Add Expense'} onClose={() => { setModal(false); setEditing(null); setForm(EMPTY); }}>
+        <Modal title={editing ? 'Edit Entry' : 'Add Entry'} onClose={() => { setModal(false); setEditing(null); setForm(EMPTY); }}>
           <div className="space-y-4">
             <div>
-              <label className="text-gray-400 text-xs font-medium block mb-1.5">Description <span className="text-red-400">*</span></label>
+              <label className="text-gray-400 text-xs font-medium block mb-1.5">Details <span className="text-red-400">*</span></label>
               <input
                 type="text"
                 placeholder="e.g. Generator fuel"
@@ -287,13 +335,13 @@ export default function Expenses() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-gray-400 text-xs font-medium block mb-1.5">Category</label>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Type</label>
                 <select
-                  value={form.category}
-                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                  value={form.expType}
+                  onChange={e => setForm(f => ({ ...f, expType: e.target.value }))}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  {EXPENSE_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                 </select>
               </div>
               <div>
@@ -324,7 +372,7 @@ export default function Expenses() {
                 disabled={!form.desc.trim() || !form.amount}
                 className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
               >
-                {editing ? 'Save Changes' : 'Add Expense'}
+                {editing ? 'Save Changes' : 'Add Entry'}
               </button>
             </div>
           </div>

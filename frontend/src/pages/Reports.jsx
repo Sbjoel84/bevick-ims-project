@@ -55,6 +55,13 @@ function makeReportConfigs(state) {
   const bl = v => v === 'DUB' ? 'Dubai Market' : v === 'KUB' ? 'Kubwa Office' : v || '—';
   const cap = v => v ? v.charAt(0).toUpperCase() + v.slice(1) : '—';
 
+  const getExpType = e => {
+    if (e.expType) return e.expType;
+    if (['Operations', 'Marketing', 'Maintenance'].includes(e.category)) return 'roExpense';
+    if (['Logistics', 'Salaries'].includes(e.category)) return 'siteTP';
+    return 'officeExp';
+  };
+
   // Merge inventory entries into one row per item (DUB + KUB combined)
   const mergedInv = (() => {
     const map = new Map();
@@ -193,19 +200,28 @@ function makeReportConfigs(state) {
       dateKey: 'date',
       getData: () => expenses.filter(e => branch ? e.branch === branch : true),
       columns: [
-        { key: 'date',     label: 'Date',        format: v => fmtDate(v) },
-        { key: 'desc',     label: 'Description' },
-        { key: 'category', label: 'Category' },
-        { key: 'branch',   label: 'Branch',      format: bl },
-        { key: 'amount',   label: 'Amount',      align: 'tr', format: v => formatCurrency(v || 0, currency) },
+        { key: 'date',  label: 'Date',                              format: v => fmtDate(v) },
+        { key: 'desc',  label: 'Details' },
+        { key: '_ci',   label: 'Cash In (₦)',           align: 'tr', format: (_, row) => getExpType(row) === 'cashIn'    ? formatCurrency(row.amount || 0, currency) : '' },
+        { key: '_ro',   label: 'Cash Out RO Expense',   align: 'tr', format: (_, row) => getExpType(row) === 'roExpense' ? formatCurrency(row.amount || 0, currency) : '' },
+        { key: '_st',   label: 'Cash Out Site TP & Others', align: 'tr', format: (_, row) => getExpType(row) === 'siteTP'    ? formatCurrency(row.amount || 0, currency) : '' },
+        { key: '_oe',   label: 'Cash Out Office Exp.',  align: 'tr', format: (_, row) => getExpType(row) === 'officeExp' ? formatCurrency(row.amount || 0, currency) : '' },
+        { key: 'branch', label: 'Branch',                           format: bl },
       ],
       getSummary: rows => {
-        const total = rows.reduce((s, e) => s + (e.amount || 0), 0);
-        const CATS  = ['Operations','Logistics','Salaries','Utilities','Maintenance','Marketing','Office','Other'];
-        const byCat = CATS
-          .map(cat => ({ label: cat, value: formatCurrency(rows.filter(e => e.category === cat).reduce((s, e) => s + (e.amount || 0), 0), currency) }))
-          .filter(x => rows.some(e => e.category === x.label));
-        return [...byCat, { label: 'Total Expenses', value: formatCurrency(total, currency), bold: true }];
+        const cashIn = rows.filter(e => getExpType(e) === 'cashIn').reduce((s, e) => s + (e.amount || 0), 0);
+        const roExp  = rows.filter(e => getExpType(e) === 'roExpense').reduce((s, e) => s + (e.amount || 0), 0);
+        const siteTP = rows.filter(e => getExpType(e) === 'siteTP').reduce((s, e) => s + (e.amount || 0), 0);
+        const offExp = rows.filter(e => getExpType(e) === 'officeExp').reduce((s, e) => s + (e.amount || 0), 0);
+        const total  = roExp + siteTP + offExp;
+        return [
+          { label: 'Cash In',              value: formatCurrency(cashIn, currency) },
+          { label: 'RO Expenses',          value: formatCurrency(roExp, currency) },
+          { label: 'Site TP & Others',     value: formatCurrency(siteTP, currency) },
+          { label: 'Office Expenses',      value: formatCurrency(offExp, currency) },
+          { label: 'Total Expenses',       value: formatCurrency(total, currency), bold: true },
+          { label: 'Net Balance',          value: formatCurrency(cashIn - total, currency) },
+        ];
       },
     },
 

@@ -161,8 +161,9 @@ export default function Inventory() {
         }, 0);
 
       const itemsSold = fullFactory + others;
-      const goodsForSales = (item.dubQty || 0) + (item.kubQty || 0);
-      const goodsToOrder = Math.max(0, itemsSold - goodsForSales);
+      const totalStock = (item.dubQty || 0) + (item.kubQty || 0);
+      const goodsToOrder = Math.max(0, itemsSold - totalStock);
+      const goodsForSales = Math.max(0, totalStock - itemsSold);
 
       return { ...item, fullFactory, others, itemsSold, goodsToOrder, goodsForSales };
     });
