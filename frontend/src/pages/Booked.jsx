@@ -393,7 +393,6 @@ export default function Booked() {
   }
 
   const filtered = bookings
-    .filter(b => branch ? b.branch === branch : true)
     .filter(b => filterStatus === 'all' || b.status === filterStatus)
     .filter(b => {
       const q = search.toLowerCase();
@@ -613,6 +612,48 @@ export default function Booked() {
           </button>
         </div>
       </div>
+
+      {/* Summary Cards */}
+      {(() => {
+        const activeBookings = bookings.filter(b => b.status !== 'cancelled');
+        const ffBookings  = activeBookings.filter(b => (b.bookingType || b.type) === 'full_factory');
+        const othBookings = activeBookings.filter(b => (b.bookingType || b.type) !== 'full_factory');
+
+        const ffValue      = ffBookings.reduce((s, b)  => s + Math.max(0, (b.total || 0) - (b.discount || 0)), 0);
+        const othValue     = othBookings.reduce((s, b) => s + Math.max(0, (b.total || 0) - (b.discount || 0)), 0);
+        const ffCustomers  = new Set(ffBookings.map(b => b.customer?.trim().toLowerCase()).filter(Boolean)).size;
+        const othCustomers = new Set(othBookings.map(b => b.customer?.trim().toLowerCase()).filter(Boolean)).size;
+
+        return (
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="bg-gray-900 border border-blue-500/30 rounded-2xl px-4 py-4 col-span-2 lg:col-span-1">
+              <p className="text-gray-500 text-xs font-medium mb-1">Total Bookings</p>
+              <p className="font-syne font-bold text-blue-400 text-2xl">{activeBookings.length}</p>
+              <p className="text-gray-600 text-xs mt-1">FF {ffBookings.length} · Others {othBookings.length}</p>
+            </div>
+            <div className="bg-gray-900 border border-amber-500/20 rounded-2xl px-4 py-4">
+              <p className="text-gray-500 text-xs font-medium mb-1">Full Factory Value</p>
+              <p className="font-syne font-bold text-amber-300 text-lg">{formatCurrency(ffValue, currency)}</p>
+              <p className="text-gray-600 text-xs mt-1">excl. cancelled</p>
+            </div>
+            <div className="bg-gray-900 border border-red-500/20 rounded-2xl px-4 py-4">
+              <p className="text-gray-500 text-xs font-medium mb-1">Others Value</p>
+              <p className="font-syne font-bold text-red-400 text-lg">{formatCurrency(othValue, currency)}</p>
+              <p className="text-gray-600 text-xs mt-1">excl. cancelled</p>
+            </div>
+            <div className="bg-gray-900 border border-amber-500/30 rounded-2xl px-4 py-4">
+              <p className="text-gray-500 text-xs font-medium mb-1">Full Factory Customers</p>
+              <p className="font-syne font-bold text-amber-300 text-2xl">{ffCustomers}</p>
+              <p className="text-gray-600 text-xs mt-1">unique customer{ffCustomers !== 1 ? 's' : ''}</p>
+            </div>
+            <div className="bg-gray-900 border border-red-500/30 rounded-2xl px-4 py-4">
+              <p className="text-gray-500 text-xs font-medium mb-1">Others Customers</p>
+              <p className="font-syne font-bold text-red-400 text-2xl">{othCustomers}</p>
+              <p className="text-gray-600 text-xs mt-1">unique customer{othCustomers !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">

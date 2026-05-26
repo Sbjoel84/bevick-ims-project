@@ -142,30 +142,58 @@ export default function Inventory() {
 
   const recordData = useMemo(() => {
     const activeBookings = bookings.filter(b => b.status !== 'cancelled');
-    return mergedInventory.map(item => {
-      const itemNameLower = item.name?.toLowerCase();
-      const itemIds = new Set(item.items.map(i => i.id));
 
-      const fullFactory = activeBookings
-        .filter(b => (b.bookingType || b.type) === 'full_factory')
-        .reduce((sum, b) => {
-          const found = (b.items || []).find(i => itemIds.has(i.id) || i.name?.toLowerCase() === itemNameLower);
-          return sum + (found ? (found.qty || 1) : 0);
-        }, 0);
+    // Build a map keyed by item name (lowercase) aggregating from bookings
+    const map = new Map();
 
-      const others = activeBookings
-        .filter(b => (b.bookingType || b.type) !== 'full_factory')
-        .reduce((sum, b) => {
-          const found = (b.items || []).find(i => itemIds.has(i.id) || i.name?.toLowerCase() === itemNameLower);
-          return sum + (found ? (found.qty || 1) : 0);
-        }, 0);
+    activeBookings.forEach(b => {
+      const bType = (b.bookingType || b.type);
+      const isFullFactory = bType === 'full_factory';
+      const isOthers = bType === 'others' || (!isFullFactory);
 
-      const itemsSold = fullFactory + others;
-      const totalStock = (item.dubQty || 0) + (item.kubQty || 0);
+      (b.items || []).forEach(bi => {
+        const nameLower = bi.name?.toLowerCase().trim();
+        if (!nameLower) return;
+
+        if (!map.has(nameLower)) {
+          map.set(nameLower, { name: bi.name, fullFactory: 0, others: 0 });
+        }
+        const entry = map.get(nameLower);
+        if (isFullFactory) {
+          entry.fullFactory += bi.qty || 1;
+        } else {
+          entry.others += bi.qty || 1;
+        }
+      });
+    });
+
+    // Cross-reference with inventory for stock quantities
+    const inventoryByName = new Map();
+    mergedInventory.forEach(item => {
+      inventoryByName.set(item.name?.toLowerCase().trim(), item);
+    });
+
+    return Array.from(map.values()).map(entry => {
+      const invItem = inventoryByName.get(entry.name?.toLowerCase().trim());
+      const dubQty = invItem?.dubQty || 0;
+      const kubQty = invItem?.kubQty || 0;
+      const totalStock = dubQty + kubQty;
+      const itemsSold = entry.fullFactory + entry.others;
       const goodsToOrder = Math.max(0, itemsSold - totalStock);
       const goodsForSales = Math.max(0, totalStock - itemsSold);
 
-      return { ...item, fullFactory, others, itemsSold, goodsToOrder, goodsForSales };
+      return {
+        id: invItem?.id || entry.name,
+        name: invItem?.name || entry.name,
+        supplier: invItem?.supplier || '',
+        dubQty,
+        kubQty,
+        fullFactory: entry.fullFactory,
+        others: entry.others,
+        itemsSold,
+        goodsToOrder,
+        goodsForSales,
+      };
     });
   }, [mergedInventory, bookings]);
 
