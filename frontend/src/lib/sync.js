@@ -9,25 +9,45 @@ import { supabase } from './supabase';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-// Tables that have a branch column in the schema
 const BRANCH_TABLES = new Set(['inventory','sales','customers','expenses','bookings','purchase_list','goods_received']);
+
+// Max rows per upsert request — prevents oversized payloads as data grows.
+const CHUNK_SIZE = 50;
+
+// Retries a Supabase write up to maxAttempts times with exponential backoff.
+// Handles transient network errors so data is never silently lost.
+async function withRetry(fn, maxAttempts = 3, baseDelayMs = 400) {
+  let lastErr;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxAttempts - 1) {
+        await new Promise(r => setTimeout(r, baseDelayMs * 2 ** attempt));
+      }
+    }
+  }
+  throw lastErr;
+}
 
 async function upsert(table, obj) {
   const row = { id: String(obj.id), data: obj };
   if (BRANCH_TABLES.has(table)) row.branch = obj.branch || null;
-  console.log('[sync] upsert:', table, 'id:', row.id, 'branch:', row.branch);
-  const { error } = await supabase.from(table).upsert(row);
-  if (error) {
-    console.error('[sync] upsert error:', table, error.message);
-    throw error;
-  }
+  await withRetry(async () => {
+    const { error } = await supabase.from(table).upsert(row);
+    if (error) throw error;
+  });
 }
 
 async function remove(table, id) {
-  const { error } = await supabase.from(table).delete().eq('id', String(id));
-  if (error) throw error;
+  await withRetry(async () => {
+    const { error } = await supabase.from(table).delete().eq('id', String(id));
+    if (error) throw error;
+  });
 }
 
+// Chunked batch upsert — avoids request-size limits for large collections.
 async function upsertMany(table, items) {
   if (!items.length) return;
   const rows = items.map(obj => {
@@ -35,16 +55,23 @@ async function upsertMany(table, items) {
     if (BRANCH_TABLES.has(table)) row.branch = obj.branch || null;
     return row;
   });
-  const { error } = await supabase.from(table).upsert(rows);
-  if (error) throw error;
+  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + CHUNK_SIZE);
+    await withRetry(async () => {
+      const { error } = await supabase.from(table).upsert(chunk);
+      if (error) throw error;
+    });
+  }
 }
 
 async function syncAudit(nextState, prevState) {
-  // Sync only the newest audit entry (if a new one was added)
   const next = nextState.auditLog[0];
   const prev = prevState.auditLog[0];
   if (next && next !== prev) {
-    await supabase.from('audit_log').upsert({ id: String(next.id), data: next });
+    await withRetry(async () => {
+      const { error } = await supabase.from('audit_log').upsert({ id: String(next.id), data: next });
+      if (error) throw error;
+    });
   }
 }
 
@@ -193,20 +220,18 @@ export async function syncAction(action, prevState, nextState) {
         // Remove old purchases from this booking that no longer exist
         const oldPurchases = prevState.purchaseList.filter(p => p.bookingId === action.payload.id);
         const newPurchaseIds = new Set(purchasesForBooking.map(p => p.id));
-        for (const oldPurch of oldPurchases) {
-          if (!newPurchaseIds.has(oldPurch.id)) {
-            await remove('purchase_list', oldPurch.id);
-          }
+        const stalePurchases = oldPurchases.filter(p => !newPurchaseIds.has(p.id));
+        if (stalePurchases.length) {
+          await Promise.all(stalePurchases.map(p => remove('purchase_list', p.id)));
         }
         break;
       }
       case 'DELETE_BOOKING': {
         await remove('bookings', action.payload);
         await toRecycleBin(nextState, action.payload);
-        // Also remove purchase orders auto-generated from this booking
         const purchasesToDelete = prevState.purchaseList.filter(p => p.bookingId === action.payload);
-        for (const p of purchasesToDelete) {
-          await remove('purchase_list', p.id);
+        if (purchasesToDelete.length) {
+          await Promise.all(purchasesToDelete.map(p => remove('purchase_list', p.id)));
         }
         break;
       }

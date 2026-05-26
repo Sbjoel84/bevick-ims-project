@@ -4,6 +4,10 @@ import { loadData } from '../lib/db';
 import { syncAction } from '../lib/sync';
 import { supabase } from '../lib/supabase';
 
+// In-memory audit log is capped so long-running sessions never accumulate
+// thousands of entries that slow down every state update.
+const MAX_AUDIT_LOG = 500;
+
 const AppContext = createContext(null);
 
 const initialState = {
@@ -56,7 +60,7 @@ const initialState = {
   page: 'login',
 };
 
-function reducer(state, action) {
+function rawReducer(state, action) {
   switch (action.type) {
 
     // ── DB INIT ────────────────────────────────────────────────
@@ -547,7 +551,7 @@ function reducer(state, action) {
         supplier: 'DELETE_SUPPLIER', commission: 'DELETE_COMMISSION',
       };
       const deleteType = typeMap[req.type];
-      const afterDelete = deleteType ? reducer(state, { type: deleteType, payload: req.targetId }) : state;
+      const afterDelete = deleteType ? rawReducer(state, { type: deleteType, payload: req.targetId }) : state;
       return {
         ...afterDelete,
         deleteRequests: afterDelete.deleteRequests.filter(r => r.id !== req.id),
@@ -728,6 +732,17 @@ function reducer(state, action) {
     default:
       return state;
   }
+}
+
+// Public reducer: wraps rawReducer and caps the audit log after every action.
+// This single checkpoint prevents unbounded memory growth without touching
+// any of the 20+ individual cases that prepend to auditLog.
+function reducer(state, action) {
+  const next = rawReducer(state, action);
+  if (next !== state && Array.isArray(next.auditLog) && next.auditLog.length > MAX_AUDIT_LOG) {
+    return { ...next, auditLog: next.auditLog.slice(0, MAX_AUDIT_LOG) };
+  }
+  return next;
 }
 
 export function AppProvider({ children }) {

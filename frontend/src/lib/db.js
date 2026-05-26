@@ -7,6 +7,11 @@ import { supabase } from './supabase';
 import { ALL_ITEMS } from '../data/inventory';
 import { DEFAULT_PERMISSIONS } from '../data/users';
 
+// Limits prevent full-table scans on large datasets at startup.
+// Transactional tables are ordered newest-first so the most recent records load.
+const LARGE_TABLE_LIMIT = 500;
+const AUDIT_LOG_LIMIT   = 200;
+
 const DEFAULT_SUPPLIERS = [
   { id:'S1',  name:'TechPack Ltd',          contact:'Emeka Eze',        phone:'+234 801 111 0001', email:'info@techpack.ng',       address:'Lagos, Nigeria',  category:'Machinery',   status:'active' },
   { id:'S2',  name:'SealPro NG',            contact:'Fatima Bello',     phone:'+234 802 111 0002', email:'sales@sealpro.ng',       address:'Abuja, Nigeria',  category:'Spare Parts', status:'active' },
@@ -73,19 +78,19 @@ export async function loadData() {
     supabase.from('app_settings').select('data').eq('id', 'main').maybeSingle(),
     supabase.from('app_users').select('data'),
     supabase.from('inventory').select('data'),
-    supabase.from('sales').select('data'),
-    supabase.from('customers').select('data'),
-    supabase.from('expenses').select('data'),
-    supabase.from('bookings').select('data'),
-    supabase.from('purchase_list').select('data'),
-    supabase.from('goods_received').select('data'),
+    supabase.from('sales').select('data').order('id', { ascending: false }).limit(LARGE_TABLE_LIMIT),
+    supabase.from('customers').select('data').order('id', { ascending: false }).limit(LARGE_TABLE_LIMIT),
+    supabase.from('expenses').select('data').order('id', { ascending: false }).limit(LARGE_TABLE_LIMIT),
+    supabase.from('bookings').select('data').order('id', { ascending: false }).limit(LARGE_TABLE_LIMIT),
+    supabase.from('purchase_list').select('data').order('id', { ascending: false }).limit(LARGE_TABLE_LIMIT),
+    supabase.from('goods_received').select('data').order('id', { ascending: false }).limit(LARGE_TABLE_LIMIT),
     supabase.from('suppliers').select('data'),
-    supabase.from('recycle_bin').select('data'),
-    supabase.from('audit_log').select('data').order('id', { ascending: false }),
+    supabase.from('recycle_bin').select('data').order('id', { ascending: false }).limit(LARGE_TABLE_LIMIT),
+    supabase.from('audit_log').select('data').order('id', { ascending: false }).limit(AUDIT_LOG_LIMIT),
     supabase.from('pending_users').select('data'),
     supabase.from('delete_requests').select('data'),
     supabase.from('permissions').select('role, pages'),
-    supabase.from('commissions').select('data'),
+    supabase.from('commissions').select('data').order('id', { ascending: false }).limit(LARGE_TABLE_LIMIT),
   ]);
 
   // ── Write access test — detect RLS or permission issues on startup ───────────
