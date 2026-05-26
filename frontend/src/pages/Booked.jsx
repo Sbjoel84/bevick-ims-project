@@ -631,20 +631,20 @@ export default function Booked() {
         const othCustomers = new Set(othBookings.map(b => b.customer?.trim().toLowerCase()).filter(Boolean)).size;
 
         return (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            <div className="bg-gray-900 border border-blue-500/30 rounded-2xl px-4 py-4 col-span-2 lg:col-span-1">
+          <div className="grid grid-cols-5 gap-3">
+            <div className="bg-gray-900 border border-blue-500/30 rounded-2xl px-4 py-4">
               <p className="text-gray-500 text-xs font-medium mb-1">Total Bookings</p>
               <p className="font-syne font-bold text-blue-400 text-2xl">{activeBookings.length}</p>
               <p className="text-gray-600 text-xs mt-1">FF {ffBookings.length} · Others {othBookings.length}</p>
             </div>
             <div className="bg-gray-900 border border-amber-500/20 rounded-2xl px-4 py-4">
               <p className="text-gray-500 text-xs font-medium mb-1">Full Factory Value</p>
-              <p className="font-syne font-bold text-amber-300 text-lg">{formatCurrency(ffValue, currency)}</p>
+              <p className="font-syne font-bold text-amber-300 text-base">{formatCurrency(ffValue, currency)}</p>
               <p className="text-gray-600 text-xs mt-1">excl. cancelled</p>
             </div>
             <div className="bg-gray-900 border border-red-500/20 rounded-2xl px-4 py-4">
               <p className="text-gray-500 text-xs font-medium mb-1">Others Value</p>
-              <p className="font-syne font-bold text-red-400 text-lg">{formatCurrency(othValue, currency)}</p>
+              <p className="font-syne font-bold text-red-400 text-base">{formatCurrency(othValue, currency)}</p>
               <p className="text-gray-600 text-xs mt-1">excl. cancelled</p>
             </div>
             <div className="bg-gray-900 border border-amber-500/30 rounded-2xl px-4 py-4">
