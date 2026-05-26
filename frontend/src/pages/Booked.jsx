@@ -432,6 +432,7 @@ export default function Booked() {
         customer: form.customer,
         branch: branch || form.branch,
         bookingType: form.type || 'others',
+        type: form.type || 'others',
         deliveryDate: form.deliveryDate,
         note: form.note,
         items: validItems,
@@ -451,6 +452,7 @@ export default function Booked() {
   function openEdit(b) {
     setEditForm({
       ...b,
+      type: b.bookingType || b.type || 'others',
       bookingDate: b.date ? b.date.split('T')[0] : new Date().toISOString().split('T')[0],
       discount: b.discount != null ? String(b.discount) : '',
       items: b.items.map(i => ({ ...i, _rowId: i.id + '-' + Math.random() })),
@@ -465,10 +467,13 @@ export default function Booked() {
       price: parseFloat(rest.price) || 0,
     }));
     if (!editFormData.customer.trim() || validItems.length === 0) return;
+    const bookingType = editFormData.type || editFormData.bookingType || 'others';
     dispatch({
       type: 'UPDATE_BOOKING',
       payload: {
         ...editFormData,
+        bookingType,
+        type: bookingType,
         date: bookingDate ? new Date(bookingDate + 'T12:00:00').toISOString() : (editFormData.date || new Date().toISOString()),
         items: validItems,
         total: validItems.reduce((s, i) => s + (i.qty || 1) * (parseFloat(i.price) || 0), 0),
@@ -542,6 +547,7 @@ export default function Booked() {
         customer: ffCustomer.trim(),
         branch: branch || 'DUB',
         bookingType: 'full_factory',
+        type: 'full_factory',
         deliveryDate: '',
         note: 'Imported from China/Lagos Full Factory order sheet',
         items,
@@ -687,7 +693,7 @@ export default function Booked() {
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Booking ID</th>
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Date</th>
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Items</th>
-                <th className="text-left text-gray-500 font-medium px-5 py-3">Status</th>
+                <th className="text-left text-gray-500 font-medium px-5 py-3">Type</th>
                 <th className="text-right text-gray-500 font-medium px-5 py-3">Total</th>
                 <th className="text-right text-gray-500 font-medium px-5 py-3">Paid</th>
                 <th className="text-right text-gray-500 font-medium px-5 py-3">Balance</th>
@@ -716,13 +722,10 @@ export default function Booked() {
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
-                      <select
-                        value={b.status}
-                        onChange={e => updateStatus(b.id, e.target.value)}
-                        className={`text-xs px-2 py-1 rounded-lg border-0 outline-none cursor-pointer capitalize font-medium ${STATUS_COLORS[b.status] || 'bg-gray-800 text-gray-400'}`}
-                      >
-                        {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                      {(b.bookingType || b.type) === 'full_factory'
+                        ? <span className="bg-amber-950 text-amber-300 text-xs font-semibold px-2.5 py-1 rounded-lg">Full Factory</span>
+                        : <span className="bg-red-950 text-red-400 text-xs font-semibold px-2.5 py-1 rounded-lg">Others</span>
+                      }
                     </td>
                     <td className="px-5 py-3.5 text-right font-mono text-white">{formatCurrency(b.total || 0, currency)}</td>
                     <td className="px-5 py-3.5 text-right font-mono text-green-400">
