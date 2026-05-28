@@ -166,18 +166,36 @@ function rawReducer(state, action) {
 
     case 'UPDATE_SALE': {
       const updated = action.payload;
+      const original = state.sales.find(s => s.id === updated.id);
+      // Restore inventory for original sale items, then deduct for updated items
+      const inventory = state.inventory.map(item => {
+        const oldItem = (original?.items || []).find(i => i.id === item.id && !i._custom);
+        const newItem = (updated.items || []).find(i => i.id === item.id && !i._custom);
+        let qty = item.qty;
+        if (oldItem) qty += oldItem.qty;
+        if (newItem) qty = Math.max(0, qty - newItem.qty);
+        return (oldItem || newItem) ? { ...item, qty } : item;
+      });
       return {
         ...state,
         sales: state.sales.map(s => s.id === updated.id ? updated : s),
+        inventory,
         auditLog: [{ id: Date.now(), action: 'Sale updated', user: state.user?.name, ts: new Date().toISOString(), detail: `#${updated.id} · ${updated.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office'}` }, ...state.auditLog],
       };
     }
 
     case 'DELETE_SALE': {
       const s = state.sales.find(x => x.id === action.payload);
+      // Restore inventory for all non-custom sold items
+      const inventory = s ? state.inventory.map(item => {
+        const soldItem = (s.items || []).find(i => i.id === item.id && !i._custom);
+        if (soldItem) return { ...item, qty: item.qty + soldItem.qty };
+        return item;
+      }) : state.inventory;
       return {
         ...state,
         sales: state.sales.filter(x => x.id !== action.payload),
+        inventory,
         recycleBin: [...state.recycleBin, { ...s, _type: 'sale', _deletedAt: new Date().toISOString() }],
         auditLog: [{ id: Date.now(), action: 'Sale deleted', user: state.user?.name, ts: new Date().toISOString(), detail: `#${action.payload}` }, ...state.auditLog],
       };
@@ -270,10 +288,13 @@ function rawReducer(state, action) {
       const newPurchases = [];
       (booking.items || []).forEach(item => {
         if (!item.id) return;
-        const invItem = state.inventory.find(i => i.id === item.id && i.branch === booking.branch);
-        const currentQty = invItem ? invItem.qty : 0;
-        if (currentQty < item.qty) {
-          const needed = item.qty - currentQty;
+        // Sum stock across ALL branches before deciding to raise a PO
+        const totalQty = state.inventory
+          .filter(i => i.id === item.id)
+          .reduce((sum, i) => sum + (i.qty || 0), 0);
+        if (totalQty < item.qty) {
+          const needed = item.qty - totalQty;
+          const invItem = state.inventory.find(i => i.id === item.id);
           newPurchases.push({
             id: `PO${Date.now().toString(36).toUpperCase()}${newPurchases.length}${Math.random().toString(36).slice(2,4).toUpperCase()}`,
             name: item.name,
@@ -281,7 +302,7 @@ function rawReducer(state, action) {
             qty: needed,
             unit: item.unit || '',
             category: invItem?.category || 'Others',
-            estimatedCost: invItem ? invItem.price * needed : 0,
+            estimatedCost: invItem ? (invItem.price || 0) * needed : 0,
             priority: 'high',
             status: 'pending',
             branch: booking.branch,
@@ -327,12 +348,14 @@ function rawReducer(state, action) {
             if (!item.id || !item.name) return;
             const key = item.id;
             if (seenThisRun.has(key) || existingKeys.has(key)) return;
-            // Find inventory for the same branch as the booking
-            const invItem = state.inventory.find(i => i.id === item.id && i.branch === booking.branch);
-            const currentQty = invItem ? (invItem.qty || 0) : 0;
-            if (currentQty < (item.qty || 1)) {
+            // Sum stock across ALL branches before deciding to raise a PO
+            const totalQty = state.inventory
+              .filter(i => i.id === item.id)
+              .reduce((sum, i) => sum + (i.qty || 0), 0);
+            const invItem = state.inventory.find(i => i.id === item.id);
+            if (totalQty < (item.qty || 1)) {
               seenThisRun.add(key);
-              const needed = (item.qty || 1) - currentQty;
+              const needed = (item.qty || 1) - totalQty;
               newPurchases.push({
                 id: `PO${Date.now().toString(36).toUpperCase()}${idx++}${Math.random().toString(36).slice(2,4).toUpperCase()}`,
                 name: item.name,
@@ -386,10 +409,13 @@ function rawReducer(state, action) {
       const newPurchases = [];
       (upd.items || []).forEach(item => {
         if (!item.id) return;
-        const invItem = state.inventory.find(i => i.id === item.id && i.branch === upd.branch);
-        const currentQty = invItem ? invItem.qty : 0;
-        if (currentQty < item.qty) {
-          const needed = item.qty - currentQty;
+        // Sum stock across ALL branches before deciding to raise a PO
+        const totalQty = state.inventory
+          .filter(i => i.id === item.id)
+          .reduce((sum, i) => sum + (i.qty || 0), 0);
+        if (totalQty < item.qty) {
+          const needed = item.qty - totalQty;
+          const invItem = state.inventory.find(i => i.id === item.id);
           newPurchases.push({
             id: `PO${Date.now().toString(36).toUpperCase()}${newPurchases.length}${Math.random().toString(36).slice(2,4).toUpperCase()}`,
             name: item.name,
@@ -397,7 +423,7 @@ function rawReducer(state, action) {
             qty: needed,
             unit: item.unit || '',
             category: invItem?.category || 'Others',
-            estimatedCost: invItem ? invItem.price * needed : 0,
+            estimatedCost: invItem ? (invItem.price || 0) * needed : 0,
             priority: 'high',
             status: 'pending',
             branch: upd.branch,

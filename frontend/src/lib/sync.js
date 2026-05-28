@@ -131,10 +131,27 @@ export async function syncAction(action, prevState, nextState) {
       case 'DELETE_SALE': {
         await remove('sales', action.payload);
         await toRecycleBin(nextState, action.payload);
+        // Sync inventory items that were restored when the sale was removed
+        const deletedSale = prevState.sales.find(s => s.id === action.payload);
+        if (deletedSale?.items?.length) {
+          const ids = new Set(deletedSale.items.filter(i => !i._custom).map(i => i.id));
+          const restored = nextState.inventory.filter(i => ids.has(i.id));
+          if (restored.length) await upsertMany('inventory', restored);
+        }
         break;
       }
       case 'UPDATE_SALE': {
         await upsert('sales', action.payload);
+        // Sync all inventory items touched by the original and updated sale
+        const originalSale = prevState.sales.find(s => s.id === action.payload.id);
+        const allIds = new Set([
+          ...(originalSale?.items || []).filter(i => !i._custom).map(i => i.id),
+          ...(action.payload.items || []).filter(i => !i._custom).map(i => i.id),
+        ]);
+        if (allIds.size) {
+          const modified = nextState.inventory.filter(i => allIds.has(i.id));
+          if (modified.length) await upsertMany('inventory', modified);
+        }
         break;
       }
       case 'ADD_PAYMENT': {
@@ -420,6 +437,15 @@ export async function syncAction(action, prevState, nextState) {
           if (tbl) {
             await remove(tbl, req.targetId);
             await toRecycleBin(nextState, req.targetId);
+          }
+          // For sale deletions, sync the inventory items that were restored
+          if (req.type === 'sale') {
+            const deletedSale = prevState.sales.find(s => s.id === req.targetId);
+            if (deletedSale?.items?.length) {
+              const ids = new Set(deletedSale.items.filter(i => !i._custom).map(i => i.id));
+              const restored = nextState.inventory.filter(i => ids.has(i.id));
+              if (restored.length) await upsertMany('inventory', restored);
+            }
           }
         }
         break;

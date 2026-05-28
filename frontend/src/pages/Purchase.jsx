@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp, formatCurrency, fmtDate, genId } from '../context/AppContext';
-import { refreshPurchaseList, refreshInventory, refreshSuppliers } from '../lib/refresh';
+import { refreshPurchaseList, refreshInventory, refreshSuppliers, refreshBookings } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
 
@@ -68,16 +68,16 @@ export default function Purchase() {
       (b.items || []).forEach(item => {
         if (!item.id || !item.name) return;
         if (unseenKeys.has(item.id) || existingPurchaseKeys.has(item.id)) return;
-        
-        // Find inventory for the same branch as the booking
-        const invItem = inventory.find(i => i.id === item.id && i.branch === b.branch);
-        const currentQty = invItem ? (invItem.qty || 0) : 0;
-        if (currentQty < (item.qty || 1)) {
+        // Sum stock across ALL branches for this item
+        const totalInStock = inventory
+          .filter(i => i.id === item.id)
+          .reduce((sum, i) => sum + (i.qty || 0), 0);
+        if (totalInStock < (item.qty || 1)) {
           unseenKeys.add(item.id);
-          missingItems.push({ 
-            name: item.name, 
-            booked: item.qty || 1, 
-            inStock: currentQty,
+          missingItems.push({
+            name: item.name,
+            booked: item.qty || 1,
+            inStock: totalInStock,
             branch: b.branch,
             branchLabel: b.branch === 'DUB' ? 'Dubai' : 'Kubwa'
           });
@@ -86,6 +86,7 @@ export default function Purchase() {
     });
 
   useEffect(() => {
+    refreshBookings(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'bookings', data } }));
     refreshPurchaseList(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'purchaseList', data } }));
     refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
     refreshSuppliers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'suppliers', data } }));
@@ -106,16 +107,19 @@ export default function Purchase() {
         (b.items || []).forEach(item => {
           if (!item.id || !item.name) return;
           if (seen.has(item.id) || existingPOKeys.has(item.id)) return;
-          const invItem = inventory.find(i => i.id === item.id && i.branch === b.branch);
-          const currentQty = invItem ? (invItem.qty || 0) : 0;
-          if (currentQty < (item.qty || 1)) {
+          // Sum stock across ALL branches
+          const totalInStock = inventory
+            .filter(i => i.id === item.id)
+            .reduce((sum, i) => sum + (i.qty || 0), 0);
+          const invItem = inventory.find(i => i.id === item.id);
+          if (totalInStock < (item.qty || 1)) {
             seen.add(item.id);
-            const needed = (item.qty || 1) - currentQty;
+            const needed = (item.qty || 1) - totalInStock;
             items.push({
               itemId: item.id,
               name: item.name,
               needed,
-              inStock: currentQty,
+              inStock: totalInStock,
               unit: item.unit || invItem?.unit || '',
               bookingId: b.id,
               customer: b.customer,
@@ -129,9 +133,9 @@ export default function Purchase() {
     return items;
   })();
 
-  // Aggregate booked items (pending/confirmed) by normalised name+branch.
-  // Grouping by name (not id) ensures all bookings for the same item are merged
-  // even when different booking records carry different ids or no id at all.
+  // Aggregate booked items (pending/confirmed) by normalised item name.
+  // Stock is summed across ALL branches so that combined inventory is used
+  // before raising a purchase order.
   const bookedNotInStock = (() => {
     const map = new Map();
     visibleBookings
@@ -140,20 +144,19 @@ export default function Purchase() {
         (b.items || []).forEach(item => {
           if (!item.name) return;
           const normName = item.name.toLowerCase().trim();
-          const key = `${normName}::${b.branch}`;
+          const key = normName; // group by name across all branches
           if (!map.has(key)) {
-            const invItem = inventory.find(
-              i => i.name.toLowerCase().trim() === normName && i.branch === b.branch
-            );
-            const inStock = invItem ? (invItem.qty || 0) : 0;
+            // Sum stock from ALL branches for this item name
+            const totalInStock = inventory
+              .filter(i => i.name.toLowerCase().trim() === normName)
+              .reduce((sum, i) => sum + (i.qty || 0), 0);
+            const anyInvItem = inventory.find(i => i.name.toLowerCase().trim() === normName);
             map.set(key, {
               name: item.name,
-              itemId: item.id || invItem?.id || null,
+              itemId: item.id || anyInvItem?.id || null,
               totalBooked: 0,
-              inStock,
-              unit: item.unit || invItem?.unit || '',
-              branch: b.branch,
-              branchLabel: b.branch === 'DUB' ? 'Dubai' : 'Kubwa',
+              inStock: totalInStock,
+              unit: item.unit || anyInvItem?.unit || '',
               hasPO: existingPurchaseKeys.has(item.id) || existingPurchaseKeys.has(normName),
             });
           }
@@ -479,21 +482,20 @@ export default function Purchase() {
                     <th className="text-left text-gray-500 font-medium px-5 py-3">#</th>
                     <th className="text-left text-gray-500 font-medium px-5 py-3">Item Name</th>
                     <th className="text-center text-gray-500 font-medium px-5 py-3">Total Booked</th>
-                    <th className="text-center text-gray-500 font-medium px-5 py-3">In Stock</th>
+                    <th className="text-center text-gray-500 font-medium px-5 py-3">In Stock (All Branches)</th>
                     <th className="text-center text-gray-500 font-medium px-5 py-3">Qty to Purchase</th>
-                    <th className="text-left text-gray-500 font-medium px-5 py-3">Branch</th>
                     <th className="text-left text-gray-500 font-medium px-5 py-3">PO Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredBookedNotInStock.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center text-gray-600 py-12">
+                      <td colSpan={6} className="text-center text-gray-600 py-12">
                         {bookedNotInStock.length === 0 ? 'All booked items are available in inventory' : 'No results match your search'}
                       </td>
                     </tr>
                   ) : filteredBookedNotInStock.map((item, idx) => (
-                    <tr key={`${item.itemId}::${item.branch}`} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
+                    <tr key={item.itemId ?? item.name} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
                       <td className="px-5 py-3.5 text-gray-500 text-xs">{idx + 1}</td>
                       <td className="px-5 py-3.5">
                         <p className="text-white font-medium">{item.name}</p>
@@ -503,11 +505,6 @@ export default function Purchase() {
                       <td className="px-5 py-3.5 text-center font-mono text-red-400">{item.inStock}</td>
                       <td className="px-5 py-3.5 text-center">
                         <span className="bg-amber-500/20 text-amber-400 font-mono font-bold text-sm px-2 py-0.5 rounded-lg">{item.needed}</span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className={`text-xs px-2 py-0.5 rounded-lg font-medium ${item.branch === 'DUB' ? 'bg-blue-950 text-blue-400' : 'bg-purple-950 text-purple-400'}`}>
-                          {item.branchLabel}
-                        </span>
                       </td>
                       <td className="px-5 py-3.5">
                         {item.hasPO ? (
