@@ -209,40 +209,47 @@ export default function Dashboard() {
       </div>
 
       {/* Commission Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 lg:col-span-2 overflow-hidden min-w-0">
-          <p className="text-gray-500 text-xs font-medium mb-1">Total Commissions</p>
-          <p className="font-syne text-xs sm:text-sm md:text-2xl font-bold text-emerald-400 break-all">
-            {formatCurrency(totalCommissions, currency)}
-          </p>
-          <p className="text-gray-600 text-xs mt-1">
-            {filteredCommissions.length} referral{filteredCommissions.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        {(() => {
-          const byPartner = Object.entries(
-            filteredCommissions.reduce((acc, c) => {
-              if (!acc[c.partner]) acc[c.partner] = { total: 0, count: 0 };
-              acc[c.partner].total += c.commission || 0;
-              acc[c.partner].count += 1;
-              return acc;
-            }, {})
-          ).sort((a, b) => b[1].total - a[1].total).slice(0, 2);
-          return byPartner.length > 0 ? byPartner.map(([partner, { total, count }]) => (
-            <div key={partner} className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
-              <p className="text-gray-500 text-xs font-medium mb-1 truncate">{partner}</p>
-              <p className="font-syne text-xs sm:text-sm md:text-lg font-bold text-white break-all">
-                {formatCurrency(total, currency)}
+      {(() => {
+        const byPartner = Object.entries(
+          filteredCommissions.reduce((acc, c) => {
+            if (!acc[c.partner]) acc[c.partner] = { total: 0, count: 0 };
+            acc[c.partner].total += c.commission || 0;
+            acc[c.partner].count += 1;
+            return acc;
+          }, {})
+        ).sort((a, b) => b[1].total - a[1].total).slice(0, 2);
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+              <p className="text-gray-500 text-xs font-medium mb-1">Total Commissions</p>
+              <p className="font-syne text-xs sm:text-sm md:text-2xl font-bold text-emerald-400 break-all">
+                {formatCurrency(totalCommissions, currency)}
               </p>
-              <p className="text-gray-600 text-xs mt-1">{count} referral{count !== 1 ? 's' : ''}</p>
+              <p className="text-gray-600 text-xs mt-1">
+                {filteredCommissions.length} referral{filteredCommissions.length !== 1 ? 's' : ''}
+              </p>
             </div>
-          )) : (
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0 lg:col-span-2 flex items-center justify-center">
-              <p className="text-gray-600 text-xs">No referrals recorded yet</p>
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+              <p className="text-gray-500 text-xs font-medium mb-2">Top Partners</p>
+              {byPartner.length > 0 ? (
+                <div className="space-y-2">
+                  {byPartner.map(([partner, { total, count }]) => (
+                    <div key={partner} className="flex items-center justify-between gap-2">
+                      <p className="text-white text-xs font-medium truncate">{partner}</p>
+                      <div className="text-right shrink-0">
+                        <p className="font-syne text-xs font-bold text-white">{formatCurrency(total, currency)}</p>
+                        <p className="text-gray-600 text-xs">{count} referral{count !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-600 text-xs">No referrals recorded yet</p>
+              )}
             </div>
-          );
-        })()}
-      </div>
+          </div>
+        );
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Recent Sales */}
