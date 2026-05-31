@@ -51,7 +51,7 @@ function rangeLabel(id, s, e) {
 // ── Report Configs ────────────────────────────────────────────────────────────
 
 function makeReportConfigs(state) {
-  const { sales, customers, expenses, inventory, bookings, purchaseList, goodsReceived, suppliers, currency, branch, thr } = state;
+  const { sales, customers, expenses, inventory, bookings, purchaseList, goodsReceived, suppliers, currency, thr } = state;
   const bl = v => v === 'DUB' ? 'Dubai Market' : v === 'KUB' ? 'Kubwa Office' : v || '—';
   const cap = v => v ? v.charAt(0).toUpperCase() + v.slice(1) : '—';
 
@@ -65,7 +65,7 @@ function makeReportConfigs(state) {
   // Merge inventory entries into one row per item (DUB + KUB combined)
   const mergedInv = (() => {
     const map = new Map();
-    const src = branch ? inventory.filter(i => i.branch === branch) : inventory;
+    const src = inventory;
     src.forEach(i => {
       const key = `${i.name}||${i.category}`;
       if (!map.has(key)) {
@@ -91,7 +91,7 @@ function makeReportConfigs(state) {
       icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>,
       dateKey: '_date',
       getData: () => {
-        const src = sales.filter(s => branch ? s.branch === branch : true);
+        const src = sales;
         return src.flatMap(s =>
           (s.items || []).length > 0
             ? (s.items || []).map(item => ({
@@ -149,7 +149,7 @@ function makeReportConfigs(state) {
       icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
       dateKey: 'createdAt',
       getData: () => {
-        const src = customers.filter(c => branch ? (!c.branch || c.branch === branch) : true);
+        const src = customers;
         return src.map(c => {
           const cSales    = sales.filter(s => s.customer === c.name || s.customerId === c.id);
           const cBookings = bookings.filter(b => b.customer === c.name || b.customerId === c.id);
@@ -198,7 +198,7 @@ function makeReportConfigs(state) {
       label: 'Expenses',
       icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>,
       dateKey: 'date',
-      getData: () => expenses.filter(e => branch ? e.branch === branch : true),
+      getData: () => expenses,
       columns: [
         { key: 'date',  label: 'Date',                              format: v => fmtDate(v) },
         { key: 'desc',  label: 'Details' },
@@ -264,7 +264,7 @@ function makeReportConfigs(state) {
       icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>,
       dateKey: '_date',
       getData: () => {
-        const src = bookings.filter(b => branch ? (!b.branch || b.branch === branch) : true);
+        const src = bookings;
         return src.flatMap(b =>
           (b.items || []).length > 0
             ? (b.items || []).map(item => ({
@@ -319,7 +319,7 @@ function makeReportConfigs(state) {
       label: 'Purchase List',
       icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>,
       dateKey: 'date',
-      getData: () => purchaseList.filter(p => branch ? (!p.branch || p.branch === branch) : true),
+      getData: () => purchaseList,
       columns: [
         { key: 'date',          label: 'Date',       format: v => v ? fmtDate(v) : '—' },
         { key: 'name',          label: 'Item' },
@@ -351,7 +351,7 @@ function makeReportConfigs(state) {
       icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>,
       dateKey: '_date',
       getData: () => {
-        const src = goodsReceived.filter(g => branch ? g.branch === branch : true);
+        const src = goodsReceived;
         return src.flatMap(g =>
           (g.items || []).length > 0
             ? (g.items || []).map(item => ({
@@ -447,7 +447,7 @@ export default function Reports() {
     if (!config || rows.length === 0) return;
     printReport({
       title:       `${config.label} Report`,
-      subtitle:    bname,
+      subtitle:    'All Branches',
       columns:     config.columns,
       rows,
       summaryRows: summary,
@@ -471,7 +471,7 @@ export default function Reports() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="font-syne text-2xl font-bold text-white">Reports</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{bname} · Generate and print reports for any module</p>
+          <p className="text-gray-500 text-sm mt-0.5">All Branches · Generate and print reports for any module</p>
         </div>
         <button
           onClick={handlePrint}

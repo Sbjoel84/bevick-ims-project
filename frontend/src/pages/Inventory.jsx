@@ -211,8 +211,9 @@ export default function Inventory() {
   function saveRecordEdit() {
     const newDubQty = parseInt(recordEditForm.dubQty) || 0;
     const newKubQty = parseInt(recordEditForm.kubQty) || 0;
-    const dubItem = recordEditItem.items.find(i => i.branch === 'DUB');
-    const kubItem = recordEditItem.items.find(i => i.branch === 'KUB');
+    const invItem = mergedInventory.find(i => i.name?.toLowerCase().trim() === recordEditItem.name?.toLowerCase().trim());
+    const dubItem = invItem?.items?.find(i => i.branch === 'DUB');
+    const kubItem = invItem?.items?.find(i => i.branch === 'KUB');
     if (dubItem) dispatch({ type: 'UPDATE_ITEM', payload: { ...dubItem, qty: newDubQty } });
     if (kubItem) dispatch({ type: 'UPDATE_ITEM', payload: { ...kubItem, qty: newKubQty } });
     setRecordEditItem(null);

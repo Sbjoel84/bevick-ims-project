@@ -56,7 +56,7 @@ export default function ReportModal({ title, data, dateKey, columns, getSummary,
   function handlePrint() {
     printReport({
       title,
-      subtitle:   state.bname,
+      subtitle:   'All Branches',
       columns,
       rows,
       summaryRows: summary,
@@ -73,7 +73,7 @@ export default function ReportModal({ title, data, dateKey, columns, getSummary,
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 shrink-0">
           <div>
             <h2 className="font-syne font-semibold text-white">{title} Report</h2>
-            <p className="text-gray-500 text-xs mt-0.5">{state.bname}</p>
+            <p className="text-gray-500 text-xs mt-0.5">All Branches</p>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-white">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
