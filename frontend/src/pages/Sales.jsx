@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useApp, formatCurrency, fmtDate, fmtDateTime, genId } from '../context/AppContext';
+import { useApp, formatCurrency, fmtDate, fmtDateTime, genId, dedupeInventory } from '../context/AppContext';
 import { refreshSales, refreshInventory } from '../lib/refresh';
 import { printReceipt } from '../utils/print';
 import ReportModal from '../components/ReportModal';
@@ -44,6 +44,15 @@ export default function Sales() {
   const [deleteReq, setDeleteReq] = useState(null);
   const [showPayForm, setShowPayForm] = useState(false);
   const [payForm, setPayForm] = useState({ amount: '', method: 'Cash', date: new Date().toISOString().split('T')[0], note: '' });
+
+  // Profit profile visibility — persisted so it survives page refreshes
+  const [showProfitProfile, setShowProfitProfile] = useState(
+    () => localStorage.getItem('bevick_show_profit_profile') !== 'false'
+  );
+  function toggleProfitProfile(checked) {
+    setShowProfitProfile(checked);
+    localStorage.setItem('bevick_show_profit_profile', String(checked));
+  }
 
   // Always derive the live sale from state so payment additions reflect instantly
   const currentSelected = selected ? (sales.find(s => s.id === selected.id) || selected) : null;
@@ -115,7 +124,7 @@ export default function Sales() {
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   // All inventory items — no branch filter so newly added items always appear
-  const availableItems = inventory;
+  const availableItems = dedupeInventory(inventory);
 
   // Search filter for item picker
   const [pickerSearch, setPickerSearch] = useState('');
@@ -659,17 +668,19 @@ export default function Sales() {
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div className="w-28">
-                  <label className="text-gray-500 text-xs block mb-1">Actual Cost (₦)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={pickerCostPrice}
-                    onChange={e => setPickerCostPrice(e.target.value)}
-                    placeholder="0"
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-right focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
+                {showProfitProfile && (
+                  <div className="w-28">
+                    <label className="text-gray-500 text-xs block mb-1">Actual Cost (₦)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={pickerCostPrice}
+                      onChange={e => setPickerCostPrice(e.target.value)}
+                      placeholder="0"
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-right focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                )}
                 <div className="w-28">
                   <label className="text-gray-500 text-xs block mb-1">Sale Price (₦)</label>
                   <input
@@ -729,9 +740,9 @@ export default function Sales() {
                     <tr className="border-b border-gray-700">
                       <th className="text-left text-gray-500 font-medium px-4 py-2.5 text-xs">Item</th>
                       <th className="text-center text-gray-500 font-medium px-4 py-2.5 text-xs">Qty</th>
-                      <th className="text-right text-amber-600 font-medium px-4 py-2.5 text-xs">Actual Cost</th>
+                      {showProfitProfile && <th className="text-right text-amber-600 font-medium px-4 py-2.5 text-xs">Actual Cost</th>}
                       <th className="text-right text-blue-500 font-medium px-4 py-2.5 text-xs">Sale Price</th>
-                      <th className="text-right text-green-600 font-medium px-4 py-2.5 text-xs">Profit</th>
+                      {showProfitProfile && <th className="text-right text-green-600 font-medium px-4 py-2.5 text-xs">Profit</th>}
                       <th className="px-4 py-2.5"></th>
                     </tr>
                   </thead>
@@ -751,16 +762,18 @@ export default function Sales() {
                               className="w-16 text-center bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                           </td>
-                          <td className="px-4 py-2.5">
-                            <input
-                              type="number"
-                              min={0}
-                              value={item.costPrice || ''}
-                              onChange={e => updateItemCostPrice(item.id, e.target.value)}
-                              placeholder="0"
-                              className="w-28 text-right bg-gray-700 border border-amber-900/40 rounded-lg px-2 py-1 text-amber-300 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
-                            />
-                          </td>
+                          {showProfitProfile && (
+                            <td className="px-4 py-2.5">
+                              <input
+                                type="number"
+                                min={0}
+                                value={item.costPrice || ''}
+                                onChange={e => updateItemCostPrice(item.id, e.target.value)}
+                                placeholder="0"
+                                className="w-28 text-right bg-gray-700 border border-amber-900/40 rounded-lg px-2 py-1 text-amber-300 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                              />
+                            </td>
+                          )}
                           <td className="px-4 py-2.5">
                             <input
                               type="number"
@@ -770,9 +783,11 @@ export default function Sales() {
                               className="w-28 text-right bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-blue-300 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                           </td>
-                          <td className={`px-4 py-2.5 text-right text-xs font-mono font-medium ${itemProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {formatCurrency(itemProfit, currency)}
-                          </td>
+                          {showProfitProfile && (
+                            <td className={`px-4 py-2.5 text-right text-xs font-mono font-medium ${itemProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {formatCurrency(itemProfit, currency)}
+                            </td>
+                          )}
                           <td className="px-4 py-2.5">
                             <button onClick={() => removeItem(item.id)} className="text-gray-600 hover:text-red-400">
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
@@ -788,10 +803,12 @@ export default function Sales() {
 
             {/* Totals */}
             <div className="bg-gray-800 rounded-xl p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-amber-500">Total Actual Cost</span>
-                <span className="text-amber-300 font-mono">{formatCurrency(totalCostAmt, currency)}</span>
-              </div>
+              {showProfitProfile && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-amber-500">Total Actual Cost</span>
+                  <span className="text-amber-300 font-mono">{formatCurrency(totalCostAmt, currency)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Sales Revenue (subtotal)</span>
                 <span className="text-white font-mono">{formatCurrency(subtotal, currency)}</span>
@@ -833,10 +850,12 @@ export default function Sales() {
                   <span className="text-purple-300 font-mono">−{formatCurrency(transactionCommission, currency)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm font-medium">
-                <span className={grossProfit >= 0 ? 'text-green-400' : 'text-red-400'}>Net Profit</span>
-                <span className={`font-mono ${grossProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(grossProfit, currency)}</span>
-              </div>
+              {showProfitProfile && (
+                <div className="flex justify-between text-sm font-medium">
+                  <span className={grossProfit >= 0 ? 'text-green-400' : 'text-red-400'}>Net Profit</span>
+                  <span className={`font-mono ${grossProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(grossProfit, currency)}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between text-sm border-t border-gray-700 pt-2">
                 <label className="flex items-center gap-2 text-gray-400 cursor-pointer">
                   <input
@@ -848,6 +867,18 @@ export default function Sales() {
                   VAT ({(vat * 100).toFixed(1)}%)
                 </label>
                 <span className="text-gray-400 font-mono">{formatCurrency(vatAmount, currency)}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm border-t border-gray-700 pt-2">
+                <label className="flex items-center gap-2 text-gray-400 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={showProfitProfile}
+                    onChange={e => toggleProfitProfile(e.target.checked)}
+                    className="accent-green-500"
+                  />
+                  Show Profit Profile
+                </label>
+                <span className="text-gray-600 text-xs">(actual cost, profit columns &amp; net profit)</span>
               </div>
               <div className="flex justify-between text-sm font-semibold border-t border-gray-700 pt-2">
                 <span className="text-white">Total Charged to Customer</span>

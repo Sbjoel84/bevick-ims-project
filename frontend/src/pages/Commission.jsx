@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useApp, formatCurrency, fmtDate, genId } from '../context/AppContext';
+import { useApp, formatCurrency, fmtDate, genId, dedupeInventory } from '../context/AppContext';
 import { refreshCommissions } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
@@ -73,7 +73,7 @@ export default function Commission() {
   const [reportOpen, setReportOpen] = useState(false);
   const [deleteReq, setDeleteReq]   = useState(null);
 
-  const allItemNames = [...new Set(inventory.map(i => i.name).filter(Boolean))].sort();
+  const allItemNames = dedupeInventory(inventory).map(i => i.name).filter(Boolean).sort();
 
   // ── Item row helpers ────────────────────────────────────────
   function addItemRow() {

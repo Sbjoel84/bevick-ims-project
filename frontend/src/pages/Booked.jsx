@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useApp, formatCurrency, fmtDate, fmtDateTime, genId } from '../context/AppContext';
+import { useApp, formatCurrency, fmtDate, fmtDateTime, genId, dedupeInventory } from '../context/AppContext';
 import { refreshBookings, refreshInventory, refreshPurchaseList } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
@@ -761,7 +761,7 @@ export default function Booked() {
       {/* ── New Booking Modal ─────────────────────────────────────────────────── */}
       {modal === 'new' && (
         <Modal title="New Booking" onClose={() => setModal(null)}>
-          <BookingFormFields f={form} setF={setForm} availableItems={inventory} currency={currency} />
+          <BookingFormFields f={form} setF={setForm} availableItems={dedupeInventory(inventory)} currency={currency} />
 
           {/* Initial payment section */}
           <div className="mt-5 border-t border-gray-800 pt-5 space-y-3">
@@ -829,7 +829,7 @@ export default function Booked() {
       {/* ── Edit Booking Modal ────────────────────────────────────────────────── */}
       {modal === 'edit' && editForm && (
         <Modal title={`Edit Booking · ${editForm.id}`} onClose={() => setModal(null)}>
-          <BookingFormFields f={editForm} setF={setEditForm} availableItems={inventory} currency={currency} />
+          <BookingFormFields f={editForm} setF={setEditForm} availableItems={dedupeInventory(inventory)} currency={currency} />
           <div className="flex gap-3 pt-4">
             <button onClick={() => setModal(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
             <button

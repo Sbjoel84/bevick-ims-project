@@ -969,3 +969,19 @@ export function fmtDate(iso) {
 export function fmtDateTime(iso) {
   return new Date(iso).toLocaleString('en-NG', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
+
+// Deduplicates inventory items by normalised name for use in dropdown lists.
+// When two records share the same name (case-insensitively), keeps the one
+// with the most title-cased words (e.g. "Dingli Sachet Machine" beats
+// "Dingli sachet machine").
+export function dedupeInventory(items) {
+  const best = new Map();
+  (items || []).forEach(item => {
+    const key = item.name?.toLowerCase().trim();
+    if (!key) return;
+    if (!best.has(key)) { best.set(key, item); return; }
+    const score = n => (n.match(/\b[A-Z]/g) || []).length;
+    if (score(item.name) > score(best.get(key).name)) best.set(key, item);
+  });
+  return [...best.values()];
+}

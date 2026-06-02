@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useApp, formatCurrency, fmtDate, genId } from '../context/AppContext';
+import { useApp, formatCurrency, fmtDate, genId, dedupeInventory } from '../context/AppContext';
 import { refreshPurchaseList, refreshInventory, refreshSuppliers, refreshBookings } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
@@ -133,9 +133,24 @@ export default function Purchase() {
     return items;
   })();
 
+  // Build per-item stock map from general inventory (same approach as General Record page).
+  // Also build an ID→nameKey index so we can fall back to ID-based lookup when the
+  // booking item name doesn't match the inventory name exactly (e.g. after a rename).
+  const generalInventoryMap = new Map();
+  const invIdToNameKey = new Map();
+  inventory.forEach(inv => {
+    if (!inv.name) return;
+    const key = inv.name.toLowerCase().trim();
+    if (!generalInventoryMap.has(key)) generalInventoryMap.set(key, { kubQty: 0, dubQty: 0 });
+    const entry = generalInventoryMap.get(key);
+    if (inv.branch === 'KUB') entry.kubQty += inv.qty || 0;
+    else if (inv.branch === 'DUB') entry.dubQty += inv.qty || 0;
+    if (inv.id) invIdToNameKey.set(inv.id, key);
+  });
+
   // Aggregate booked items (pending/confirmed) by normalised item name.
-  // Stock is summed across ALL branches so that combined inventory is used
-  // before raising a purchase order.
+  // Stock is fetched from general inventory (KUB + DUB) matching General Record logic.
+  // Falls back to ID-based lookup when the name doesn't match (handles renames / typos).
   const bookedNotInStock = (() => {
     const map = new Map();
     visibleBookings
@@ -144,18 +159,25 @@ export default function Purchase() {
         (b.items || []).forEach(item => {
           if (!item.name) return;
           const normName = item.name.toLowerCase().trim();
-          const key = normName; // group by name across all branches
+          const key = normName;
           if (!map.has(key)) {
-            // Sum stock from ALL branches for this item name
-            const totalInStock = inventory
-              .filter(i => i.name.toLowerCase().trim() === normName)
-              .reduce((sum, i) => sum + (i.qty || 0), 0);
-            const anyInvItem = inventory.find(i => i.name.toLowerCase().trim() === normName);
+            let stockData = generalInventoryMap.get(normName);
+            // Fallback: resolve stock via the booking item's inventory ID when the name differs
+            if (!stockData && item.id) {
+              const resolvedKey = invIdToNameKey.get(item.id);
+              if (resolvedKey) stockData = generalInventoryMap.get(resolvedKey);
+            }
+            stockData = stockData || { kubQty: 0, dubQty: 0 };
+            const totalInStock = stockData.kubQty + stockData.dubQty;
+            const anyInvItem = inventory.find(i => i.id === item.id) ||
+                               inventory.find(i => i.name.toLowerCase().trim() === normName);
             map.set(key, {
               name: item.name,
               itemId: item.id || anyInvItem?.id || null,
               totalBooked: 0,
               inStock: totalInStock,
+              kubQty: stockData.kubQty,
+              dubQty: stockData.dubQty,
               unit: item.unit || anyInvItem?.unit || '',
               hasPO: existingPurchaseKeys.has(item.id) || existingPurchaseKeys.has(normName),
             });
@@ -181,7 +203,7 @@ export default function Purchase() {
   const [reportOpen, setReportOpen] = useState(false);
   const [deleteReq, setDeleteReq] = useState(null);
 
-  const filteredInvItems = inventory.filter(i =>
+  const filteredInvItems = dedupeInventory(inventory).filter(i =>
     !itemNameSearch || i.name.toLowerCase().includes(itemNameSearch.toLowerCase())
   );
 
@@ -502,7 +524,12 @@ export default function Purchase() {
                         {item.unit && <p className="text-gray-500 text-xs mt-0.5">{item.unit}</p>}
                       </td>
                       <td className="px-5 py-3.5 text-center font-mono text-white">{item.totalBooked}</td>
-                      <td className="px-5 py-3.5 text-center font-mono text-red-400">{item.inStock}</td>
+                      <td className="px-5 py-3.5 text-center font-mono">
+                        <span className="text-red-400">{item.inStock}</span>
+                        {(item.kubQty > 0 || item.dubQty > 0) && (
+                          <p className="text-gray-600 text-xs mt-0.5">KUB {item.kubQty} · DUB {item.dubQty}</p>
+                        )}
+                      </td>
                       <td className="px-5 py-3.5 text-center">
                         <span className="bg-amber-500/20 text-amber-400 font-mono font-bold text-sm px-2 py-0.5 rounded-lg">{item.needed}</span>
                       </td>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useApp, formatCurrency, fmtDate, fmtDateTime, genId } from '../context/AppContext';
+import { useApp, formatCurrency, fmtDate, fmtDateTime, genId, dedupeInventory } from '../context/AppContext';
 import { refreshGoodsReceived, refreshInventory, refreshPurchaseList, refreshBookings } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 
@@ -87,7 +87,7 @@ export default function Goods() {
     })
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  const availableItems = inventory.filter(i =>
+  const availableItems = dedupeInventory(inventory).filter(i =>
     itemSearch === '' || i.name.toLowerCase().includes(itemSearch.toLowerCase())
   );
 
