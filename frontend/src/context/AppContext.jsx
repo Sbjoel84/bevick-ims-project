@@ -249,6 +249,22 @@ function rawReducer(state, action) {
       };
     }
 
+    // ── NORMALIZE ITEM NAME — one-time casing fix across inventory / bookings / sales ──
+    case 'NORMALIZE_ITEM_NAME': {
+      const { oldName, newName } = action.payload;
+      const norm = s => s?.toLowerCase().trim();
+      const oldNorm = norm(oldName);
+      const fix = name => (norm(name) === oldNorm && name !== newName) ? newName : name;
+      const fixItems = items => (items || []).map(it => it.name !== fix(it.name) ? { ...it, name: fix(it.name) } : it);
+      return {
+        ...state,
+        inventory: state.inventory.map(i => i.name !== fix(i.name) ? { ...i, name: fix(i.name) } : i),
+        bookings:  state.bookings.map(b  => { const items = fixItems(b.items);  return items !== b.items  ? { ...b,  items } : b;  }),
+        sales:     state.sales.map(s    => { const items = fixItems(s.items);  return items !== s.items  ? { ...s,  items } : s;  }),
+        auditLog: [{ id: Date.now(), action: 'Item name normalised', user: state.user?.name, ts: new Date().toISOString(), detail: `"${oldName}" → "${newName}"` }, ...state.auditLog],
+      };
+    }
+
     // ── INVENTORY ──────────────────────────────────────────────
     case 'ADD_ITEM': {
       const item = action.payload;
@@ -879,6 +895,34 @@ export function AppProvider({ children }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // One-time migration: correct item name casing across inventory, bookings, and sales.
+  // Runs once after the initial data load; a localStorage flag prevents re-running.
+  useEffect(() => {
+    if (!state.dbLoaded) return;
+    const MIG_KEY = 'bevick_norm_v1_dingli';
+    if (localStorage.getItem(MIG_KEY)) return;
+
+    const corrections = [
+      { oldName: 'Dingli sachet machine', newName: 'Dingli Sachet Machine' },
+    ];
+
+    const norm = s => s?.toLowerCase().trim();
+    corrections.forEach(({ oldName, newName }) => {
+      const oldNorm = norm(oldName);
+      const needsFix = [
+        ...state.inventory,
+        ...state.bookings.flatMap(b => b.items || []),
+        ...state.sales.flatMap(s => s.items || []),
+      ].some(item => norm(item?.name) === oldNorm && item.name !== newName);
+
+      if (needsFix) {
+        dispatch({ type: 'NORMALIZE_ITEM_NAME', payload: { oldName, newName } });
+      }
+    });
+
+    localStorage.setItem(MIG_KEY, '1');
+  }, [state.dbLoaded]);
 
   // Subscribe to Supabase Realtime — push remote changes to all connected clients
   useEffect(() => {

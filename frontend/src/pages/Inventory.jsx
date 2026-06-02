@@ -167,10 +167,23 @@ export default function Inventory() {
       });
     });
 
-    // Cross-reference with inventory for stock quantities
+    // Cross-reference with inventory for stock quantities.
+    // Accumulate rather than overwrite so that duplicate entries differing only
+    // in name casing (e.g. "Dingli sachet machine" vs "Dingli Sachet Machine")
+    // are merged. The entry with the most title-cased words wins the name.
+    const titleScore = n => (n?.match(/\b[A-Z]/g) || []).length;
     const inventoryByName = new Map();
     mergedInventory.forEach(item => {
-      inventoryByName.set(item.name?.toLowerCase().trim(), item);
+      const key = item.name?.toLowerCase().trim();
+      if (!key) return;
+      if (!inventoryByName.has(key)) {
+        inventoryByName.set(key, { ...item });
+      } else {
+        const existing = inventoryByName.get(key);
+        existing.dubQty = (existing.dubQty || 0) + (item.dubQty || 0);
+        existing.kubQty = (existing.kubQty || 0) + (item.kubQty || 0);
+        if (titleScore(item.name) > titleScore(existing.name)) existing.name = item.name;
+      }
     });
 
     return Array.from(map.values()).map(entry => {

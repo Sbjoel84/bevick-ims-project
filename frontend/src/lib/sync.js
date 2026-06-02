@@ -186,6 +186,26 @@ export async function syncAction(action, prevState, nextState) {
         break;
       }
 
+      // ── NORMALIZE ITEM NAME — sync all touched records to Supabase ──────────
+      case 'NORMALIZE_ITEM_NAME': {
+        const changedInventory = nextState.inventory.filter(i => {
+          const prev = prevState.inventory.find(x => x.id === i.id);
+          return prev && prev.name !== i.name;
+        });
+        const changedBookings = nextState.bookings.filter(b => {
+          const prev = prevState.bookings.find(x => x.id === b.id);
+          return prev && JSON.stringify(prev.items) !== JSON.stringify(b.items);
+        });
+        const changedSales = nextState.sales.filter(s => {
+          const prev = prevState.sales.find(x => x.id === s.id);
+          return prev && JSON.stringify(prev.items) !== JSON.stringify(s.items);
+        });
+        if (changedInventory.length) await upsertMany('inventory', changedInventory);
+        if (changedBookings.length)  await upsertMany('bookings',  changedBookings);
+        if (changedSales.length)     await upsertMany('sales',     changedSales);
+        break;
+      }
+
       // ── INVENTORY ────────────────────────────────────────────
       case 'ADD_ITEM':
         await upsert('inventory', action.payload);

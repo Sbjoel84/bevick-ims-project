@@ -69,6 +69,15 @@ html[data-theme="light"] .hover\:bg-blue-900:hover    { background-color: #bfdbf
 /* Placeholder text */
 html[data-theme="light"] .placeholder-gray-600::placeholder { color: #94a3b8 !important; }
 
-/* Scrollbar */
-html[data-theme="light"] ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+/* Scrollbar — dark theme (default) */
+::-webkit-scrollbar { width: 6px; height: 8px; }
+::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+::-webkit-scrollbar-corner { background: #0f172a; }
+
+/* Scrollbar — light theme */
 html[data-theme="light"] ::-webkit-scrollbar-track { background: #f1f5f9; }
+html[data-theme="light"] ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+html[data-theme="light"] ::-webkit-scrollbar-corner { background: #f1f5f9; }

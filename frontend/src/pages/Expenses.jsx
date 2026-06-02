@@ -87,7 +87,17 @@ export default function Expenses() {
       const q = search.toLowerCase();
       return !q || e.desc?.toLowerCase().includes(q);
     })
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+    .sort((a, b) => {
+      const now  = new Date();
+      const curY = now.getFullYear();
+      const curM = now.getMonth();
+      const da   = new Date(a.date);
+      const db   = new Date(b.date);
+      const aIsCur = da.getFullYear() === curY && da.getMonth() === curM ? 0 : 1;
+      const bIsCur = db.getFullYear() === curY && db.getMonth() === curM ? 0 : 1;
+      if (aIsCur !== bIsCur) return aIsCur - bIsCur;
+      return db - da;
+    });
 
   // Compute running balance and cumulative expenses (ledger-style)
   let runBalance = 0;

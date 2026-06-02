@@ -105,6 +105,9 @@ export default function Sales() {
     transactionDiscount: '',
     transactionCommission: '',
     date: new Date().toISOString().split('T')[0],
+    transactionType: 'sale',
+    bookingType: 'others',
+    deliveryDate: '',
   });
 
   // Item picker state
@@ -230,7 +233,7 @@ export default function Sales() {
   const total                 = subtotal - transactionDiscount + vatAmount;
 
   function resetForm() {
-    setForm({ customer: '', branch: 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '', transactionDiscount: '', transactionCommission: '', date: new Date().toISOString().split('T')[0] });
+    setForm({ customer: '', branch: 'DUB', payment: 'Cash', note: '', items: [], applyVat: false, amountPaid: '', transactionDiscount: '', transactionCommission: '', date: new Date().toISOString().split('T')[0], transactionType: 'sale', bookingType: 'others', deliveryDate: '' });
     setPickerItemId(''); setPickerQty(1); setPickerPrice(''); setPickerCostPrice(''); setPickerManualName(''); setPickerSearch('');
   }
 
@@ -313,6 +316,54 @@ export default function Sales() {
     setSelected(updatedSale);
     setModal('view');
     resetForm();
+  }
+
+  function submitAsBooking() {
+    if (form.items.length === 0) return;
+    const bookingDate = form.date ? new Date(form.date + 'T12:00:00').toISOString() : new Date().toISOString();
+    const validItems = form.items.map(i => ({
+      id: i._custom ? null : i.id,
+      name: i.name,
+      qty: i.qty,
+      unit: i.unit || '',
+      price: i.price || 0,
+    }));
+    const total = validItems.reduce((s, i) => s + (i.qty || 1) * (i.price || 0), 0);
+    const payments = [];
+    const initAmt = parseFloat(form.amountPaid);
+    if (!isNaN(initAmt) && initAmt > 0) {
+      payments.push({
+        id: genId('PAY'),
+        amount: Math.min(initAmt, total || initAmt),
+        method: form.payment,
+        date: bookingDate,
+        note: 'Initial payment',
+      });
+    }
+    const amountPaid = payments.reduce((s, p) => s + p.amount, 0);
+    dispatch({
+      type: 'ADD_BOOKING',
+      payload: {
+        id: genId('B'),
+        customer: form.customer || 'Walk-in',
+        branch: form.branch,
+        bookingType: form.bookingType || 'others',
+        type: form.bookingType || 'others',
+        deliveryDate: form.deliveryDate || '',
+        note: form.note,
+        items: validItems,
+        total,
+        discount: 0,
+        payments,
+        amountPaid,
+        status: 'pending',
+        date: bookingDate,
+        createdBy: user?.name,
+      },
+    });
+    resetForm();
+    setModal(null);
+    dispatch({ type: 'SET_PAGE', payload: 'booked' });
   }
 
   function submitPayment() {
@@ -513,7 +564,7 @@ export default function Sales() {
 
       {/* ── New / Edit Sale Modal ── */}
       {(modal === 'new' || modal === 'edit') && (
-        <Modal title={modal === 'edit' ? 'Edit Sale' : 'Record New Sale'} onClose={() => { setModal(null); setEditSaleId(null); resetForm(); }}>
+        <Modal title={modal === 'edit' ? 'Edit Sale' : form.transactionType === 'booking' ? 'Record New Booking' : 'Record New Sale'} onClose={() => { setModal(null); setEditSaleId(null); resetForm(); }}>
           <div className="space-y-4">
 
             {/* Customer + Branch + Date */}
@@ -541,8 +592,10 @@ export default function Sales() {
                   {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
                 </select>
               </div>
-              <div className="col-span-2">
-                <label className="text-gray-400 text-xs font-medium block mb-1.5">Sale Date</label>
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">
+                  {form.transactionType === 'booking' ? 'Booking Date' : 'Sale Date'}
+                </label>
                 <input
                   type="date"
                   value={form.date}
@@ -550,7 +603,47 @@ export default function Sales() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Transaction Type</label>
+                <select
+                  value={form.transactionType}
+                  onChange={e => setForm(f => ({ ...f, transactionType: e.target.value }))}
+                  className={`w-full bg-gray-800 border rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 ${form.transactionType === 'booking' ? 'border-amber-600 focus:ring-amber-500' : 'border-gray-700 focus:ring-blue-500'}`}
+                >
+                  <option value="sale">Sales</option>
+                  <option value="booking">Booking</option>
+                </select>
+              </div>
             </div>
+
+            {/* Booking-specific fields */}
+            {form.transactionType === 'booking' && (
+              <div className="grid grid-cols-2 gap-4 p-4 bg-amber-950/20 border border-amber-700/30 rounded-xl">
+                <div>
+                  <label className="text-amber-400 text-xs font-semibold block mb-1.5">Booking Type <span className="text-red-400">*</span></label>
+                  <select
+                    value={form.bookingType}
+                    onChange={e => setForm(f => ({ ...f, bookingType: e.target.value }))}
+                    className="w-full bg-gray-800 border border-amber-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    <option value="full_factory">Full Factory</option>
+                    <option value="others">Others (Selected Items)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-amber-400 text-xs font-semibold block mb-1.5">Delivery Date</label>
+                  <input
+                    type="date"
+                    value={form.deliveryDate}
+                    onChange={e => setForm(f => ({ ...f, deliveryDate: e.target.value }))}
+                    className="w-full bg-gray-800 border border-amber-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div className="col-span-2 bg-amber-950/40 border border-amber-700/40 rounded-lg px-3 py-2 text-xs text-amber-300 leading-relaxed">
+                  <span className="font-semibold">Booking Mode:</span> Items will be saved to the <span className="font-semibold">Booked Items</span> page. Inventory will <span className="font-semibold">NOT</span> be deducted — purchase orders are auto-generated for insufficient stock.
+                </div>
+              </div>
+            )}
 
             {/* Payment */}
             <div>
@@ -572,7 +665,7 @@ export default function Sales() {
             {/* ── Item Picker ── */}
             <div className="bg-gray-800 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-gray-400 text-xs font-medium">Add Items to Sale</p>
+                <p className="text-gray-400 text-xs font-medium">{form.transactionType === 'booking' ? 'Add Items to Booking' : 'Add Items to Sale'}</p>
                 <span className="text-gray-600 text-xs">{availableItems.length} items in inventory</span>
               </div>
 
@@ -803,105 +896,113 @@ export default function Sales() {
 
             {/* Totals */}
             <div className="bg-gray-800 rounded-xl p-4 space-y-2">
-              {showProfitProfile && (
+              {form.transactionType !== 'booking' && showProfitProfile && (
                 <div className="flex justify-between text-sm">
                   <span className="text-amber-500">Total Actual Cost</span>
                   <span className="text-amber-300 font-mono">{formatCurrency(totalCostAmt, currency)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Sales Revenue (subtotal)</span>
+                <span className="text-gray-400">{form.transactionType === 'booking' ? 'Estimated Subtotal' : 'Sales Revenue (subtotal)'}</span>
                 <span className="text-white font-mono">{formatCurrency(subtotal, currency)}</span>
               </div>
-              {/* Transaction-level discount & commission */}
-              <div className="grid grid-cols-2 gap-3 border-t border-gray-700 pt-2">
-                <div>
-                  <label className="text-orange-400 text-xs block mb-1">Discount (optional)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.transactionDiscount}
-                    onChange={e => setForm(f => ({ ...f, transactionDiscount: e.target.value }))}
-                    placeholder="0"
-                    className="w-full text-right bg-gray-700 border border-orange-900/40 rounded-lg px-2.5 py-1.5 text-orange-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500 placeholder-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="text-purple-400 text-xs block mb-1">Commission (optional)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.transactionCommission}
-                    onChange={e => setForm(f => ({ ...f, transactionCommission: e.target.value }))}
-                    placeholder="0"
-                    className="w-full text-right bg-gray-700 border border-purple-900/40 rounded-lg px-2.5 py-1.5 text-purple-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-600"
-                  />
-                </div>
-              </div>
-              {transactionDiscount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-orange-400">Discount Applied</span>
-                  <span className="text-orange-300 font-mono">−{formatCurrency(transactionDiscount, currency)}</span>
-                </div>
+              {/* Transaction-level discount & commission — sales only */}
+              {form.transactionType !== 'booking' && (
+                <>
+                  <div className="grid grid-cols-2 gap-3 border-t border-gray-700 pt-2">
+                    <div>
+                      <label className="text-orange-400 text-xs block mb-1">Discount (optional)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={form.transactionDiscount}
+                        onChange={e => setForm(f => ({ ...f, transactionDiscount: e.target.value }))}
+                        placeholder="0"
+                        className="w-full text-right bg-gray-700 border border-orange-900/40 rounded-lg px-2.5 py-1.5 text-orange-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500 placeholder-gray-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-purple-400 text-xs block mb-1">Commission (optional)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={form.transactionCommission}
+                        onChange={e => setForm(f => ({ ...f, transactionCommission: e.target.value }))}
+                        placeholder="0"
+                        className="w-full text-right bg-gray-700 border border-purple-900/40 rounded-lg px-2.5 py-1.5 text-purple-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-600"
+                      />
+                    </div>
+                  </div>
+                  {transactionDiscount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-orange-400">Discount Applied</span>
+                      <span className="text-orange-300 font-mono">−{formatCurrency(transactionDiscount, currency)}</span>
+                    </div>
+                  )}
+                  {transactionCommission > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-purple-400">Commission</span>
+                      <span className="text-purple-300 font-mono">−{formatCurrency(transactionCommission, currency)}</span>
+                    </div>
+                  )}
+                  {showProfitProfile && (
+                    <div className="flex justify-between text-sm font-medium">
+                      <span className={grossProfit >= 0 ? 'text-green-400' : 'text-red-400'}>Net Profit</span>
+                      <span className={`font-mono ${grossProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(grossProfit, currency)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-sm border-t border-gray-700 pt-2">
+                    <label className="flex items-center gap-2 text-gray-400 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.applyVat}
+                        onChange={e => setForm(f => ({ ...f, applyVat: e.target.checked }))}
+                        className="accent-blue-500"
+                      />
+                      VAT ({(vat * 100).toFixed(1)}%)
+                    </label>
+                    <span className="text-gray-400 font-mono">{formatCurrency(vatAmount, currency)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm border-t border-gray-700 pt-2">
+                    <label className="flex items-center gap-2 text-gray-400 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={showProfitProfile}
+                        onChange={e => toggleProfitProfile(e.target.checked)}
+                        className="accent-green-500"
+                      />
+                      Show Profit Profile
+                    </label>
+                    <span className="text-gray-600 text-xs">(actual cost, profit columns &amp; net profit)</span>
+                  </div>
+                </>
               )}
-              {transactionCommission > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-purple-400">Commission</span>
-                  <span className="text-purple-300 font-mono">−{formatCurrency(transactionCommission, currency)}</span>
-                </div>
-              )}
-              {showProfitProfile && (
-                <div className="flex justify-between text-sm font-medium">
-                  <span className={grossProfit >= 0 ? 'text-green-400' : 'text-red-400'}>Net Profit</span>
-                  <span className={`font-mono ${grossProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(grossProfit, currency)}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between text-sm border-t border-gray-700 pt-2">
-                <label className="flex items-center gap-2 text-gray-400 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.applyVat}
-                    onChange={e => setForm(f => ({ ...f, applyVat: e.target.checked }))}
-                    className="accent-blue-500"
-                  />
-                  VAT ({(vat * 100).toFixed(1)}%)
-                </label>
-                <span className="text-gray-400 font-mono">{formatCurrency(vatAmount, currency)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm border-t border-gray-700 pt-2">
-                <label className="flex items-center gap-2 text-gray-400 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={showProfitProfile}
-                    onChange={e => toggleProfitProfile(e.target.checked)}
-                    className="accent-green-500"
-                  />
-                  Show Profit Profile
-                </label>
-                <span className="text-gray-600 text-xs">(actual cost, profit columns &amp; net profit)</span>
-              </div>
               <div className="flex justify-between text-sm font-semibold border-t border-gray-700 pt-2">
-                <span className="text-white">Total Charged to Customer</span>
-                <span className="text-blue-400 font-mono text-base">{formatCurrency(total, currency)}</span>
+                <span className={form.transactionType === 'booking' ? 'text-amber-300' : 'text-white'}>
+                  {form.transactionType === 'booking' ? 'Estimated Total' : 'Total Charged to Customer'}
+                </span>
+                <span className={`font-mono text-base ${form.transactionType === 'booking' ? 'text-amber-400' : 'text-blue-400'}`}>
+                  {formatCurrency(form.transactionType === 'booking' ? subtotal : total, currency)}
+                </span>
               </div>
-              {/* Initial Payment — new sales only */}
+              {/* Initial Payment — new transactions only */}
               {modal === 'new' && (
                 <div className="border-t border-gray-700 pt-2 space-y-1.5">
                   <div className="flex items-center justify-between text-sm">
-                    <label className="text-gray-400">Initial Payment</label>
+                    <label className="text-gray-400">Initial Payment {form.transactionType === 'booking' && <span className="text-gray-600 text-xs">(deposit)</span>}</label>
                     <input
                       type="number"
                       min={0}
                       value={form.amountPaid}
                       onChange={e => setForm(f => ({ ...f, amountPaid: e.target.value }))}
-                      placeholder={`${formatCurrency(total, currency)} (full)`}
+                      placeholder={form.transactionType === 'booking' ? 'Optional deposit…' : `${formatCurrency(total, currency)} (full)`}
                       className="w-44 text-right bg-gray-700 border border-gray-600 rounded-lg px-2.5 py-1.5 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-600"
                     />
                   </div>
-                  {form.amountPaid !== '' && parseFloat(form.amountPaid) < total && (
+                  {form.amountPaid !== '' && parseFloat(form.amountPaid) < (form.transactionType === 'booking' ? subtotal : total) && (
                     <div className="flex justify-between text-sm">
                       <span className="text-orange-400">Balance Remaining</span>
-                      <span className="text-orange-400 font-mono font-medium">{formatCurrency(total - (parseFloat(form.amountPaid) || 0), currency)}</span>
+                      <span className="text-orange-400 font-mono font-medium">{formatCurrency((form.transactionType === 'booking' ? subtotal : total) - (parseFloat(form.amountPaid) || 0), currency)}</span>
                     </div>
                   )}
                 </div>
@@ -921,11 +1022,15 @@ export default function Sales() {
             <div className="flex gap-3 pt-2">
               <button onClick={() => { setModal(null); setEditSaleId(null); resetForm(); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
               <button
-                onClick={modal === 'edit' ? submitEdit : submitSale}
+                onClick={modal === 'edit' ? submitEdit : form.transactionType === 'booking' ? submitAsBooking : submitSale}
                 disabled={form.items.length === 0}
-                className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+                className={`flex-1 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors ${
+                  modal === 'edit' ? 'bg-blue-500 hover:bg-blue-400' :
+                  form.transactionType === 'booking' ? 'bg-amber-600 hover:bg-amber-500' :
+                  'bg-blue-500 hover:bg-blue-400'
+                }`}
               >
-                {modal === 'edit' ? 'Save Changes' : 'Record Sale'}
+                {modal === 'edit' ? 'Save Changes' : form.transactionType === 'booking' ? 'Create Booking' : 'Record Sale'}
               </button>
             </div>
           </div>

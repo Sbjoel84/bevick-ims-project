@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useApp, formatCurrency, fmtDate, fmtDateTime, genId, dedupeInventory } from '../context/AppContext';
 import { refreshBookings, refreshInventory, refreshPurchaseList } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
@@ -360,6 +360,23 @@ export default function Booked() {
   const [ffImportOpen, setFfImportOpen] = useState(false);
   const [ffCustomer, setFfCustomer] = useState('');
   const [ffDate, setFfDate] = useState(new Date().toISOString().split('T')[0]);
+  const [activeTab, setActiveTab] = useState('bookings');
+  const [matrixSearch, setMatrixSearch] = useState('');
+  const matrixTableRef = useRef(null);
+  const matrixRulerRef = useRef(null);
+  const syncingRef     = useRef(false);
+  const onTableScroll  = useCallback(() => {
+    if (syncingRef.current || !matrixRulerRef.current || !matrixTableRef.current) return;
+    syncingRef.current = true;
+    matrixRulerRef.current.scrollLeft = matrixTableRef.current.scrollLeft;
+    syncingRef.current = false;
+  }, []);
+  const onRulerScroll  = useCallback(() => {
+    if (syncingRef.current || !matrixTableRef.current || !matrixRulerRef.current) return;
+    syncingRef.current = true;
+    matrixTableRef.current.scrollLeft = matrixRulerRef.current.scrollLeft;
+    syncingRef.current = false;
+  }, []);
 
   // Always derive live booking so payment additions reflect instantly in the view modal
   const currentSelected = selected
@@ -399,6 +416,41 @@ export default function Booked() {
       return !q || b.customer?.toLowerCase().includes(q) || b.id?.toLowerCase().includes(q);
     })
     .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  function buildMatrix(type) {
+    const isFF = type === 'full_factory';
+    const typeBookings = bookings.filter(b =>
+      b.status !== 'cancelled' &&
+      ((isFF ? (b.bookingType || b.type) === 'full_factory' : (b.bookingType || b.type) !== 'full_factory'))
+    );
+    const customerOrder = [];
+    const customerSet = new Set();
+    typeBookings.forEach(b => {
+      if (b.customer && !customerSet.has(b.customer)) {
+        customerSet.add(b.customer);
+        customerOrder.push(b.customer);
+      }
+    });
+    const itemMap = new Map();
+    typeBookings.forEach(b => {
+      (b.items || []).forEach(item => {
+        if (!item.name?.trim()) return;
+        const key = item.name.trim();
+        if (!itemMap.has(key)) itemMap.set(key, new Map());
+        const entry = itemMap.get(key);
+        entry.set(b.customer, (entry.get(b.customer) || 0) + (item.qty || 1));
+      });
+    });
+    const rows = [...itemMap.entries()].map(([name, cMap]) => ({
+      name,
+      qtys: customerOrder.map(c => cMap.get(c) || 0),
+      total: [...cMap.values()].reduce((s, q) => s + q, 0),
+    }));
+    return { customers: customerOrder, rows };
+  }
+
+  const ffMatrix  = useMemo(() => buildMatrix('full_factory'), [bookings]);
+  const othMatrix = useMemo(() => buildMatrix('others'),       [bookings]);
 
   function submitNew() {
     const validItems = form.items.filter(i => i.id || i.name?.trim()).map(({ _rowId, ...rest }) => ({
@@ -661,8 +713,33 @@ export default function Booked() {
         );
       })()}
 
+      {/* Tab Nav */}
+      <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-2xl p-1 w-fit">
+        <button
+          onClick={() => { setActiveTab('bookings'); setMatrixSearch(''); }}
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-colors ${activeTab === 'bookings' ? 'bg-blue-500 text-white' : 'text-gray-400 hover:text-white'}`}
+        >
+          All Bookings
+          <span className={`text-xs font-bold rounded-full px-1.5 py-0.5 ${activeTab === 'bookings' ? 'bg-white/20 text-white' : 'bg-gray-800 text-gray-400'}`}>{filtered.length}</span>
+        </button>
+        <button
+          onClick={() => { setActiveTab('full_factory'); setMatrixSearch(''); }}
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-colors ${activeTab === 'full_factory' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
+        >
+          Full Factory
+          <span className={`text-xs font-bold rounded-full px-1.5 py-0.5 ${activeTab === 'full_factory' ? 'bg-black/20 text-black' : 'bg-amber-500/20 text-amber-400'}`}>{ffMatrix.customers.length}</span>
+        </button>
+        <button
+          onClick={() => { setActiveTab('others'); setMatrixSearch(''); }}
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-colors ${activeTab === 'others' ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-white'}`}
+        >
+          Others
+          <span className={`text-xs font-bold rounded-full px-1.5 py-0.5 ${activeTab === 'others' ? 'bg-white/20 text-white' : 'bg-red-500/20 text-red-400'}`}>{othMatrix.customers.length}</span>
+        </button>
+      </div>
+
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      {activeTab === 'bookings' && <div className="flex flex-wrap gap-3">
         <input
           type="text"
           placeholder="Search bookings…"
@@ -681,10 +758,9 @@ export default function Booked() {
             </button>
           ))}
         </div>
-      </div>
+      </div>}
 
-      {/* Table */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      {activeTab === 'bookings' && <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -756,7 +832,165 @@ export default function Booked() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
+
+      {/* ── Full Factory / Others Matrix ── */}
+      {(activeTab === 'full_factory' || activeTab === 'others') && (() => {
+        const matrix = activeTab === 'full_factory' ? ffMatrix : othMatrix;
+        const { customers, rows: allRows } = matrix;
+        const isFF = activeTab === 'full_factory';
+
+        const q = matrixSearch.trim().toLowerCase();
+        const rows = q ? allRows.filter(r => r.name.toLowerCase().includes(q)) : allRows;
+
+        const SNW    = 48;
+        const ITEMW  = 260;
+        const COLW   = 38;
+        const TOTALW = 52;
+        const totalW = SNW + ITEMW + customers.length * COLW + TOTALW;
+
+        return (
+          <div className="space-y-3">
+            {/* Search toolbar */}
+            <div className="flex items-center gap-3">
+              <div className="relative w-72">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search items…"
+                  value={matrixSearch}
+                  onChange={e => setMatrixSearch(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <span className="text-gray-500 text-xs">{rows.length} item{rows.length !== 1 ? 's' : ''} · {customers.length} client{customers.length !== 1 ? 's' : ''}</span>
+            </div>
+
+            {rows.length === 0 ? (
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-16 text-center">
+                <p className="text-gray-500 text-base font-medium">{q ? 'No items match your search' : `No ${isFF ? 'Full Factory' : 'Others'} bookings found`}</p>
+              </div>
+            ) : (
+              <div className="space-y-0.5">
+                {/* ── Top scrolling ruler ── */}
+                <div
+                  ref={matrixRulerRef}
+                  onScroll={onRulerScroll}
+                  style={{
+                    overflowX: 'scroll', overflowY: 'hidden',
+                    height: 16, background: '#0f172a',
+                    borderRadius: '12px 12px 0 0',
+                    border: '1px solid #1f2937', borderBottom: 'none',
+                    scrollbarWidth: 'thin', scrollbarColor: '#475569 #1e293b',
+                  }}
+                >
+                  {/* Ghost element — same width as the table so the ruler scrolls in sync */}
+                  <div style={{ width: totalW, height: 1 }} />
+                </div>
+
+                {/* ── Main table ── */}
+                <div
+                  ref={matrixTableRef}
+                  onScroll={onTableScroll}
+                  style={{
+                    width: '100%', overflowX: 'scroll', overflowY: 'visible',
+                    borderRadius: '0 0 16px 16px',
+                    border: '1px solid #1f2937', borderTop: 'none',
+                    background: '#0f172a',
+                    scrollbarWidth: 'thin', scrollbarColor: '#334155 #0f172a',
+                  }}
+                >
+                  <table style={{ borderCollapse: 'collapse', minWidth: totalW, width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th style={{
+                          background: '#1e293b', color: '#94a3b8', fontWeight: 700, fontSize: 12,
+                          textAlign: 'center', padding: '10px 4px', border: '1px solid #334155',
+                          width: SNW, minWidth: SNW, position: 'sticky', left: 0, zIndex: 2,
+                        }}>S/N</th>
+                        <th style={{
+                          background: '#1e293b', color: '#f1f5f9', fontWeight: 700, fontSize: 13,
+                          textAlign: 'left', padding: '10px 14px', border: '1px solid #334155',
+                          width: ITEMW, minWidth: ITEMW, position: 'sticky', left: SNW, zIndex: 2,
+                        }}>ITEMS</th>
+                        {customers.map((c, i) => (
+                          <th key={i} style={{
+                            background: '#1e293b', color: '#f1f5f9', fontWeight: 900, fontSize: 12,
+                            border: '1px solid #334155', width: COLW, minWidth: COLW,
+                            verticalAlign: 'bottom', padding: 0,
+                          }}>
+                            <div style={{
+                              writingMode: 'vertical-rl', transform: 'rotate(180deg)',
+                              padding: '12px 8px', whiteSpace: 'nowrap',
+                              textTransform: 'uppercase', letterSpacing: '0.04em',
+                            }}>
+                              {c}
+                            </div>
+                          </th>
+                        ))}
+                        <th style={{
+                          background: '#1e3a8a', color: '#bfdbfe', fontWeight: 900, fontSize: 12,
+                          border: '1px solid #334155', width: TOTALW, minWidth: TOTALW,
+                          verticalAlign: 'bottom', padding: 0,
+                        }}>
+                          <div style={{
+                            writingMode: 'vertical-rl', transform: 'rotate(180deg)',
+                            padding: '12px 8px', whiteSpace: 'nowrap',
+                            textTransform: 'uppercase', letterSpacing: '0.04em',
+                          }}>TOTAL</div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, idx) => {
+                        const rowBg = idx % 2 === 0 ? '#0f172a' : '#131e2e';
+                        return (
+                          <tr key={row.name} style={{ background: rowBg }}>
+                            <td style={{
+                              color: '#64748b', textAlign: 'center', padding: '9px 4px',
+                              border: '1px solid #1e293b', fontSize: 12, fontWeight: 600,
+                              position: 'sticky', left: 0, background: rowBg, zIndex: 1,
+                            }}>{idx + 1}</td>
+                            <td style={{
+                              color: '#f1f5f9', fontWeight: 600, fontSize: 13,
+                              padding: '9px 14px', border: '1px solid #1e293b',
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                              maxWidth: ITEMW, position: 'sticky', left: SNW, background: rowBg, zIndex: 1,
+                            }}>{row.name}</td>
+                            {row.qtys.map((qty, i) => (
+                              <td key={i} style={{
+                                textAlign: 'center', padding: '9px 2px',
+                                border: '1px solid #1e293b',
+                                fontWeight: qty > 0 ? 800 : 400,
+                                color: qty > 0 ? '#f8fafc' : '#1e293b',
+                                fontFamily: 'monospace', fontSize: 14,
+                                background: qty > 0 ? (idx % 2 === 0 ? '#172133' : '#1a2840') : rowBg,
+                              }}>
+                                {qty > 0 ? qty : ''}
+                              </td>
+                            ))}
+                            <td style={{
+                              textAlign: 'center', padding: '9px 2px',
+                              border: '1px solid #1e293b',
+                              fontWeight: 800, fontSize: 15,
+                              color: row.total > 0 ? '#93c5fd' : '#1e293b',
+                              fontFamily: 'monospace', background: '#0e2044',
+                            }}>
+                              {row.total > 0 ? row.total : ''}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── New Booking Modal ─────────────────────────────────────────────────── */}
       {modal === 'new' && (
