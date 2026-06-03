@@ -683,7 +683,7 @@ export default function Booked() {
         const othCustomers = new Set(othBookings.map(b => b.customer?.trim().toLowerCase()).filter(Boolean)).size;
 
         return (
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <div className="bg-gray-900 border border-blue-500/30 rounded-2xl px-4 py-4">
               <p className="text-gray-500 text-xs font-medium mb-1">Total Bookings</p>
               <p className="font-syne font-bold text-blue-400 text-2xl">{activeBookings.length}</p>
@@ -691,12 +691,12 @@ export default function Booked() {
             </div>
             <div className="bg-gray-900 border border-amber-500/20 rounded-2xl px-4 py-4">
               <p className="text-gray-500 text-xs font-medium mb-1">Full Factory Value</p>
-              <p className="font-syne font-bold text-amber-300 text-base">{formatCurrency(ffValue, currency)}</p>
+              <p className="font-syne font-bold text-amber-300 text-sm sm:text-base break-all">{formatCurrency(ffValue, currency)}</p>
               <p className="text-gray-600 text-xs mt-1">excl. cancelled</p>
             </div>
             <div className="bg-gray-900 border border-red-500/20 rounded-2xl px-4 py-4">
               <p className="text-gray-500 text-xs font-medium mb-1">Others Value</p>
-              <p className="font-syne font-bold text-red-400 text-base">{formatCurrency(othValue, currency)}</p>
+              <p className="font-syne font-bold text-red-400 text-sm sm:text-base break-all">{formatCurrency(othValue, currency)}</p>
               <p className="text-gray-600 text-xs mt-1">excl. cancelled</p>
             </div>
             <div className="bg-gray-900 border border-amber-500/30 rounded-2xl px-4 py-4">
@@ -704,7 +704,7 @@ export default function Booked() {
               <p className="font-syne font-bold text-amber-300 text-2xl">{ffCustomers}</p>
               <p className="text-gray-600 text-xs mt-1">unique customer{ffCustomers !== 1 ? 's' : ''}</p>
             </div>
-            <div className="bg-gray-900 border border-red-500/30 rounded-2xl px-4 py-4">
+            <div className="bg-gray-900 border border-red-500/30 rounded-2xl px-4 py-4 col-span-2 sm:col-span-1">
               <p className="text-gray-500 text-xs font-medium mb-1">Others Customers</p>
               <p className="font-syne font-bold text-red-400 text-2xl">{othCustomers}</p>
               <p className="text-gray-600 text-xs mt-1">unique customer{othCustomers !== 1 ? 's' : ''}</p>
@@ -714,7 +714,8 @@ export default function Booked() {
       })()}
 
       {/* Tab Nav */}
-      <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-2xl p-1 w-fit">
+      <div className="overflow-x-auto pb-1 -mb-1">
+      <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-2xl p-1 w-fit min-w-max">
         <button
           onClick={() => { setActiveTab('bookings'); setMatrixSearch(''); }}
           className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-colors ${activeTab === 'bookings' ? 'bg-blue-500 text-white' : 'text-gray-400 hover:text-white'}`}
@@ -737,17 +738,18 @@ export default function Booked() {
           <span className={`text-xs font-bold rounded-full px-1.5 py-0.5 ${activeTab === 'others' ? 'bg-white/20 text-white' : 'bg-red-500/20 text-red-400'}`}>{othMatrix.customers.length}</span>
         </button>
       </div>
+      </div>
 
       {/* Filters */}
-      {activeTab === 'bookings' && <div className="flex flex-wrap gap-3">
+      {activeTab === 'bookings' && <div className="flex flex-col sm:flex-row flex-wrap gap-3">
         <input
           type="text"
           placeholder="Search bookings…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+          className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
         />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {['all', ...STATUSES].map(s => (
             <button
               key={s}
@@ -762,7 +764,7 @@ export default function Booked() {
 
       {activeTab === 'bookings' && <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="border-b border-gray-800">
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Customer</th>
