@@ -11,29 +11,22 @@ export function exportPurchaseListExcel({ items, bizName, bizRC }) {
   const metaRows = [
     [bizName || 'Bevick Packaging Machineries'],
     [bizRC || 'RC: 967373'],
-    ['Purchase Requirements — Items from Active Bookings'],
+    ['Purchase Requirements'],
     [`Generated: ${dateStr}`],
     [],
-    ['S/N', 'Item Name', 'Unit', 'Total Booked', 'In Stock (KUB)', 'In Stock (DUB)', 'In Stock (Total)', 'Qty to Purchase', 'PO Status'],
+    ['S/N', 'ITEM NAME', 'QTY'],
   ];
 
   const dataRows = items.map((item, idx) => [
     idx + 1,
     item.name,
-    item.unit || '',
-    item.totalBooked,
-    item.kubQty,
-    item.dubQty,
-    item.inStock,
     item.needed,
-    item.hasPO ? 'PO Raised' : 'No PO Yet',
   ]);
 
   const totalUnits = items.reduce((s, i) => s + i.needed, 0);
   const summaryRows = [
     [],
-    ['', 'Total Items', '', items.length],
-    ['', 'Total Units to Purchase', '', '', '', '', '', totalUnits],
+    ['', 'TOTAL', totalUnits],
   ];
 
   const allRows = [...metaRows, ...dataRows, ...summaryRows];
@@ -42,14 +35,8 @@ export function exportPurchaseListExcel({ items, bizName, bizRC }) {
   // Column widths
   ws['!cols'] = [
     { wch: 6 },   // S/N
-    { wch: 36 },  // Item Name
-    { wch: 12 },  // Unit
-    { wch: 14 },  // Total Booked
-    { wch: 16 },  // In Stock KUB
-    { wch: 16 },  // In Stock DUB
-    { wch: 18 },  // In Stock Total
-    { wch: 16 },  // Qty to Purchase
-    { wch: 14 },  // PO Status
+    { wch: 40 },  // Item Name
+    { wch: 10 },  // QTY
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Purchase List');
