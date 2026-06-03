@@ -151,31 +151,36 @@ function rawReducer(state, action) {
     // ── SALES ──────────────────────────────────────────────────
     case 'ADD_SALE': {
       const sale = action.payload;
-      const inventory = state.inventory.map(item => {
-        const lineItem = sale.items.find(i => i.id === item.id);
-        if (lineItem) return { ...item, qty: Math.max(0, item.qty - lineItem.qty) };
-        return item;
-      });
+      // Booking-type sales are deposits/reservations — inventory is not deducted
+      const inventory = sale.transactionType === 'booking'
+        ? state.inventory
+        : state.inventory.map(item => {
+            const lineItem = sale.items.find(i => i.id === item.id);
+            if (lineItem) return { ...item, qty: Math.max(0, item.qty - lineItem.qty) };
+            return item;
+          });
       return {
         ...state,
         sales: [sale, ...state.sales],
         inventory,
-        auditLog: [{ id: Date.now(), action: 'Sale recorded', user: state.user?.name, ts: new Date().toISOString(), detail: `#${sale.id} · ${sale.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office'}` }, ...state.auditLog],
+        auditLog: [{ id: Date.now(), action: sale.transactionType === 'booking' ? 'Booking sale recorded' : 'Sale recorded', user: state.user?.name, ts: new Date().toISOString(), detail: `#${sale.id} · ${sale.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office'}` }, ...state.auditLog],
       };
     }
 
     case 'UPDATE_SALE': {
       const updated = action.payload;
       const original = state.sales.find(s => s.id === updated.id);
-      // Restore inventory for original sale items, then deduct for updated items
-      const inventory = state.inventory.map(item => {
-        const oldItem = (original?.items || []).find(i => i.id === item.id && !i._custom);
-        const newItem = (updated.items || []).find(i => i.id === item.id && !i._custom);
-        let qty = item.qty;
-        if (oldItem) qty += oldItem.qty;
-        if (newItem) qty = Math.max(0, qty - newItem.qty);
-        return (oldItem || newItem) ? { ...item, qty } : item;
-      });
+      // Booking-type sales never touch inventory
+      const inventory = (original?.transactionType === 'booking' || updated.transactionType === 'booking')
+        ? state.inventory
+        : state.inventory.map(item => {
+            const oldItem = (original?.items || []).find(i => i.id === item.id && !i._custom);
+            const newItem = (updated.items || []).find(i => i.id === item.id && !i._custom);
+            let qty = item.qty;
+            if (oldItem) qty += oldItem.qty;
+            if (newItem) qty = Math.max(0, qty - newItem.qty);
+            return (oldItem || newItem) ? { ...item, qty } : item;
+          });
       return {
         ...state,
         sales: state.sales.map(s => s.id === updated.id ? updated : s),
@@ -186,12 +191,17 @@ function rawReducer(state, action) {
 
     case 'DELETE_SALE': {
       const s = state.sales.find(x => x.id === action.payload);
-      // Restore inventory for all non-custom sold items
-      const inventory = s ? state.inventory.map(item => {
-        const soldItem = (s.items || []).find(i => i.id === item.id && !i._custom);
-        if (soldItem) return { ...item, qty: item.qty + soldItem.qty };
-        return item;
-      }) : state.inventory;
+      // Restore inventory only when items were actually deducted:
+      // regular sales → always deducted on creation
+      // booking-type sales → only deducted on delivery (status === 'delivered')
+      const shouldRestore = s && (s.transactionType !== 'booking' || s.status === 'delivered');
+      const inventory = shouldRestore
+        ? state.inventory.map(item => {
+            const soldItem = (s.items || []).find(i => i.id === item.id && !i._custom);
+            if (soldItem) return { ...item, qty: item.qty + soldItem.qty };
+            return item;
+          })
+        : state.inventory;
       return {
         ...state,
         sales: state.sales.filter(x => x.id !== action.payload),
@@ -401,6 +411,46 @@ function rawReducer(state, action) {
 
     case 'UPDATE_BOOKING_STATUS':
       return { ...state, bookings: state.bookings.map(b => b.id === action.payload.id ? { ...b, status: action.payload.status } : b) };
+
+    case 'DELIVER_BOOKING': {
+      const { bookingId } = action.payload;
+      const booking = state.bookings.find(b => b.id === bookingId);
+      if (!booking || booking.status === 'delivered') return state;
+      const deliveredAt = new Date().toISOString();
+      // Deduct each booked item — match by id first, then fall back to normalised name
+      const inventory = state.inventory.map(invItem => {
+        const normInvName = invItem.name?.toLowerCase().trim();
+        const booked = (booking.items || []).find(i =>
+          !i._custom && (
+            (i.id && i.id === invItem.id) ||
+            (!i.id && i.name?.toLowerCase().trim() === normInvName)
+          )
+        );
+        if (booked) return { ...invItem, qty: Math.max(0, invItem.qty - (booked.qty || 1)) };
+        return invItem;
+      });
+      // Mark booking as delivered
+      const bookings = state.bookings.map(b =>
+        b.id === bookingId ? { ...b, status: 'delivered', deliveredAt } : b
+      );
+      // Mark the linked booking-type sale as delivered (if one exists)
+      const sales = state.sales.map(s =>
+        s.bookingId === bookingId ? { ...s, status: 'delivered', deliveredAt } : s
+      );
+      return {
+        ...state,
+        inventory,
+        bookings,
+        sales,
+        auditLog: [{
+          id: Date.now(),
+          action: 'Booking delivered — stock deducted',
+          user: state.user?.name,
+          ts: deliveredAt,
+          detail: `Booking #${bookingId} · ${(booking.items || []).length} item type(s) released from stock`,
+        }, ...state.auditLog],
+      };
+    }
 
     case 'ADD_BOOKING_PAYMENT': {
       const { bookingId, payment } = action.payload;

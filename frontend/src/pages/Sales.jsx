@@ -328,23 +328,24 @@ export default function Sales() {
       unit: i.unit || '',
       price: i.price || 0,
     }));
-    const total = validItems.reduce((s, i) => s + (i.qty || 1) * (i.price || 0), 0);
+    const bookingTotal = validItems.reduce((s, i) => s + (i.qty || 1) * (i.price || 0), 0);
     const payments = [];
     const initAmt = parseFloat(form.amountPaid);
     if (!isNaN(initAmt) && initAmt > 0) {
       payments.push({
         id: genId('PAY'),
-        amount: Math.min(initAmt, total || initAmt),
+        amount: Math.min(initAmt, bookingTotal || initAmt),
         method: form.payment,
         date: bookingDate,
         note: 'Initial payment',
       });
     }
     const amountPaid = payments.reduce((s, p) => s + p.amount, 0);
+    const bookingId = genId('B');
     dispatch({
       type: 'ADD_BOOKING',
       payload: {
-        id: genId('B'),
+        id: bookingId,
         customer: form.customer || 'Walk-in',
         branch: form.branch,
         bookingType: form.bookingType || 'others',
@@ -352,7 +353,7 @@ export default function Sales() {
         deliveryDate: form.deliveryDate || '',
         note: form.note,
         items: validItems,
-        total,
+        total: bookingTotal,
         discount: 0,
         payments,
         amountPaid,
@@ -361,9 +362,32 @@ export default function Sales() {
         createdBy: user?.name,
       },
     });
+    // Also record as a sale so it appears in the sales page history
+    const sale = {
+      id: genId('S'),
+      customer: form.customer || 'Walk-in',
+      branch: form.branch,
+      payment: form.payment,
+      note: form.note,
+      items: form.items,
+      subtotal: bookingTotal,
+      totalCost: 0,
+      totalDiscount: 0,
+      totalCommission: 0,
+      profit: null,
+      vat: 0,
+      total: bookingTotal,
+      amountPaid,
+      payments,
+      date: bookingDate,
+      createdBy: user?.name,
+      transactionType: 'booking',
+      bookingId,
+    };
+    dispatch({ type: 'ADD_SALE', payload: sale });
     resetForm();
-    setModal(null);
-    dispatch({ type: 'SET_PAGE', payload: 'booked' });
+    setSelected(sale);
+    setModal('view');
   }
 
   function submitPayment() {
@@ -490,7 +514,15 @@ export default function Sales() {
                   <td className="px-4 py-3.5 text-white font-medium">{s.customer}</td>
                   <td className="px-4 py-3.5 text-gray-400">{fmtDate(s.date)}</td>
                   <td className="px-4 py-3.5">
-                    <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg">{s.payment}</span>
+                    <div className="flex flex-wrap gap-1">
+                      <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg">{s.payment}</span>
+                      {s.transactionType === 'booking' && s.status !== 'delivered' && (
+                        <span className="bg-amber-950 text-amber-400 text-xs px-2 py-1 rounded-lg font-medium">Booking</span>
+                      )}
+                      {s.transactionType === 'booking' && s.status === 'delivered' && (
+                        <span className="bg-green-950 text-green-400 text-xs px-2 py-1 rounded-lg font-medium">Delivered</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3.5 text-gray-400">{s.items?.length || 0}</td>
                   <td className="px-4 py-3.5 text-right font-mono text-amber-400 text-sm">
@@ -530,7 +562,12 @@ export default function Sales() {
                   <p className="text-white font-medium">{s.customer || 'Walk-in'}</p>
                   <p className="text-gray-500 text-xs">{fmtDate(s.date)} · {s.id}</p>
                 </div>
-                <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg">{s.payment}</span>
+                <div className="flex flex-wrap gap-1 justify-end">
+                  <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded-lg">{s.payment}</span>
+                  {s.transactionType === 'booking' && (
+                    <span className="bg-amber-950 text-amber-400 text-xs px-2 py-1 rounded-lg font-medium">Booking</span>
+                  )}
+                </div>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
                 <div className="bg-gray-800 px-2 py-1 rounded">
@@ -1056,7 +1093,7 @@ export default function Sales() {
         const balance = (currentSelected.total || 0) - totalPaid;
         const isFullyPaid = balance <= 0.005;
         return (
-          <Modal title={`Sale #${currentSelected.id}`} onClose={() => { setModal(null); setShowPayForm(false); }}>
+          <Modal title={`${currentSelected.transactionType === 'booking' ? 'Booking' : 'Sale'} #${currentSelected.id}`} onClose={() => { setModal(null); setShowPayForm(false); }}>
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><p className="text-gray-500 text-xs mb-1">Customer</p><p className="text-white font-medium">{currentSelected.customer}</p></div>
@@ -1267,6 +1304,31 @@ export default function Sales() {
 
               {/* ── Action buttons ── */}
               <div className="space-y-2.5">
+                {/* Mark as Delivered — booking-type sales only */}
+                {currentSelected.transactionType === 'booking' && currentSelected.status !== 'delivered' && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Mark as Delivered? This will deduct all booked items from inventory stock.')) {
+                        dispatch({ type: 'DELIVER_BOOKING', payload: { bookingId: currentSelected.bookingId } });
+                      }
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Mark as Delivered — Deduct from Stock
+                  </button>
+                )}
+                {currentSelected.transactionType === 'booking' && currentSelected.status === 'delivered' && (
+                  <div className="flex items-center justify-center gap-2 bg-green-950 border border-green-800 text-green-400 text-sm font-medium px-4 py-2.5 rounded-xl">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Delivered — Stock Deducted
+                  </div>
+                )}
+
                 {/* Print */}
                 <button
                   onClick={() => printReceipt(currentSelected, state)}

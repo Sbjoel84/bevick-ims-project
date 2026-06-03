@@ -772,6 +772,7 @@ export default function Booked() {
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Date</th>
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Items</th>
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Type</th>
+                <th className="text-left text-gray-500 font-medium px-5 py-3">Status</th>
                 <th className="text-right text-gray-500 font-medium px-5 py-3">Total</th>
                 <th className="text-right text-gray-500 font-medium px-5 py-3">Paid</th>
                 <th className="text-right text-gray-500 font-medium px-5 py-3">Balance</th>
@@ -780,10 +781,11 @@ export default function Booked() {
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={9} className="text-center text-gray-600 py-12">No bookings found</td></tr>
+                <tr><td colSpan={10} className="text-center text-gray-600 py-12">No bookings found</td></tr>
               ) : filtered.map(b => {
                 const bPaid    = b.amountPaid || 0;
                 const bBalance = Math.max(0, (b.total || 0) - (b.discount || 0)) - bPaid;
+                const canDeliver = b.status !== 'delivered' && b.status !== 'cancelled';
                 return (
                   <tr key={b.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
                     <td className="px-5 py-3.5 text-white font-medium">{b.customer}</td>
@@ -805,6 +807,11 @@ export default function Booked() {
                         : <span className="bg-red-950 text-red-400 text-xs font-semibold px-2.5 py-1 rounded-lg">Others</span>
                       }
                     </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`text-xs px-2.5 py-1 rounded-lg capitalize font-medium ${STATUS_COLORS[b.status] || 'bg-gray-800 text-gray-400'}`}>
+                        {b.status}
+                      </span>
+                    </td>
                     <td className="px-5 py-3.5 text-right font-mono text-white">{formatCurrency(b.total || 0, currency)}</td>
                     <td className="px-5 py-3.5 text-right font-mono text-green-400">
                       {bPaid > 0 ? formatCurrency(bPaid, currency) : <span className="text-gray-600">—</span>}
@@ -817,6 +824,21 @@ export default function Booked() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2 justify-end">
+                        {canDeliver && (
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Mark "${b.customer}" booking as Delivered? This will deduct items from inventory.`)) {
+                                dispatch({ type: 'DELIVER_BOOKING', payload: { bookingId: b.id } });
+                              }
+                            }}
+                            className="text-emerald-500 hover:text-emerald-300 transition-colors"
+                            title="Mark as Delivered — deduct from stock"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                            </svg>
+                          </button>
+                        )}
                         <button onClick={() => { setSelected(b); setShowPayForm(false); setPayForm(EMPTY_PAY); setEditingPaymentId(null); setModal('view'); }} className="text-gray-500 hover:text-white transition-colors" title="View">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                         </button>
@@ -1337,19 +1359,55 @@ export default function Booked() {
               )}
 
               {/* ── Status + Actions ─────────────────────────────────────────────── */}
-              <div className="flex gap-3 pt-1 border-t border-gray-800">
-                <div className="flex-1">
-                  <label className="text-gray-400 text-xs font-medium block mb-1.5">Update Status</label>
-                  <select
-                    value={b.status}
-                    onChange={e => { updateStatus(b.id, e.target.value); setSelected(s => ({ ...s, status: e.target.value })); }}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none"
+              <div className="space-y-3 pt-1 border-t border-gray-800">
+                {/* Deliver button — prominent action when not yet delivered */}
+                {b.status !== 'delivered' && b.status !== 'cancelled' && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Mark as Delivered? This will deduct all booked items from inventory stock.')) {
+                        dispatch({ type: 'DELIVER_BOOKING', payload: { bookingId: b.id } });
+                      }
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-3 rounded-xl transition-colors"
                   >
-                    {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Mark as Delivered — Deduct from Stock
+                  </button>
+                )}
+                {b.status === 'delivered' && (
+                  <div className="flex items-center justify-center gap-2 bg-green-950 border border-green-800 text-green-400 text-sm font-medium px-4 py-2.5 rounded-xl">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Delivered — Stock Deducted
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="text-gray-400 text-xs font-medium block mb-1.5">Update Status</label>
+                    <select
+                      value={b.status}
+                      onChange={e => {
+                        const newStatus = e.target.value;
+                        if (newStatus === 'delivered' && b.status !== 'delivered') {
+                          if (window.confirm('Mark as Delivered? This will deduct all booked items from inventory stock.')) {
+                            dispatch({ type: 'DELIVER_BOOKING', payload: { bookingId: b.id } });
+                          }
+                        } else {
+                          updateStatus(b.id, newStatus);
+                          setSelected(s => ({ ...s, status: newStatus }));
+                        }
+                      }}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none"
+                    >
+                      {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <button onClick={() => { setModal(null); openEdit(b); }} className="mt-5 bg-blue-950 hover:bg-blue-900 text-blue-400 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Edit</button>
+                  <button onClick={() => del(b.id)} className="mt-5 bg-red-950 hover:bg-red-900 text-red-400 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Delete</button>
                 </div>
-                <button onClick={() => { setModal(null); openEdit(b); }} className="mt-5 bg-blue-950 hover:bg-blue-900 text-blue-400 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Edit</button>
-                <button onClick={() => del(b.id)} className="mt-5 bg-red-950 hover:bg-red-900 text-red-400 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Delete</button>
               </div>
 
             </div>
