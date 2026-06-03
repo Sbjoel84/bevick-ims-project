@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { refreshPurchaseList, refreshInventory, refreshBookings } from '../lib/refresh';
+import { exportPurchaseListExcel } from '../utils/excel';
 
 export default function Purchase() {
   const { state, dispatch } = useApp();
@@ -239,6 +240,14 @@ export default function Purchase() {
         )}
         <div className="ml-auto flex items-center gap-2">
           <span className="text-gray-500 text-xs">{filteredBookedNotInStock.length} item{filteredBookedNotInStock.length !== 1 ? 's' : ''}</span>
+          <button
+            onClick={() => exportPurchaseListExcel({ items: filteredBookedNotInStock, bizName, bizRC })}
+            disabled={filteredBookedNotInStock.length === 0}
+            className="flex items-center gap-2 bg-green-700 hover:bg-green-600 border border-green-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+            Export Excel
+          </button>
           <button
             onClick={printBookedItems}
             disabled={filteredBookedNotInStock.length === 0}
