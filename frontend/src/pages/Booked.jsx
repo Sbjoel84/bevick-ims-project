@@ -459,10 +459,8 @@ export default function Booked() {
     }));
     if (!form.customer.trim() || validItems.length === 0) return;
 
-    const total          = validItems.reduce((s, i) => s + (i.qty || 1) * (parseFloat(i.price) || 0), 0);
-    const discount       = parseFloat(form.discount) || 0;
-    const effectiveTotal = Math.max(0, total - discount);
-    const bookingDate    = form.bookingDate ? new Date(form.bookingDate + 'T12:00:00').toISOString() : new Date().toISOString();
+    const total    = validItems.reduce((s, i) => s + (i.qty || 1) * (parseFloat(i.price) || 0), 0);
+    const discount = parseFloat(form.discount) || 0;
 
     const payments = [];
     const initAmt = parseFloat(form.initialPayment);
@@ -471,17 +469,16 @@ export default function Booked() {
         id: genId('PMT'),
         amount: initAmt,
         method: form.paymentMethod || 'Cash',
-        date: bookingDate,
+        date: new Date().toISOString(),
         note: 'Initial payment',
       });
     }
     const amountPaid = payments.reduce((s, p) => s + p.amount, 0);
-    const bookingId  = genId('B');
 
     dispatch({
       type: 'ADD_BOOKING',
       payload: {
-        id: bookingId,
+        id: genId('B'),
         customer: form.customer,
         branch: branch || form.branch,
         bookingType: form.type || 'others',
@@ -494,37 +491,10 @@ export default function Booked() {
         payments,
         amountPaid,
         status: 'pending',
-        date: bookingDate,
+        date: form.bookingDate ? new Date(form.bookingDate + 'T12:00:00').toISOString() : new Date().toISOString(),
         createdBy: user?.name,
       },
     });
-
-    // Also record as a sale so it appears in the sales page history
-    dispatch({
-      type: 'ADD_SALE',
-      payload: {
-        id: genId('S'),
-        customer: form.customer,
-        branch: branch || form.branch,
-        payment: form.paymentMethod || 'Cash',
-        note: form.note,
-        items: validItems,
-        subtotal: total,
-        totalCost: 0,
-        totalDiscount: discount,
-        totalCommission: 0,
-        profit: null,
-        vat: 0,
-        total: effectiveTotal,
-        amountPaid,
-        payments,
-        date: bookingDate,
-        createdBy: user?.name,
-        transactionType: 'booking',
-        bookingId,
-      },
-    });
-
     setModal(null);
     setForm({ ...EMPTY_FORM, branch: branch || 'DUB' });
   }
@@ -620,57 +590,26 @@ export default function Booked() {
       unit: t.unit,
       price: 0,
     }));
-    const bookingId   = genId('B');
-    const bookingDate = ffDate ? new Date(ffDate + 'T12:00:00').toISOString() : new Date().toISOString();
-    const ffNote      = 'Imported from China/Lagos Full Factory order sheet';
-
     dispatch({
       type: 'ADD_BOOKING',
       payload: {
-        id: bookingId,
+        id: genId('B'),
         customer: ffCustomer.trim(),
         branch: branch || 'DUB',
         bookingType: 'full_factory',
         type: 'full_factory',
         deliveryDate: '',
-        note: ffNote,
+        note: 'Imported from China/Lagos Full Factory order sheet',
         items,
         total: 0,
         discount: 0,
         payments: [],
         amountPaid: 0,
         status: 'pending',
-        date: bookingDate,
+        date: ffDate ? new Date(ffDate + 'T12:00:00').toISOString() : new Date().toISOString(),
         createdBy: user?.name,
       },
     });
-
-    // Also record as a sale so it appears in the sales page history
-    dispatch({
-      type: 'ADD_SALE',
-      payload: {
-        id: genId('S'),
-        customer: ffCustomer.trim(),
-        branch: branch || 'DUB',
-        payment: 'Cash',
-        note: ffNote,
-        items,
-        subtotal: 0,
-        totalCost: 0,
-        totalDiscount: 0,
-        totalCommission: 0,
-        profit: null,
-        vat: 0,
-        total: 0,
-        amountPaid: 0,
-        payments: [],
-        date: bookingDate,
-        createdBy: user?.name,
-        transactionType: 'booking',
-        bookingId,
-      },
-    });
-
     setFfImportOpen(false);
     setFfCustomer('');
     setFfDate(new Date().toISOString().split('T')[0]);
