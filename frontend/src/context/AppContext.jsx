@@ -202,11 +202,22 @@ function rawReducer(state, action) {
             return item;
           })
         : state.inventory;
+      // If this sale is a booking-type, also delete the linked booking record
+      const linkedBooking = (s?.transactionType === 'booking' && s?.bookingId)
+        ? state.bookings.find(b => b.id === s.bookingId)
+        : null;
+      const deletedAt = new Date().toISOString();
+      const binAdditions = [
+        { ...s, _type: 'sale', _deletedAt: deletedAt },
+        ...(linkedBooking ? [{ ...linkedBooking, _type: 'booking', _deletedAt: deletedAt }] : []),
+      ];
       return {
         ...state,
         sales: state.sales.filter(x => x.id !== action.payload),
+        bookings: linkedBooking ? state.bookings.filter(b => b.id !== linkedBooking.id) : state.bookings,
+        purchaseList: linkedBooking ? state.purchaseList.filter(p => p.bookingId !== linkedBooking.id) : state.purchaseList,
         inventory,
-        recycleBin: [...state.recycleBin, { ...s, _type: 'sale', _deletedAt: new Date().toISOString() }],
+        recycleBin: [...state.recycleBin, ...binAdditions],
         auditLog: [{ id: Date.now(), action: 'Sale deleted', user: state.user?.name, ts: new Date().toISOString(), detail: `#${action.payload}` }, ...state.auditLog],
       };
     }
@@ -512,11 +523,20 @@ function rawReducer(state, action) {
       const b = state.bookings.find(x => x.id === action.payload);
       // Remove any purchase orders auto-generated from this booking
       const purchasesAfterDelete = state.purchaseList.filter(p => p.bookingId !== action.payload);
+      // Also delete the linked booking-type sale record (if one exists)
+      const linkedSale = state.sales.find(s => s.bookingId === action.payload);
+      const deletedAt = new Date().toISOString();
+      const binAdditions = [
+        { ...b, _type: 'booking', _deletedAt: deletedAt },
+        ...(linkedSale ? [{ ...linkedSale, _type: 'sale', _deletedAt: deletedAt }] : []),
+      ];
       return {
         ...state,
         bookings: state.bookings.filter(x => x.id !== action.payload),
+        sales: linkedSale ? state.sales.filter(s => s.id !== linkedSale.id) : state.sales,
         purchaseList: purchasesAfterDelete,
-        recycleBin: [...state.recycleBin, { ...b, _type: 'booking', _deletedAt: new Date().toISOString() }],
+        recycleBin: [...state.recycleBin, ...binAdditions],
+        auditLog: [{ id: Date.now(), action: 'Booking deleted', user: state.user?.name, ts: new Date().toISOString(), detail: `#${action.payload}${linkedSale ? ` · linked sale #${linkedSale.id} also removed` : ''}` }, ...state.auditLog],
       };
     }
 

@@ -866,19 +866,17 @@ export default function Sales() {
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                {showProfitProfile && (
-                  <div className="w-28">
-                    <label className="text-gray-500 text-xs block mb-1">Actual Cost (₦)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={pickerCostPrice}
-                      onChange={e => setPickerCostPrice(e.target.value)}
-                      placeholder="0"
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-right focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    />
-                  </div>
-                )}
+                <div className="w-28">
+                  <label className="text-gray-500 text-xs block mb-1">Actual Cost (₦)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={pickerCostPrice}
+                    onChange={e => setPickerCostPrice(e.target.value)}
+                    placeholder="0"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-right focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
                 <div className="w-28">
                   <label className="text-gray-500 text-xs block mb-1">Sale Price (₦)</label>
                   <input
@@ -938,7 +936,7 @@ export default function Sales() {
                     <tr className="border-b border-gray-700">
                       <th className="text-left text-gray-500 font-medium px-4 py-2.5 text-xs">Item</th>
                       <th className="text-center text-gray-500 font-medium px-4 py-2.5 text-xs">Qty</th>
-                      {showProfitProfile && <th className="text-right text-amber-600 font-medium px-4 py-2.5 text-xs">Actual Cost</th>}
+                      <th className="text-right text-amber-600 font-medium px-4 py-2.5 text-xs">Actual Cost</th>
                       <th className="text-right text-blue-500 font-medium px-4 py-2.5 text-xs">Sale Price</th>
                       {showProfitProfile && <th className="text-right text-green-600 font-medium px-4 py-2.5 text-xs">Profit</th>}
                       <th className="px-4 py-2.5"></th>
@@ -960,18 +958,16 @@ export default function Sales() {
                               className="w-16 text-center bg-gray-700 border border-gray-600 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                           </td>
-                          {showProfitProfile && (
-                            <td className="px-4 py-2.5">
-                              <input
-                                type="number"
-                                min={0}
-                                value={item.costPrice || ''}
-                                onChange={e => updateItemCostPrice(item.id, e.target.value)}
-                                placeholder="0"
-                                className="w-28 text-right bg-gray-700 border border-amber-900/40 rounded-lg px-2 py-1 text-amber-300 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
-                              />
-                            </td>
-                          )}
+                          <td className="px-4 py-2.5">
+                            <input
+                              type="number"
+                              min={0}
+                              value={item.costPrice || ''}
+                              onChange={e => updateItemCostPrice(item.id, e.target.value)}
+                              placeholder="0"
+                              className="w-28 text-right bg-gray-700 border border-amber-900/40 rounded-lg px-2 py-1 text-amber-300 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            />
+                          </td>
                           <td className="px-4 py-2.5">
                             <input
                               type="number"
