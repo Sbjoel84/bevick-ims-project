@@ -127,6 +127,13 @@ export default function Goods() {
     setNewSupplierName('');
   }
 
+  function deleteGRN(grn) {
+    if (window.confirm(`Delete GRN #${grn.id}${grn.supplier ? ` (${grn.supplier})` : ''}?\n\nThis will reverse the inventory quantities that were added when these goods were received.`)) {
+      dispatch({ type: 'DELETE_GRN', payload: grn.id });
+      if (modal === 'view' && selected?.id === grn.id) setModal(null);
+    }
+  }
+
   function openEditModal(grn) {
     setSelected(grn);
     setForm({
@@ -240,11 +247,14 @@ export default function Goods() {
                   <td className="px-5 py-3.5 text-gray-400">{g.receivedBy || '—'}</td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => { setSelected(g); setModal('view'); }} className="text-gray-500 hover:text-white transition-colors" title="View GRN">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                      </button>
                       <button onClick={() => openEditModal(g)} className="text-gray-500 hover:text-blue-400 transition-colors" title="Edit GRN">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                       </button>
-                      <button onClick={() => { setSelected(g); setModal('view'); }} className="text-gray-500 hover:text-white transition-colors" title="View GRN">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                      <button onClick={() => deleteGRN(g)} className="text-gray-500 hover:text-red-400 transition-colors" title="Delete GRN">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                       </button>
                     </div>
                   </td>
@@ -535,6 +545,20 @@ export default function Goods() {
               </div>
             </div>
             {selected.note && <div className="bg-gray-800 rounded-xl p-4 text-sm"><p className="text-gray-500 text-xs mb-1">Note</p><p className="text-white">{selected.note}</p></div>}
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => { setModal(null); openEditModal(selected); }}
+                className="flex-1 bg-blue-950 hover:bg-blue-900 text-blue-400 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+              >
+                Edit GRN
+              </button>
+              <button
+                onClick={() => deleteGRN(selected)}
+                className="flex-1 bg-red-950 hover:bg-red-900 text-red-400 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+              >
+                Delete GRN
+              </button>
+            </div>
           </div>
         </Modal>
       )}

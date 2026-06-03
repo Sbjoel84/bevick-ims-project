@@ -537,6 +537,22 @@ function rawReducer(state, action) {
       };
     }
 
+    case 'DELETE_GRN': {
+      const grn = state.goodsReceived.find(g => g.id === action.payload);
+      if (!grn) return state;
+      const inventory = state.inventory.map(item => {
+        const received = (grn.items || []).find(i => i.id === item.id);
+        if (received) return { ...item, qty: Math.max(0, item.qty - received.qty) };
+        return item;
+      });
+      return {
+        ...state,
+        goodsReceived: state.goodsReceived.filter(g => g.id !== action.payload),
+        inventory,
+        auditLog: [{ id: Date.now(), action: 'GRN deleted', user: state.user?.name, ts: new Date().toISOString(), detail: `GRN#${action.payload}` }, ...state.auditLog],
+      };
+    }
+
     // ── COMMISSIONS ────────────────────────────────────────────
     case 'ADD_COMMISSION': {
       const c = action.payload;

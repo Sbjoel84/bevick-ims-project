@@ -319,6 +319,17 @@ export async function syncAction(action, prevState, nextState) {
         break;
       }
 
+      case 'DELETE_GRN': {
+        await remove('goods_received', action.payload);
+        const grn = prevState.goodsReceived.find(g => g.id === action.payload);
+        if (grn?.items?.length) {
+          const ids = new Set(grn.items.map(i => i.id));
+          const reversed = nextState.inventory.filter(i => ids.has(i.id));
+          if (reversed.length) await upsertMany('inventory', reversed);
+        }
+        break;
+      }
+
       // ── COMMISSIONS ──────────────────────────────────────────
       case 'ADD_COMMISSION':
         await upsert('commissions', action.payload);
