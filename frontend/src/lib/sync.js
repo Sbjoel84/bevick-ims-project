@@ -138,6 +138,15 @@ export async function syncAction(action, prevState, nextState) {
           const restored = nextState.inventory.filter(i => ids.has(i.id));
           if (restored.length) await upsertMany('inventory', restored);
         }
+        // If this was a booking-type sale, also remove the linked booking from Supabase
+        if (deletedSale?.bookingId) {
+          await remove('bookings', deletedSale.bookingId);
+          await toRecycleBin(nextState, deletedSale.bookingId);
+          const purchasesToDelete = prevState.purchaseList.filter(p => p.bookingId === deletedSale.bookingId);
+          if (purchasesToDelete.length) {
+            await Promise.all(purchasesToDelete.map(p => remove('purchase_list', p.id)));
+          }
+        }
         break;
       }
       case 'UPDATE_SALE': {
@@ -263,12 +272,37 @@ export async function syncAction(action, prevState, nextState) {
         }
         break;
       }
+      case 'DELIVER_BOOKING': {
+        const { bookingId } = action.payload;
+        // Sync the booking's updated status ('delivered')
+        const updatedBooking = nextState.bookings.find(b => b.id === bookingId);
+        if (updatedBooking) await upsert('bookings', updatedBooking);
+        // Sync the linked sale's updated status ('delivered')
+        const updatedSale = nextState.sales.find(s => s.bookingId === bookingId);
+        if (updatedSale) await upsert('sales', updatedSale);
+        // Sync all inventory items that were deducted
+        const sourceItems =
+          prevState.bookings.find(b => b.id === bookingId)?.items ||
+          prevState.sales.find(s => s.bookingId === bookingId)?.items || [];
+        const itemIds = new Set(sourceItems.filter(i => i.id).map(i => i.id));
+        if (itemIds.size) {
+          const modified = nextState.inventory.filter(i => itemIds.has(i.id));
+          if (modified.length) await upsertMany('inventory', modified);
+        }
+        break;
+      }
       case 'DELETE_BOOKING': {
         await remove('bookings', action.payload);
         await toRecycleBin(nextState, action.payload);
         const purchasesToDelete = prevState.purchaseList.filter(p => p.bookingId === action.payload);
         if (purchasesToDelete.length) {
           await Promise.all(purchasesToDelete.map(p => remove('purchase_list', p.id)));
+        }
+        // Also remove the linked booking-type sale from Supabase
+        const linkedSale = prevState.sales.find(s => s.bookingId === action.payload);
+        if (linkedSale) {
+          await remove('sales', linkedSale.id);
+          await toRecycleBin(nextState, linkedSale.id);
         }
         break;
       }
@@ -293,12 +327,6 @@ export async function syncAction(action, prevState, nextState) {
         const ids = new Set(action.payload.items.map(i => i.id));
         const modified = nextState.inventory.filter(i => ids.has(i.id));
         await upsertMany('inventory', modified);
-        // Sync any bookings that were changed from "delivered" to "pending"
-        const changedBookings = nextState.bookings.filter(b => {
-          const prevB = prevState.bookings.find(x => x.id === b.id);
-          return prevB && prevB.status !== b.status;
-        });
-        if (changedBookings.length) await upsertMany('bookings', changedBookings);
         // Sync any purchase orders that were marked as "fulfilled"
         const changedPurchases = nextState.purchaseList.filter(p => {
           const prevP = prevState.purchaseList.find(x => x.id === p.id);

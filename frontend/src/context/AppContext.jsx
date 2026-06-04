@@ -425,13 +425,23 @@ function rawReducer(state, action) {
 
     case 'DELIVER_BOOKING': {
       const { bookingId } = action.payload;
+      if (!bookingId) return state;
       const booking = state.bookings.find(b => b.id === bookingId);
-      if (!booking || booking.status === 'delivered') return state;
+      // Also look up the linked sale (created when booking was recorded from the Sales page)
+      const linkedSale = state.sales.find(s => s.bookingId === bookingId);
+      // Guard: nothing to deliver if both are already marked delivered
+      const bookingDone = booking?.status === 'delivered';
+      const saleDone    = linkedSale?.status === 'delivered';
+      if (bookingDone && saleDone) return state;
+      if (!booking && !linkedSale) return state;
+      // Use booking items when available; fall back to sale items so delivery
+      // still works even when the separate booking record is missing
+      const itemsToDeduct = (booking?.items?.length ? booking.items : linkedSale?.items) || [];
       const deliveredAt = new Date().toISOString();
-      // Deduct each booked item — match by id first, then fall back to normalised name
+      // Deduct each item from inventory — match by id first, then fall back to normalised name
       const inventory = state.inventory.map(invItem => {
         const normInvName = invItem.name?.toLowerCase().trim();
-        const booked = (booking.items || []).find(i =>
+        const booked = itemsToDeduct.find(i =>
           !i._custom && (
             (i.id && i.id === invItem.id) ||
             (!i.id && i.name?.toLowerCase().trim() === normInvName)
@@ -440,14 +450,14 @@ function rawReducer(state, action) {
         if (booked) return { ...invItem, qty: Math.max(0, invItem.qty - (booked.qty || 1)) };
         return invItem;
       });
-      // Mark booking as delivered
-      const bookings = state.bookings.map(b =>
-        b.id === bookingId ? { ...b, status: 'delivered', deliveredAt } : b
-      );
-      // Mark the linked booking-type sale as delivered (if one exists)
-      const sales = state.sales.map(s =>
-        s.bookingId === bookingId ? { ...s, status: 'delivered', deliveredAt } : s
-      );
+      // Mark booking as delivered (if the booking record exists and isn't already)
+      const bookings = booking && !bookingDone
+        ? state.bookings.map(b => b.id === bookingId ? { ...b, status: 'delivered', deliveredAt } : b)
+        : state.bookings;
+      // Mark the linked booking-type sale as delivered (if one exists and isn't already)
+      const sales = linkedSale && !saleDone
+        ? state.sales.map(s => s.bookingId === bookingId ? { ...s, status: 'delivered', deliveredAt } : s)
+        : state.sales;
       return {
         ...state,
         inventory,
@@ -458,7 +468,7 @@ function rawReducer(state, action) {
           action: 'Booking delivered — stock deducted',
           user: state.user?.name,
           ts: deliveredAt,
-          detail: `Booking #${bookingId} · ${(booking.items || []).length} item type(s) released from stock`,
+          detail: `Booking #${bookingId} · ${itemsToDeduct.length} item type(s) released from stock`,
         }, ...state.auditLog],
       };
     }
@@ -560,18 +570,7 @@ function rawReducer(state, action) {
       // Get IDs of items that were received
       const receivedItemIds = new Set(gr.items.map(i => i.id));
 
-      // Update booking statuses: if a "delivered" booking has items that were just restocked, change to "pending"
-      const bookings = state.bookings.map(booking => {
-        if (booking.status === 'delivered') {
-          const hasReceivedItems = (booking.items || []).some(item => receivedItemIds.has(item.id));
-          if (hasReceivedItems) {
-            return { ...booking, status: 'pending' };
-          }
-        }
-        return booking;
-      });
-
-      // Update purchase orders: if a "received" purchase order has items that were just restocked, mark as "fulfilled"
+      // Update purchase orders: mark as "fulfilled" when matching items are received
       const purchaseList = state.purchaseList.map(po => {
         if (po.status === 'received' && receivedItemIds.has(po.itemId)) {
           return { ...po, status: 'fulfilled' };
@@ -583,7 +582,6 @@ function rawReducer(state, action) {
         ...state,
         goodsReceived: [gr, ...state.goodsReceived],
         inventory,
-        bookings,
         purchaseList,
         auditLog: [{ id: Date.now(), action: 'Goods received', user: state.user?.name, ts: new Date().toISOString(), detail: `GRN#${gr.id}` }, ...state.auditLog],
       };
