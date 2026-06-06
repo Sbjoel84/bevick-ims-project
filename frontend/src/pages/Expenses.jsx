@@ -76,7 +76,7 @@ export default function Expenses() {
       { label: 'Site TP & Others',     value: formatCurrency(siteTP, currency) },
       { label: 'Office Expenses',      value: formatCurrency(offExp, currency) },
       { label: 'Total Expenses',       value: formatCurrency(total, currency), bold: true },
-      { label: 'Net Balance',          value: formatCurrency(cashIn - total, currency) },
+      { label: 'Balance',               value: cashIn - total < 0 ? `-${formatCurrency(Math.abs(cashIn - total), currency)}` : formatCurrency(cashIn - total, currency) },
     ];
   }
 
@@ -86,23 +86,15 @@ export default function Expenses() {
     .filter(e => {
       const q = search.toLowerCase();
       return !q || e.desc?.toLowerCase().includes(q);
-    })
-    .sort((a, b) => {
-      const now  = new Date();
-      const curY = now.getFullYear();
-      const curM = now.getMonth();
-      const da   = new Date(a.date);
-      const db   = new Date(b.date);
-      const aIsCur = da.getFullYear() === curY && da.getMonth() === curM ? 0 : 1;
-      const bIsCur = db.getFullYear() === curY && db.getMonth() === curM ? 0 : 1;
-      if (aIsCur !== bIsCur) return aIsCur - bIsCur;
-      return db - da;
     });
 
-  // Compute running balance and cumulative expenses (ledger-style)
+  // Compute running balance in chronological order so cash-in rows are always
+  // processed before later expenses, preventing false negative balances.
+  const chronoFiltered = [...filtered].sort((a, b) => new Date(a.date) - new Date(b.date));
+
   let runBalance = 0;
   let cumExpenses = 0;
-  const ledger = filtered.map(e => {
+  const ledger = chronoFiltered.map(e => {
     const type = getExpenseType(e);
     const amt = e.amount || 0;
     if (type === 'cashIn') { runBalance += amt; }
@@ -208,9 +200,12 @@ export default function Expenses() {
           <p className="font-syne text-xs sm:text-sm md:text-lg font-bold text-green-400 break-all">{formatCurrency(totalCashIn, currency)}</p>
         </div>
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
-          <p className="text-gray-500 text-xs font-medium mb-1">Net Balance</p>
+          <p className="text-gray-500 text-xs font-medium mb-1">Balance</p>
           <p className={`font-syne text-xs sm:text-sm md:text-lg font-bold break-all ${totalCashIn - totalExpenses >= 0 ? 'text-white' : 'text-red-400'}`}>
-            {formatCurrency(totalCashIn - totalExpenses, currency)}
+            {totalCashIn - totalExpenses < 0
+              ? `-${formatCurrency(Math.abs(totalCashIn - totalExpenses), currency)}`
+              : formatCurrency(totalCashIn - totalExpenses, currency)
+            }
           </p>
         </div>
       </div>
@@ -274,7 +269,7 @@ export default function Expenses() {
                     {e._type === 'officeExp' ? formatCurrency(e.amount, currency) : ''}
                   </td>
                   <td className={`px-4 py-3.5 text-right font-mono font-semibold ${e._balance >= 0 ? 'text-white' : 'text-red-400'}`}>
-                    {formatCurrency(e._balance, currency)}
+                    {e._balance < 0 ? `-${formatCurrency(Math.abs(e._balance), currency)}` : formatCurrency(e._balance, currency)}
                   </td>
                   <td className="px-4 py-3.5 text-right font-mono text-red-400">
                     {formatCurrency(e._cumExp, currency)}
