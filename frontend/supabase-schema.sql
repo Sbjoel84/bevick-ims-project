@@ -23,6 +23,12 @@ create table if not exists inventory (
   data jsonb not null default '{}'::jsonb
 );
 
+create table if not exists inventory_movements (
+  id text primary key,
+  branch text,
+  data jsonb not null default '{}'::jsonb
+);
+
 create table if not exists sales (
   id text primary key,
   branch text,
@@ -99,6 +105,7 @@ create table if not exists commissions (
 alter table app_settings    disable row level security;
 alter table app_users       disable row level security;
 alter table inventory       disable row level security;
+alter table inventory_movements disable row level security;
 alter table sales           disable row level security;
 alter table customers       disable row level security;
 alter table expenses        disable row level security;

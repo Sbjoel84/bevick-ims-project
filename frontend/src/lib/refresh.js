@@ -27,6 +27,12 @@ export const refreshInventory = async (setState) => {
   setState(extract(data));
 };
 
+export const refreshInventoryMovements = async (setState, limit = REFRESH_LIMIT) => {
+  const { data, error } = await txSelect('inventory_movements', limit);
+  if (error) { console.error('[refresh] inventory_movements:', error.message); return; }
+  setState(extract(data));
+};
+
 export const refreshSuppliers = async (setState) => {
   const { data, error } = await supabase.from('suppliers').select('data');
   if (error) { console.error('[refresh] suppliers:', error.message); return; }
