@@ -36,6 +36,7 @@ const initialState = {
   customers: [],
   expenses: [],
   inventory: [],
+  inventoryMovements: [],
   bookings: [],
   purchaseList: [],
   goodsReceived: [],
@@ -59,6 +60,25 @@ const initialState = {
   // Current page
   page: 'login',
 };
+
+// Builds a single stock-movement log entry. `qty` is signed: positive = stock in, negative = stock out.
+// `before`/`after` capture the item's quantity immediately before and after this change, for reporting.
+function mkMovement(state, { itemId, itemName, branch, qty, reason, refId, before, after }) {
+  return {
+    id: `SM${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`,
+    itemId,
+    itemName,
+    branch: branch || null,
+    type: qty > 0 ? 'in' : qty < 0 ? 'out' : 'adjust',
+    qty,
+    before: before ?? null,
+    after: after ?? null,
+    reason,
+    refId: refId ?? null,
+    date: new Date().toISOString(),
+    user: state.user?.name,
+  };
+}
 
 function rawReducer(state, action) {
   switch (action.type) {
@@ -109,6 +129,7 @@ function rawReducer(state, action) {
         ...initialState,
         dbLoaded:       true,
         inventory:      state.inventory,
+        inventoryMovements: state.inventoryMovements,
         sales:          state.sales,
         customers:      state.customers,
         expenses:       state.expenses,
@@ -152,17 +173,25 @@ function rawReducer(state, action) {
     case 'ADD_SALE': {
       const sale = action.payload;
       // Booking-type sales are deposits/reservations — inventory is not deducted
-      const inventory = sale.transactionType === 'booking'
+      const isBooking = sale.transactionType === 'booking';
+      const inventory = isBooking
         ? state.inventory
         : state.inventory.map(item => {
             const lineItem = sale.items.find(i => i.id === item.id);
             if (lineItem) return { ...item, qty: Math.max(0, item.qty - lineItem.qty) };
             return item;
           });
+      const movements = isBooking ? [] : (sale.items || [])
+        .filter(li => !li._custom && li.qty)
+        .map(li => {
+          const before = state.inventory.find(i => i.id === li.id)?.qty || 0;
+          return mkMovement(state, { itemId: li.id, itemName: li.name, branch: sale.branch, qty: -li.qty, reason: `Sale #${sale.id}`, refId: sale.id, before, after: Math.max(0, before - li.qty) });
+        });
       return {
         ...state,
         sales: [sale, ...state.sales],
         inventory,
+        inventoryMovements: [...movements, ...state.inventoryMovements],
         auditLog: [{ id: Date.now(), action: sale.transactionType === 'booking' ? 'Booking sale recorded' : 'Sale recorded', user: state.user?.name, ts: new Date().toISOString(), detail: `#${sale.id} · ${sale.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office'}` }, ...state.auditLog],
       };
     }
@@ -171,7 +200,8 @@ function rawReducer(state, action) {
       const updated = action.payload;
       const original = state.sales.find(s => s.id === updated.id);
       // Booking-type sales never touch inventory
-      const inventory = (original?.transactionType === 'booking' || updated.transactionType === 'booking')
+      const skipInventory = original?.transactionType === 'booking' || updated.transactionType === 'booking';
+      const inventory = skipInventory
         ? state.inventory
         : state.inventory.map(item => {
             const oldItem = (original?.items || []).find(i => i.id === item.id && !i._custom);
@@ -181,10 +211,29 @@ function rawReducer(state, action) {
             if (newItem) qty = Math.max(0, qty - newItem.qty);
             return (oldItem || newItem) ? { ...item, qty } : item;
           });
+      const movements = [];
+      if (!skipInventory) {
+        const itemIds = new Set([
+          ...(original?.items || []).filter(i => !i._custom).map(i => i.id),
+          ...(updated.items || []).filter(i => !i._custom).map(i => i.id),
+        ]);
+        itemIds.forEach(id => {
+          const oldQty = (original?.items || []).find(i => i.id === id && !i._custom)?.qty || 0;
+          const newQty = (updated.items || []).find(i => i.id === id && !i._custom)?.qty || 0;
+          const before = state.inventory.find(i => i.id === id)?.qty || 0;
+          const after = Math.max(0, before + oldQty - newQty); // mirrors the inventory map above
+          const delta = after - before;
+          if (delta !== 0) {
+            const name = (updated.items || []).find(i => i.id === id)?.name || (original?.items || []).find(i => i.id === id)?.name;
+            movements.push(mkMovement(state, { itemId: id, itemName: name, branch: updated.branch, qty: delta, reason: `Sale #${updated.id} adjusted`, refId: updated.id, before, after }));
+          }
+        });
+      }
       return {
         ...state,
         sales: state.sales.map(s => s.id === updated.id ? updated : s),
         inventory,
+        inventoryMovements: [...movements, ...state.inventoryMovements],
         auditLog: [{ id: Date.now(), action: 'Sale updated', user: state.user?.name, ts: new Date().toISOString(), detail: `#${updated.id} · ${updated.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office'}` }, ...state.auditLog],
       };
     }
@@ -202,6 +251,13 @@ function rawReducer(state, action) {
             return item;
           })
         : state.inventory;
+      const movements = shouldRestore ? (s.items || [])
+        .filter(li => !li._custom && li.qty)
+        .map(li => {
+          const before = state.inventory.find(i => i.id === li.id)?.qty || 0;
+          return mkMovement(state, { itemId: li.id, itemName: li.name, branch: s.branch, qty: li.qty, reason: `Sale #${s.id} deleted — stock restored`, refId: s.id, before, after: before + li.qty });
+        })
+        : [];
       // If this sale is a booking-type, also delete the linked booking record
       const linkedBooking = (s?.transactionType === 'booking' && s?.bookingId)
         ? state.bookings.find(b => b.id === s.bookingId)
@@ -217,6 +273,7 @@ function rawReducer(state, action) {
         bookings: linkedBooking ? state.bookings.filter(b => b.id !== linkedBooking.id) : state.bookings,
         purchaseList: linkedBooking ? state.purchaseList.filter(p => p.bookingId !== linkedBooking.id) : state.purchaseList,
         inventory,
+        inventoryMovements: [...movements, ...state.inventoryMovements],
         recycleBin: [...state.recycleBin, ...binAdditions],
         auditLog: [{ id: Date.now(), action: 'Sale deleted', user: state.user?.name, ts: new Date().toISOString(), detail: `#${action.payload}` }, ...state.auditLog],
       };
@@ -289,22 +346,40 @@ function rawReducer(state, action) {
     // ── INVENTORY ──────────────────────────────────────────────
     case 'ADD_ITEM': {
       const item = action.payload;
-      return { ...state, inventory: [item, ...state.inventory], auditLog: [{ id: Date.now(), action: 'Item added', user: state.user?.name, ts: new Date().toISOString(), detail: `${item.name} · ${item.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office'}` }, ...state.auditLog] };
+      const movements = item.qty
+        ? [mkMovement(state, { itemId: item.id, itemName: item.name, branch: item.branch, qty: item.qty, reason: 'Item added', before: 0, after: item.qty })]
+        : [];
+      return {
+        ...state,
+        inventory: [item, ...state.inventory],
+        inventoryMovements: [...movements, ...state.inventoryMovements],
+        auditLog: [{ id: Date.now(), action: 'Item added', user: state.user?.name, ts: new Date().toISOString(), detail: `${item.name} · ${item.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office'}` }, ...state.auditLog],
+      };
     }
     case 'UPDATE_ITEM': {
       const updItem = action.payload;
       const bname = updItem.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office';
+      const oldItem = state.inventory.find(i => i.id === updItem.id);
+      const delta = (updItem.qty || 0) - (oldItem?.qty || 0);
+      const movements = delta !== 0
+        ? [mkMovement(state, { itemId: updItem.id, itemName: updItem.name, branch: updItem.branch, qty: delta, reason: 'Manual edit', before: oldItem?.qty || 0, after: updItem.qty || 0 })]
+        : [];
       return {
         ...state,
         inventory: state.inventory.map(i => i.id === updItem.id ? updItem : i),
+        inventoryMovements: [...movements, ...state.inventoryMovements],
         auditLog: [{ id: Date.now(), action: 'Item updated', user: state.user?.name, ts: new Date().toISOString(), detail: `${updItem.name} · ${bname}` }, ...state.auditLog],
       };
     }
     case 'DELETE_ITEM': {
       const item = state.inventory.find(x => x.id === action.payload);
+      const movements = item?.qty
+        ? [mkMovement(state, { itemId: item.id, itemName: item.name, branch: item.branch, qty: -item.qty, reason: 'Item deleted', before: item.qty, after: 0 })]
+        : [];
       return {
         ...state,
         inventory: state.inventory.filter(x => x.id !== action.payload),
+        inventoryMovements: [...movements, ...state.inventoryMovements],
         recycleBin: [...state.recycleBin, { ...item, _type: 'inventory', _deletedAt: new Date().toISOString() }],
         auditLog: [{ id: Date.now(), action: 'Item deleted', user: state.user?.name, ts: new Date().toISOString(), detail: item.name }, ...state.auditLog],
       };
@@ -312,9 +387,11 @@ function rawReducer(state, action) {
     case 'RESTOCK_ITEM': {
       const restockedItem = state.inventory.find(i => i.id === action.payload.id);
       const rbname = restockedItem?.branch === 'DUB' ? 'Dubai Market' : 'Kubwa Office';
+      const movements = [mkMovement(state, { itemId: action.payload.id, itemName: restockedItem?.name, branch: restockedItem?.branch, qty: action.payload.qty, reason: 'Restock', before: restockedItem?.qty || 0, after: (restockedItem?.qty || 0) + action.payload.qty })];
       return {
         ...state,
         inventory: state.inventory.map(i => i.id === action.payload.id ? { ...i, qty: i.qty + action.payload.qty } : i),
+        inventoryMovements: [...movements, ...state.inventoryMovements],
         auditLog: [{ id: Date.now(), action: 'Item restocked', user: state.user?.name, ts: new Date().toISOString(), detail: `${restockedItem?.name || action.payload.id} +${action.payload.qty} · ${rbname}` }, ...state.auditLog],
       };
     }
@@ -469,6 +546,7 @@ function rawReducer(state, action) {
       const itemsToDeduct = (booking?.items?.length ? booking.items : linkedSale?.items) || [];
       const deliveredAt = new Date().toISOString();
       // Deduct each item from inventory — match by id first, then fall back to normalised name
+      const movements = [];
       const inventory = state.inventory.map(invItem => {
         const normInvName = invItem.name?.toLowerCase().trim();
         const booked = itemsToDeduct.find(i =>
@@ -477,7 +555,12 @@ function rawReducer(state, action) {
             (!i.id && i.name?.toLowerCase().trim() === normInvName)
           )
         );
-        if (booked) return { ...invItem, qty: Math.max(0, invItem.qty - (booked.qty || 1)) };
+        if (booked) {
+          const qty = booked.qty || 1;
+          const after = Math.max(0, invItem.qty - qty);
+          movements.push(mkMovement(state, { itemId: invItem.id, itemName: invItem.name, branch: invItem.branch, qty: -qty, reason: `Booking #${bookingId} delivered`, refId: bookingId, before: invItem.qty, after }));
+          return { ...invItem, qty: after };
+        }
         return invItem;
       });
       // Mark booking as delivered (if the booking record exists and isn't already)
@@ -491,6 +574,7 @@ function rawReducer(state, action) {
       return {
         ...state,
         inventory,
+        inventoryMovements: [...movements, ...state.inventoryMovements],
         bookings,
         sales,
         auditLog: [{
@@ -591,9 +675,13 @@ function rawReducer(state, action) {
     // ── GOODS RECEIVED ─────────────────────────────────────────
     case 'RECEIVE_GOODS': {
       const gr = action.payload;
+      const movements = [];
       const inventory = state.inventory.map(item => {
         const received = gr.items.find(i => i.id === item.id);
-        if (received) return { ...item, qty: item.qty + received.qty };
+        if (received) {
+          movements.push(mkMovement(state, { itemId: item.id, itemName: item.name, branch: item.branch, qty: received.qty, reason: `Goods received GRN#${gr.id}`, refId: gr.id, before: item.qty, after: item.qty + received.qty }));
+          return { ...item, qty: item.qty + received.qty };
+        }
         return item;
       });
 
@@ -612,6 +700,7 @@ function rawReducer(state, action) {
         ...state,
         goodsReceived: [gr, ...state.goodsReceived],
         inventory,
+        inventoryMovements: [...movements, ...state.inventoryMovements],
         purchaseList,
         auditLog: [{ id: Date.now(), action: 'Goods received', user: state.user?.name, ts: new Date().toISOString(), detail: `GRN#${gr.id}` }, ...state.auditLog],
       };
@@ -619,18 +708,25 @@ function rawReducer(state, action) {
 
     case 'UPDATE_GRN': {
       const { updated, original } = action.payload;
+      const movements = [];
       const inventory = state.inventory.map(item => {
         const oldItem = original.items.find(i => i.id === item.id);
         const newItem = updated.items.find(i => i.id === item.id);
         let qty = item.qty;
         if (oldItem) qty -= oldItem.qty;
         if (newItem) qty += newItem.qty;
-        return (oldItem || newItem) ? { ...item, qty: Math.max(0, qty) } : item;
+        const after = Math.max(0, qty);
+        const delta = after - item.qty;
+        if ((oldItem || newItem) && delta !== 0) {
+          movements.push(mkMovement(state, { itemId: item.id, itemName: item.name, branch: item.branch, qty: delta, reason: `GRN#${updated.id} updated`, refId: updated.id, before: item.qty, after }));
+        }
+        return (oldItem || newItem) ? { ...item, qty: after } : item;
       });
       return {
         ...state,
         goodsReceived: state.goodsReceived.map(g => g.id === updated.id ? updated : g),
         inventory,
+        inventoryMovements: [...movements, ...state.inventoryMovements],
         auditLog: [{ id: Date.now(), action: 'GRN updated', user: state.user?.name, ts: new Date().toISOString(), detail: `GRN#${updated.id}` }, ...state.auditLog],
       };
     }
@@ -638,15 +734,21 @@ function rawReducer(state, action) {
     case 'DELETE_GRN': {
       const grn = state.goodsReceived.find(g => g.id === action.payload);
       if (!grn) return state;
+      const movements = [];
       const inventory = state.inventory.map(item => {
         const received = (grn.items || []).find(i => i.id === item.id);
-        if (received) return { ...item, qty: Math.max(0, item.qty - received.qty) };
+        if (received) {
+          const after = Math.max(0, item.qty - received.qty);
+          movements.push(mkMovement(state, { itemId: item.id, itemName: item.name, branch: item.branch, qty: -received.qty, reason: `GRN#${action.payload} deleted`, refId: action.payload, before: item.qty, after }));
+          return { ...item, qty: after };
+        }
         return item;
       });
       return {
         ...state,
         goodsReceived: state.goodsReceived.filter(g => g.id !== action.payload),
         inventory,
+        inventoryMovements: [...movements, ...state.inventoryMovements],
         auditLog: [{ id: Date.now(), action: 'GRN deleted', user: state.user?.name, ts: new Date().toISOString(), detail: `GRN#${action.payload}` }, ...state.auditLog],
       };
     }
@@ -810,7 +912,8 @@ function rawReducer(state, action) {
       const { table, event, row } = action.payload;
       // Map table names → state keys (for simple array tables)
       const tableToKey = {
-        inventory: 'inventory', sales: 'sales', customers: 'customers',
+        inventory: 'inventory', inventory_movements: 'inventoryMovements',
+        sales: 'sales', customers: 'customers',
         expenses: 'expenses', bookings: 'bookings', purchase_list: 'purchaseList',
         goods_received: 'goodsReceived', suppliers: 'suppliers',
         recycle_bin: 'recycleBin', app_users: 'users',
@@ -890,13 +993,16 @@ function rawReducer(state, action) {
   }
 }
 
-// Public reducer: wraps rawReducer and caps the audit log after every action.
-// This single checkpoint prevents unbounded memory growth without touching
-// any of the 20+ individual cases that prepend to auditLog.
+// Public reducer: wraps rawReducer and caps the audit log (and stock movement
+// log) after every action. This single checkpoint prevents unbounded memory
+// growth without touching any of the individual cases that prepend to them.
 function reducer(state, action) {
-  const next = rawReducer(state, action);
+  let next = rawReducer(state, action);
   if (next !== state && Array.isArray(next.auditLog) && next.auditLog.length > MAX_AUDIT_LOG) {
-    return { ...next, auditLog: next.auditLog.slice(0, MAX_AUDIT_LOG) };
+    next = { ...next, auditLog: next.auditLog.slice(0, MAX_AUDIT_LOG) };
+  }
+  if (next !== state && Array.isArray(next.inventoryMovements) && next.inventoryMovements.length > MAX_AUDIT_LOG) {
+    next = { ...next, inventoryMovements: next.inventoryMovements.slice(0, MAX_AUDIT_LOG) };
   }
   return next;
 }

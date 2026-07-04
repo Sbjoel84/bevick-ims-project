@@ -11,7 +11,7 @@ import { logTransaction as logSalesTransaction } from './salesTransactionService
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-const BRANCH_TABLES = new Set(['inventory','sales','customers','expenses','bookings','purchase_list','goods_received']);
+const BRANCH_TABLES = new Set(['inventory','inventory_movements','sales','customers','expenses','bookings','purchase_list','goods_received']);
 
 function branchName(b) { return b === 'DUB' ? 'Dubai Market' : b === 'KUB' ? 'Kubwa Office' : b || null; }
 
@@ -97,6 +97,17 @@ async function syncAudit(nextState, prevState) {
 async function toRecycleBin(nextState, id) {
   const item = nextState.recycleBin.find(r => r.id === id);
   if (item) await upsert('recycle_bin', item);
+}
+
+// Stock movements are always prepended (never mutated), same as auditLog —
+// diff by length and upsert whatever's new, regardless of which action caused it.
+async function syncMovements(nextState, prevState) {
+  const prevLen = prevState.inventoryMovements?.length || 0;
+  const nextLen = nextState.inventoryMovements?.length || 0;
+  const newCount = nextLen - prevLen;
+  if (newCount > 0) {
+    await upsertMany('inventory_movements', nextState.inventoryMovements.slice(0, newCount));
+  }
 }
 
 // ── Main sync function ───────────────────────────────────────────────────────
@@ -845,8 +856,9 @@ export async function syncAction(action, prevState, nextState) {
         break;
     }
 
-    // Always sync the latest audit log entry
+    // Always sync the latest audit log entry and any new stock movements
     await syncAudit(nextState, prevState);
+    await syncMovements(nextState, prevState);
 
   } catch (err) {
     console.error('[sync] Error syncing action', action.type, ':', err?.message || err);

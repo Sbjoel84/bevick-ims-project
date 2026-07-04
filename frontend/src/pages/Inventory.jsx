@@ -4,6 +4,7 @@ import { refreshInventory, refreshBookings, refreshAuditLog } from '../lib/refre
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
 import InventoryTransactionsLedger from '../components/InventoryTransactionsLedger';
+import { stockMovementColumns, getStockMovementsSummary, getStockMovementsData } from '../utils/stockMovements';
 
 const CATEGORIES = ['Machinery', 'Spare Parts', 'Chemicals', 'Consumables', 'Others'];
 const UNITS = ['Unit', 'Pcs', 'Roll', 'Set', 'Meter', 'Kg', 'Litre', 'Box', 'Carton'];
@@ -61,7 +62,7 @@ const EMPTY_ITEM = { name: '', category: 'Machinery', dubQty: '', kubQty: '', un
 
 export default function Inventory() {
   const { state, dispatch } = useApp();
-  const { inventory, sales, bookings, purchaseList, currency, branch, bname, thr, user, auditLog } = state;
+  const { inventory, inventoryMovements, sales, bookings, purchaseList, currency, branch, bname, thr, user, auditLog } = state;
 
   useEffect(() => {
     refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
@@ -131,34 +132,7 @@ export default function Inventory() {
     return Array.from(map.values());
   }, [inventory]);
 
-  const inventoryColumns = [
-    { key: 'name', label: 'Item Name' },
-    { key: 'category', label: 'Category' },
-    { key: 'dubQty', label: 'Dubai Qty', align: 'tc' },
-    { key: 'kubQty', label: 'Kubwa Qty', align: 'tc' },
-    { key: 'unit', label: 'Unit', align: 'tc' },
-    { key: 'price', label: 'Unit Price', align: 'tr', format: v => formatCurrency(v || 0, currency) },
-    { key: 'qty', label: 'Total Value', align: 'tr', format: (v, row) => formatCurrency(((row.dubQty || 0) + (row.kubQty || 0)) * (row.price || 0), currency) },
-    { key: 'qty', label: 'Status', align: 'tc', format: (v, row) => {
-      const total = (row.dubQty || 0) + (row.kubQty || 0);
-      if (total === 0) return 'Out of Stock';
-      return total <= (row.minQty || thr) ? 'Low Stock' : 'In Stock';
-    }},
-  ];
-
-  function getInventorySummary(data) {
-    const totalVal = data.reduce((s, i) => s + ((i.dubQty || 0) + (i.kubQty || 0)) * (i.price || 0), 0);
-    const totalQty = data.reduce((s, i) => s + (i.dubQty || 0) + (i.kubQty || 0), 0);
-    const lowCount = data.filter(i => { const t = (i.dubQty || 0) + (i.kubQty || 0); return t > 0 && t <= (i.minQty || thr); }).length;
-    const outCount = data.filter(i => (i.dubQty || 0) + (i.kubQty || 0) === 0).length;
-    return [
-      { label: 'Total Items', value: data.length },
-      { label: 'Total Quantity', value: totalQty },
-      { label: 'Low Stock Items', value: lowCount },
-      { label: 'Out of Stock', value: outCount },
-      { label: 'Total Stock Value', value: formatCurrency(totalVal, currency), bold: true },
-    ];
-  }
+  const stockMovementsData = useMemo(() => getStockMovementsData(inventoryMovements), [inventoryMovements]);
 
   const filtered = mergedInventory
     .filter(i => filterCat === 'all' || i.category === filterCat)
@@ -1271,10 +1245,10 @@ export default function Inventory() {
       {reportOpen && (
         <ReportModal
           title="Stock Report"
-          data={filtered}
-          dateKey={null}
-          columns={inventoryColumns}
-          getSummary={getInventorySummary}
+          data={stockMovementsData}
+          dateKey="_date"
+          columns={stockMovementColumns}
+          getSummary={getStockMovementsSummary}
           onClose={() => setReportOpen(false)}
           state={state}
         />

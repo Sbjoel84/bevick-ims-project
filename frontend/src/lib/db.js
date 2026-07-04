@@ -32,7 +32,7 @@ const extract = (res) => {
 };
 
 // Tables that have a branch column in the schema
-const BRANCH_TABLES = new Set(['inventory','sales','customers','expenses','bookings','purchase_list','goods_received']);
+const BRANCH_TABLES = new Set(['inventory','inventory_movements','sales','customers','expenses','bookings','purchase_list','goods_received']);
 
 // Helper: upsert a single record into a table
 async function upsert(table, obj) {
@@ -61,6 +61,7 @@ export async function loadData() {
     settingsRes,
     usersRes,
     inventoryRes,
+    inventoryMovementsRes,
     salesRes,
     customersRes,
     expensesRes,
@@ -78,6 +79,7 @@ export async function loadData() {
     supabase.from('app_settings').select('data').eq('id', 'main').maybeSingle(),
     supabase.from('app_users').select('data'),
     supabase.from('inventory').select('data'),
+    supabase.from('inventory_movements').select('data').order('id', { ascending: false }).limit(LARGE_TABLE_LIMIT),
     supabase.from('sales').select('data').order('id', { ascending: false }).limit(LARGE_TABLE_LIMIT),
     supabase.from('customers').select('data').order('id', { ascending: false }).limit(LARGE_TABLE_LIMIT),
     supabase.from('expenses').select('data').order('id', { ascending: false }).limit(LARGE_TABLE_LIMIT),
@@ -172,6 +174,7 @@ export async function loadData() {
     // Collections
     users,
     inventory,
+    inventoryMovements: extract(inventoryMovementsRes),
     suppliers,
     permissions,
     sales:          (() => { const s = extract(salesRes); console.log('[loadData] sales loaded:', s.length); return s; })(),

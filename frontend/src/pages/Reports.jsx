@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useApp, formatCurrency, fmtDate } from '../context/AppContext';
 import { printReport } from '../utils/print';
+import { stockMovementColumns, getStockMovementsSummary, getStockMovementsData } from '../utils/stockMovements';
 
 // ── Date Range Helpers ────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ function rangeLabel(id, s, e) {
 // ── Report Configs ────────────────────────────────────────────────────────────
 
 function makeReportConfigs(state) {
-  const { sales, customers, expenses, inventory, bookings, purchaseList, goodsReceived, suppliers, currency, thr } = state;
+  const { sales, customers, expenses, inventory, inventoryMovements, bookings, purchaseList, goodsReceived, suppliers, currency, thr } = state;
   const bl = v => v === 'DUB' ? 'Dubai Market' : v === 'KUB' ? 'Kubwa Office' : v || '—';
   const cap = v => v ? v.charAt(0).toUpperCase() + v.slice(1) : '—';
 
@@ -257,6 +258,18 @@ function makeReportConfigs(state) {
       },
     },
 
+    // ── Stock Movements — one row per inventory change, date-filterable ───────
+    {
+      id: 'stockMovements',
+      pageId: 'inventory',
+      label: 'Stock Movements',
+      icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4"/></svg>,
+      dateKey: '_date',
+      getData: () => getStockMovementsData(inventoryMovements),
+      columns: stockMovementColumns,
+      getSummary: getStockMovementsSummary,
+    },
+
     // ── Booked Items — one row per line item in each booking ──────────────────
     {
       id: 'booked',
@@ -424,7 +437,7 @@ export default function Reports() {
 
   // Only show tabs for pages the user has permission to access
   const allowed = user?.customPages || permissions[user?.role] || [];
-  const configs = allConfigs.filter(c => allowed.includes(c.id));
+  const configs = allConfigs.filter(c => allowed.includes(c.pageId || c.id));
 
   const [activeTab, setActiveTab]   = useState(configs[0]?.id || 'sales');
   const [range, setRange]           = useState('month');
