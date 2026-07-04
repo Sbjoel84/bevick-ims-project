@@ -318,6 +318,36 @@ function rawReducer(state, action) {
         auditLog: [{ id: Date.now(), action: 'Item restocked', user: state.user?.name, ts: new Date().toISOString(), detail: `${restockedItem?.name || action.payload.id} +${action.payload.qty} · ${rbname}` }, ...state.auditLog],
       };
     }
+    case 'TRANSFER_ITEM': {
+      const { fromId, toBranch, qty, transferId } = action.payload;
+      const q = Math.max(0, parseInt(qty) || 0);
+      const source = state.inventory.find(i => i.id === fromId);
+      if (!source || q <= 0 || q > source.qty || source.branch === toBranch) return state;
+
+      // Find-or-create the destination row, matched by name+category (same
+      // convention mergedInventory in Inventory.jsx uses to link branch rows).
+      const dest = state.inventory.find(i => i.branch === toBranch && i.name === source.name && i.category === source.category);
+      const inventory = dest
+        ? state.inventory.map(i => {
+            if (i.id === source.id) return { ...i, qty: i.qty - q };
+            if (i.id === dest.id)   return { ...i, qty: i.qty + q };
+            return i;
+          })
+        : [
+            ...state.inventory.map(i => i.id === source.id ? { ...i, qty: i.qty - q } : i),
+            { id: genId('I'), name: source.name, category: source.category, qty: q, unit: source.unit, price: source.price, minQty: source.minQty, branch: toBranch, supplier: source.supplier },
+          ];
+
+      const bName = b => b === 'DUB' ? 'Dubai Market' : 'Kubwa Office';
+      return {
+        ...state,
+        inventory,
+        auditLog: [{
+          id: Date.now(), action: 'Item transferred', user: state.user?.name, ts: new Date().toISOString(),
+          detail: `${source.name} · ${q} ${source.unit || ''} · ${bName(source.branch)} → ${bName(toBranch)} · Ref ${transferId}`,
+        }, ...state.auditLog],
+      };
+    }
 
     // ── BOOKINGS ───────────────────────────────────────────────
     case 'ADD_BOOKING': {

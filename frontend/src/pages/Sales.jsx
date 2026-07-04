@@ -4,6 +4,7 @@ import { refreshSales, refreshInventory } from '../lib/refresh';
 import { printReceipt } from '../utils/print';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
+import SalesTransactionsLedger from '../components/SalesTransactionsLedger';
 
 const PAYMENT_METHODS = ['Cash', 'Bank Transfer', 'POS', 'Cheque', 'Credit'];
 const BRANCHES = [{ id: 'DUB', label: 'Dubai Market' }, { id: 'KUB', label: 'Kubwa Office' }];
@@ -35,6 +36,8 @@ export default function Sales() {
     refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
   }, []);
 
+  const canEditAll = ['main_super_admin', 'super_admin', 'admin'].includes(user?.role);
+  const [tab, setTab] = useState('sales');
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState('');
@@ -442,34 +445,53 @@ export default function Sales() {
           <h1 className="font-syne text-xl md:text-2xl font-bold text-white">Sales</h1>
           <p className="text-gray-500 text-sm mt-0.5">{bname}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setReportOpen(true)}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-3 md:px-4 py-2.5 rounded-xl transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-            </svg>
-            <span className="hidden sm:inline">Print</span>
-          </button>
-          <button
-            onClick={() => {
-              resetForm();
-              setEditSaleId(null);
-              setShowPayForm(false);
-              refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
-              setModal('new');
-            }}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-3 md:px-4 py-2.5 rounded-xl transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span className="hidden sm:inline">New Sale</span>
-          </button>
-        </div>
+        {tab === 'sales' && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setReportOpen(true)}
+              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-3 md:px-4 py-2.5 rounded-xl transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+              </svg>
+              <span className="hidden sm:inline">Print</span>
+            </button>
+            <button
+              onClick={() => {
+                resetForm();
+                setEditSaleId(null);
+                setShowPayForm(false);
+                refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
+                setModal('new');
+              }}
+              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-3 md:px-4 py-2.5 rounded-xl transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden sm:inline">New Sale</span>
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Tab Navbar */}
+      <div className="flex border-b border-gray-800 -mt-2">
+        <button
+          onClick={() => setTab('sales')}
+          className={`px-5 py-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${tab === 'sales' ? 'text-blue-400 border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+        >
+          Sales
+        </button>
+        <button
+          onClick={() => setTab('ledger')}
+          className={`px-5 py-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${tab === 'ledger' ? 'text-blue-400 border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+        >
+          Sales Transactions
+        </button>
+      </div>
+
+      {tab === 'sales' && (<>
       {/* Filters */}
       <div className="flex flex-col sm:flex-row flex-wrap gap-3">
         <input
@@ -666,6 +688,13 @@ export default function Sales() {
           })}
         </div>
       </div>
+
+      </>)}
+
+      {/* ── Sales Transactions Ledger Tab ── */}
+      {tab === 'ledger' && (
+        <SalesTransactionsLedger state={state} canExport={canEditAll} />
+      )}
 
       {/* ── New / Edit Sale Modal ── */}
       {(modal === 'new' || modal === 'edit') && (

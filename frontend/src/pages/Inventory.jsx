@@ -1,13 +1,45 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useApp, formatCurrency, genId } from '../context/AppContext';
-import { refreshInventory, refreshBookings } from '../lib/refresh';
+import { useApp, formatCurrency, genId, fmtDate } from '../context/AppContext';
+import { refreshInventory, refreshBookings, refreshAuditLog } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
 import DeleteRequestModal from '../components/DeleteRequestModal';
+import InventoryTransactionsLedger from '../components/InventoryTransactionsLedger';
 
 const CATEGORIES = ['Machinery', 'Spare Parts', 'Chemicals', 'Consumables', 'Others'];
 const UNITS = ['Unit', 'Pcs', 'Roll', 'Set', 'Meter', 'Kg', 'Litre', 'Box', 'Carton'];
 const BRANCHES = [{ id: 'DUB', label: 'Dubai Market' }, { id: 'KUB', label: 'Kubwa Office' }];
 const SOURCES = ['China', 'Lagos', 'Abuja', 'Others'];
+
+// Audit-log actions that reflect a stock-affecting transaction — everything
+// else (customers, expenses, commissions, permissions, etc.) is out of scope
+// for the Inventory page's transaction history.
+const INVENTORY_ACTIONS = new Set([
+  'Item added', 'Item updated', 'Item deleted', 'Item restocked',
+  'Sale recorded', 'Booking sale recorded', 'Sale updated', 'Sale deleted',
+  'Booking delivered — stock deducted',
+  'Goods received', 'GRN updated', 'GRN deleted',
+]);
+
+const ACTION_STYLES = {
+  'Item added':                        'bg-green-950 text-green-400',
+  'Item updated':                      'bg-blue-950 text-blue-400',
+  'Item deleted':                      'bg-red-950 text-red-400',
+  'Item restocked':                    'bg-amber-950 text-amber-400',
+  'Sale recorded':                     'bg-purple-950 text-purple-400',
+  'Booking sale recorded':             'bg-purple-950 text-purple-400',
+  'Sale updated':                      'bg-blue-950 text-blue-400',
+  'Sale deleted':                      'bg-red-950 text-red-400',
+  'Booking delivered — stock deducted':'bg-indigo-950 text-indigo-400',
+  'Goods received':                    'bg-cyan-950 text-cyan-400',
+  'GRN updated':                       'bg-cyan-950 text-cyan-400',
+  'GRN deleted':                       'bg-red-950 text-red-400',
+};
+
+// Local (not UTC) calendar-day key, so entries group by the day the user
+// actually experienced them rather than shifting at UTC midnight.
+function dayKeyOf(iso) {
+  return new Date(iso).toLocaleDateString('en-CA');
+}
 
 function Modal({ title, onClose, children }) {
   return (
@@ -29,11 +61,12 @@ const EMPTY_ITEM = { name: '', category: 'Machinery', dubQty: '', kubQty: '', un
 
 export default function Inventory() {
   const { state, dispatch } = useApp();
-  const { inventory, sales, bookings, purchaseList, currency, branch, bname, thr, user } = state;
+  const { inventory, sales, bookings, purchaseList, currency, branch, bname, thr, user, auditLog } = state;
 
   useEffect(() => {
     refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
     refreshBookings(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'bookings', data } }));
+    refreshAuditLog(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'auditLog', data } }));
   }, []);
 
   const userBranch = user?.bid;
@@ -49,11 +82,17 @@ export default function Inventory() {
   const [form, setForm] = useState(EMPTY_ITEM);
   const [restockQty, setRestockQty] = useState('');
   const [restockBranch, setRestockBranch] = useState('DUB');
+  const [transferItem, setTransferItem] = useState(null);
+  const [transferSourceBranch, setTransferSourceBranch] = useState('DUB');
+  const [transferQty, setTransferQty] = useState('');
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('all');
   const [filterStock, setFilterStock] = useState('all');
   const [reportOpen, setReportOpen] = useState(false);
   const [deleteReq, setDeleteReq] = useState(null);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyDate, setHistoryDate] = useState('');
+  const [historyUser, setHistoryUser] = useState('all');
 
   const mergedInventory = useMemo(() => {
     const map = new Map();
@@ -216,6 +255,47 @@ export default function Inventory() {
     return recordData.filter(i => i.name.toLowerCase().includes(q) || i.supplier?.toLowerCase().includes(q));
   }, [recordData, recordSearch]);
 
+  // ── Transaction History (daily-grouped audit trail) ─────────────────────
+  const inventoryHistory = useMemo(
+    () => (auditLog || []).filter(e => INVENTORY_ACTIONS.has(e.action)),
+    [auditLog]
+  );
+
+  const historyUsers = useMemo(() => {
+    const names = new Set(inventoryHistory.map(e => e.user).filter(Boolean));
+    return Array.from(names).sort();
+  }, [inventoryHistory]);
+
+  const filteredHistory = useMemo(() => {
+    const q = historySearch.toLowerCase().trim();
+    return inventoryHistory.filter(e => {
+      if (historyDate && dayKeyOf(e.ts) !== historyDate) return false;
+      if (historyUser !== 'all' && e.user !== historyUser) return false;
+      if (!q) return true;
+      return (
+        e.action?.toLowerCase().includes(q) ||
+        e.user?.toLowerCase().includes(q) ||
+        e.detail?.toLowerCase().includes(q)
+      );
+    });
+  }, [inventoryHistory, historySearch, historyDate, historyUser]);
+
+  const groupedHistory = useMemo(() => {
+    const map = new Map();
+    filteredHistory.forEach(e => {
+      const key = dayKeyOf(e.ts);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(e);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [filteredHistory]);
+
+  function clearHistoryFilters() {
+    setHistorySearch('');
+    setHistoryDate('');
+    setHistoryUser('all');
+  }
+
   function openRecordEdit(item) {
     setRecordEditItem(item);
     setRecordEditForm({ dubQty: String(item.dubQty), kubQty: String(item.kubQty) });
@@ -345,6 +425,26 @@ export default function Inventory() {
     setModal('view');
   }
 
+  function openTransfer(item) {
+    setTransferItem(item);
+    setTransferSourceBranch(item.dubQty > 0 ? 'DUB' : 'KUB');
+    setTransferQty('');
+    setModal('transfer');
+  }
+
+  function doTransfer() {
+    const q = parseInt(transferQty);
+    if (!q || q < 1 || !transferItem) return;
+    const sourceItem = transferItem.items.find(i => i.branch === transferSourceBranch);
+    if (!sourceItem || q > sourceItem.qty) return;
+    const destBranch = transferSourceBranch === 'DUB' ? 'KUB' : 'DUB';
+    dispatch({
+      type: 'TRANSFER_ITEM',
+      payload: { transferId: genId('TRF'), fromId: sourceItem.id, toBranch: destBranch, qty: q },
+    });
+    setModal(null);
+  }
+
   function saveItem() {
     if (!form.name.trim()) return;
     const qty = selectedBranch === 'DUB' ? (parseInt(form.dubQty) || 0) : (parseInt(form.kubQty) || 0);
@@ -451,6 +551,18 @@ export default function Inventory() {
           className={`px-5 py-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${tab === 'record' ? 'text-blue-400 border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
         >
           General Record
+        </button>
+        <button
+          onClick={() => setTab('history')}
+          className={`px-5 py-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${tab === 'history' ? 'text-blue-400 border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+        >
+          Transaction History
+        </button>
+        <button
+          onClick={() => setTab('ledger')}
+          className={`px-5 py-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${tab === 'ledger' ? 'text-blue-400 border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+        >
+          Inventory Transactions
         </button>
       </div>
 
@@ -559,6 +671,9 @@ export default function Inventory() {
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
                         <span className="text-xs ml-0.5">K</span>
                       </button>
+                      <button onClick={() => openTransfer(item)} title="Transfer Between Branches" className="text-gray-500 hover:text-purple-400 transition-colors p-1">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4"/></svg>
+                      </button>
                       <button onClick={() => openEdit(item, 'DUB')} title="Edit Dubai" className="text-gray-500 hover:text-white transition-colors p-1">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         <span className="text-xs ml-0.5">D</span>
@@ -619,6 +734,9 @@ export default function Inventory() {
                 <button onClick={() => openRestock(item, 'KUB')} className="text-gray-500 hover:text-blue-400 p-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
                   <span className="text-xs ml-1">K</span>
+                </button>
+                <button onClick={() => openTransfer(item)} title="Transfer Between Branches" className="text-gray-500 hover:text-purple-400 p-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4"/></svg>
                 </button>
                 <button onClick={() => openEdit(item, 'DUB')} className="text-gray-500 hover:text-white p-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
@@ -763,6 +881,84 @@ export default function Inventory() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Transaction History Tab ── */}
+      {tab === 'history' && (
+        <div className="space-y-4">
+          {/* Toolbar */}
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+            <input
+              type="text"
+              placeholder="Search action, user, or detail…"
+              value={historySearch}
+              onChange={e => setHistorySearch(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
+            />
+            <input
+              type="date"
+              value={historyDate}
+              onChange={e => setHistoryDate(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <select
+              value={historyUser}
+              onChange={e => setHistoryUser(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Users</option>
+              {historyUsers.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+            {(historySearch || historyDate || historyUser !== 'all') && (
+              <button
+                onClick={clearHistoryFilters}
+                className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+              >
+                Clear Filters
+              </button>
+            )}
+            <span className="text-gray-500 text-xs self-center sm:ml-auto">
+              {filteredHistory.length} record{filteredHistory.length !== 1 ? 's' : ''} across {groupedHistory.length} day{groupedHistory.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {/* Daily-grouped log */}
+          {groupedHistory.length === 0 ? (
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl text-center text-gray-600 py-12">
+              No transaction history found
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {groupedHistory.map(([dayKey, entries]) => (
+                <div key={dayKey} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-3 bg-gray-800/60 border-b border-gray-800">
+                    <p className="font-syne font-semibold text-white text-sm">{fmtDate(dayKey)}</p>
+                    <span className="text-gray-500 text-xs">{entries.length} transaction{entries.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="divide-y divide-gray-800">
+                    {entries.map(entry => (
+                      <div key={entry.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 px-5 py-3">
+                        <span className="text-gray-500 text-xs font-mono w-16 shrink-0">
+                          {new Date(entry.ts).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-lg shrink-0 w-fit ${ACTION_STYLES[entry.action] || 'bg-gray-800 text-gray-300'}`}>
+                          {entry.action}
+                        </span>
+                        <span className="text-gray-300 text-sm flex-1 min-w-0 truncate" title={entry.detail}>{entry.detail}</span>
+                        <span className="text-gray-500 text-xs shrink-0">{entry.user || '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Inventory Transactions Ledger Tab ── */}
+      {tab === 'ledger' && (
+        <InventoryTransactionsLedger state={state} canExport={canEditAll} />
       )}
 
       {/* General Record Edit Modal */}
@@ -957,6 +1153,65 @@ export default function Inventory() {
           </div>
         </Modal>
       )}
+
+      {/* Transfer Modal */}
+      {modal === 'transfer' && transferItem && (() => {
+        const sourceQty = transferSourceBranch === 'DUB' ? transferItem.dubQty : transferItem.kubQty;
+        const destBranch = transferSourceBranch === 'DUB' ? 'KUB' : 'DUB';
+        const destQty = destBranch === 'DUB' ? transferItem.dubQty : transferItem.kubQty;
+        const q = parseInt(transferQty) || 0;
+        return (
+          <Modal title={`Transfer: ${transferItem.name}`} onClose={() => setModal(null)}>
+            <div className="space-y-4">
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Source Branch</label>
+                <select
+                  value={transferSourceBranch}
+                  onChange={e => setTransferSourceBranch(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+                </select>
+                <p className="text-gray-500 text-xs mt-1">Available: {sourceQty} {transferItem.unit}</p>
+              </div>
+              <div className="bg-gray-800 rounded-xl p-4 text-sm flex justify-between items-center">
+                <span className="text-gray-400">Destination Branch</span>
+                <span className="text-purple-400 font-medium">{destBranch === 'DUB' ? 'Dubai Market' : 'Kubwa Office'}</span>
+              </div>
+              <div>
+                <label className="text-gray-400 text-xs font-medium block mb-1.5">Quantity to Transfer</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={sourceQty}
+                  placeholder="Enter quantity…"
+                  value={transferQty}
+                  onChange={e => setTransferQty(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3.5 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              {q > 0 && (
+                <div className="bg-gray-800 rounded-xl p-4 text-sm space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">New {transferSourceBranch === 'DUB' ? 'Dubai' : 'Kubwa'} Stock</span>
+                    <span className="text-red-400 font-mono">{Math.max(0, sourceQty - q)} {transferItem.unit}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">New {destBranch === 'DUB' ? 'Dubai' : 'Kubwa'} Stock</span>
+                    <span className="text-green-400 font-mono">{destQty + q} {transferItem.unit}</span>
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setModal(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">Cancel</button>
+                <button onClick={doTransfer} disabled={!q || q < 1 || q > sourceQty} className="flex-1 bg-purple-500 hover:bg-purple-400 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+                  Transfer
+                </button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* View Modal */}
       {modal === 'view' && selected && (

@@ -6,10 +6,29 @@
  * Errors are caught and logged — they never crash the app.
  */
 import { supabase } from './supabase';
+import { logTransaction as logInventoryTransaction } from './inventoryTransactionService';
+import { logTransaction as logSalesTransaction } from './salesTransactionService';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 const BRANCH_TABLES = new Set(['inventory','sales','customers','expenses','bookings','purchase_list','goods_received']);
+
+function branchName(b) { return b === 'DUB' ? 'Dubai Market' : b === 'KUB' ? 'Kubwa Office' : b || null; }
+
+function stockStatus(item) {
+  const total = item?.qty ?? 0;
+  const min = item?.minQty ?? 0;
+  if (total <= 0) return 'Out of Stock';
+  if (total <= min) return 'Low Stock';
+  return 'Normal';
+}
+
+// Current-session actor snapshot for ledger entries — who performed the
+// action, taken from nextState since the user never changes mid-dispatch.
+function actor(nextState) {
+  const u = nextState.user || {};
+  return { performedBy: u.name, performedById: u.id, userRole: u.role };
+}
 
 // Max rows per upsert request — prevents oversized payloads as data grows.
 const CHUNK_SIZE = 50;
@@ -119,24 +138,63 @@ export async function syncAction(action, prevState, nextState) {
 
       // ── SALES ────────────────────────────────────────────────
       case 'ADD_SALE': {
-        console.log('[sync] ADD_SALE:', action.payload.id, 'branch:', action.payload.branch);
-        await upsert('sales', action.payload);
-        // Sync deducted inventory items
-        const ids = new Set(action.payload.items.map(i => i.id));
-        const modified = nextState.inventory.filter(i => ids.has(i.id));
-        console.log('[sync] inventory modified count:', modified.length);
-        await upsertMany('inventory', modified);
+        const sale = action.payload;
+        await upsert('sales', sale);
+        const isBooking = sale.transactionType === 'booking';
+        const { performedBy, performedById, userRole } = actor(nextState);
+
+        // Sync deducted inventory items (booking-type sales don't deduct until delivery)
+        if (!isBooking) {
+          const ids = new Set(sale.items.filter(i => !i._custom).map(i => i.id));
+          const modified = nextState.inventory.filter(i => ids.has(i.id));
+          await upsertMany('inventory', modified);
+
+          for (const lineItem of sale.items) {
+            if (lineItem._custom || !lineItem.id) continue;
+            const prevItem = prevState.inventory.find(i => i.id === lineItem.id);
+            const newItem = nextState.inventory.find(i => i.id === lineItem.id);
+            if (!prevItem || !newItem) continue;
+            await logInventoryTransaction({
+              transactionType: 'Sale', source: 'Sale',
+              productId: newItem.id, productName: newItem.name, category: newItem.category, branch: newItem.branch,
+              quantityBefore: prevItem.qty, quantityChanged: -(lineItem.qty || 0), quantityAfter: newItem.qty,
+              performedBy, performedById, userRole, referenceNumber: sale.id,
+              description: `Sold on invoice #${sale.id}`, status: stockStatus(newItem),
+            });
+          }
+        }
+
+        await logSalesTransaction({
+          transactionType: 'Sale Created', saleId: sale.id, customerName: sale.customer, branch: sale.branch,
+          amountBefore: 0, amountChanged: sale.total || 0, amountAfter: sale.total || 0,
+          paymentMethod: sale.payment, itemsCount: sale.items?.length || 0,
+          performedBy, performedById, userRole, referenceNumber: sale.id,
+          description: isBooking ? 'Booking recorded' : 'Sale recorded',
+        });
         break;
       }
       case 'DELETE_SALE': {
         await remove('sales', action.payload);
         await toRecycleBin(nextState, action.payload);
-        // Sync inventory items that were restored when the sale was removed
         const deletedSale = prevState.sales.find(s => s.id === action.payload);
+        const { performedBy, performedById, userRole } = actor(nextState);
+        // Sync inventory items that were restored when the sale was removed
         if (deletedSale?.items?.length) {
           const ids = new Set(deletedSale.items.filter(i => !i._custom).map(i => i.id));
           const restored = nextState.inventory.filter(i => ids.has(i.id));
           if (restored.length) await upsertMany('inventory', restored);
+          for (const id of ids) {
+            const prevItem = prevState.inventory.find(i => i.id === id);
+            const newItem = nextState.inventory.find(i => i.id === id);
+            if (!prevItem || !newItem || prevItem.qty === newItem.qty) continue;
+            await logInventoryTransaction({
+              transactionType: 'Stock In', source: 'Sale Deleted (Reversal)',
+              productId: newItem.id, productName: newItem.name, category: newItem.category, branch: newItem.branch,
+              quantityBefore: prevItem.qty, quantityChanged: newItem.qty - prevItem.qty, quantityAfter: newItem.qty,
+              performedBy, performedById, userRole, referenceNumber: action.payload,
+              description: `Stock reversed — sale #${action.payload} deleted`, status: stockStatus(newItem),
+            });
+          }
         }
         // If this was a booking-type sale, also remove the linked booking from Supabase
         if (deletedSale?.bookingId) {
@@ -147,25 +205,71 @@ export async function syncAction(action, prevState, nextState) {
             await Promise.all(purchasesToDelete.map(p => remove('purchase_list', p.id)));
           }
         }
+        if (deletedSale) {
+          await logSalesTransaction({
+            transactionType: 'Sale Deleted', saleId: action.payload, customerName: deletedSale.customer, branch: deletedSale.branch,
+            amountBefore: deletedSale.total || 0, amountChanged: -(deletedSale.total || 0), amountAfter: 0,
+            paymentMethod: deletedSale.payment, itemsCount: deletedSale.items?.length || 0,
+            performedBy, performedById, userRole, referenceNumber: action.payload,
+            description: 'Sale deleted directly',
+          });
+        }
         break;
       }
       case 'UPDATE_SALE': {
-        await upsert('sales', action.payload);
+        const updated = action.payload;
+        await upsert('sales', updated);
         // Sync all inventory items touched by the original and updated sale
-        const originalSale = prevState.sales.find(s => s.id === action.payload.id);
+        const originalSale = prevState.sales.find(s => s.id === updated.id);
         const allIds = new Set([
           ...(originalSale?.items || []).filter(i => !i._custom).map(i => i.id),
-          ...(action.payload.items || []).filter(i => !i._custom).map(i => i.id),
+          ...(updated.items || []).filter(i => !i._custom).map(i => i.id),
         ]);
         if (allIds.size) {
           const modified = nextState.inventory.filter(i => allIds.has(i.id));
           if (modified.length) await upsertMany('inventory', modified);
         }
+
+        const { performedBy, performedById, userRole } = actor(nextState);
+        const isBooking = originalSale?.transactionType === 'booking' || updated.transactionType === 'booking';
+        if (!isBooking && allIds.size) {
+          for (const id of allIds) {
+            const prevItem = prevState.inventory.find(i => i.id === id);
+            const newItem = nextState.inventory.find(i => i.id === id);
+            if (!prevItem || !newItem || prevItem.qty === newItem.qty) continue;
+            await logInventoryTransaction({
+              transactionType: 'Adjustment', source: 'Sale Update',
+              productId: newItem.id, productName: newItem.name, category: newItem.category, branch: newItem.branch,
+              quantityBefore: prevItem.qty, quantityChanged: newItem.qty - prevItem.qty, quantityAfter: newItem.qty,
+              performedBy, performedById, userRole, referenceNumber: updated.id,
+              description: `Sale #${updated.id} items revised`, status: stockStatus(newItem),
+            });
+          }
+        }
+
+        await logSalesTransaction({
+          transactionType: 'Sale Updated', saleId: updated.id, customerName: updated.customer, branch: updated.branch,
+          amountBefore: originalSale?.total || 0, amountChanged: (updated.total || 0) - (originalSale?.total || 0), amountAfter: updated.total || 0,
+          paymentMethod: updated.payment, itemsCount: updated.items?.length || 0,
+          performedBy, performedById, userRole, referenceNumber: updated.id,
+          description: 'Sale details revised',
+        });
         break;
       }
       case 'ADD_PAYMENT': {
         const sale = nextState.sales.find(s => s.id === action.payload.saleId);
         if (sale) await upsert('sales', sale);
+        const prevSale = prevState.sales.find(s => s.id === action.payload.saleId);
+        if (sale) {
+          const { performedBy, performedById, userRole } = actor(nextState);
+          await logSalesTransaction({
+            transactionType: 'Payment Recorded', saleId: sale.id, customerName: sale.customer, branch: sale.branch,
+            amountBefore: prevSale?.amountPaid || 0, amountChanged: action.payload.payment.amount, amountAfter: sale.amountPaid,
+            paymentMethod: action.payload.payment.method, itemsCount: sale.items?.length || 0,
+            performedBy, performedById, userRole, referenceNumber: action.payload.payment.id || sale.id,
+            description: 'Payment recorded against sale',
+          });
+        }
         break;
       }
 
@@ -216,20 +320,94 @@ export async function syncAction(action, prevState, nextState) {
       }
 
       // ── INVENTORY ────────────────────────────────────────────
-      case 'ADD_ITEM':
-        await upsert('inventory', action.payload);
+      case 'ADD_ITEM': {
+        const item = action.payload;
+        await upsert('inventory', item);
+        const { performedBy, performedById, userRole } = actor(nextState);
+        await logInventoryTransaction({
+          transactionType: 'Stock In', source: 'New Item',
+          productId: item.id, productName: item.name, category: item.category, branch: item.branch,
+          quantityBefore: 0, quantityChanged: item.qty || 0, quantityAfter: item.qty || 0,
+          performedBy, performedById, userRole, referenceNumber: item.id,
+          description: 'Initial stock created', status: stockStatus(item),
+        });
         break;
-      case 'UPDATE_ITEM':
-        await upsert('inventory', action.payload);
+      }
+      case 'UPDATE_ITEM': {
+        const updItem = action.payload;
+        await upsert('inventory', updItem);
+        const prevItem = prevState.inventory.find(i => i.id === updItem.id);
+        const qtyChanged = (updItem.qty || 0) - (prevItem?.qty || 0);
+        const { performedBy, performedById, userRole } = actor(nextState);
+        await logInventoryTransaction({
+          transactionType: qtyChanged !== 0 ? 'Adjustment' : 'Update', source: 'Manual Edit',
+          productId: updItem.id, productName: updItem.name, category: updItem.category, branch: updItem.branch,
+          quantityBefore: prevItem?.qty ?? 0, quantityChanged: qtyChanged, quantityAfter: updItem.qty || 0,
+          performedBy, performedById, userRole, referenceNumber: updItem.id,
+          description: 'Item details updated', status: stockStatus(updItem),
+        });
         break;
+      }
       case 'DELETE_ITEM': {
         await remove('inventory', action.payload);
         await toRecycleBin(nextState, action.payload);
+        const item = prevState.inventory.find(i => i.id === action.payload);
+        if (item) {
+          const { performedBy, performedById, userRole } = actor(nextState);
+          await logInventoryTransaction({
+            transactionType: 'Delete', source: 'Direct Delete',
+            productId: item.id, productName: item.name, category: item.category, branch: item.branch,
+            quantityBefore: item.qty || 0, quantityChanged: -(item.qty || 0), quantityAfter: 0,
+            performedBy, performedById, userRole, referenceNumber: item.id,
+            description: 'Deleted directly, moved to recycle bin', status: 'Out of Stock',
+          });
+        }
         break;
       }
       case 'RESTOCK_ITEM': {
         const item = nextState.inventory.find(i => i.id === action.payload.id);
         if (item) await upsert('inventory', item);
+        const prevItem = prevState.inventory.find(i => i.id === action.payload.id);
+        if (item) {
+          const { performedBy, performedById, userRole } = actor(nextState);
+          await logInventoryTransaction({
+            transactionType: 'Stock In', source: 'Restock',
+            productId: item.id, productName: item.name, category: item.category, branch: item.branch,
+            quantityBefore: prevItem?.qty ?? (item.qty - action.payload.qty), quantityChanged: action.payload.qty, quantityAfter: item.qty,
+            performedBy, performedById, userRole, referenceNumber: item.id,
+            description: 'Manual restock', status: stockStatus(item),
+          });
+        }
+        break;
+      }
+      case 'TRANSFER_ITEM': {
+        const { fromId, toBranch, transferId, qty } = action.payload;
+        const source = prevState.inventory.find(i => i.id === fromId);
+        if (!source) break;
+        const q = Math.max(0, parseInt(qty) || 0);
+        const updatedSource = nextState.inventory.find(i => i.id === fromId);
+        const updatedDest = nextState.inventory.find(i => i.branch === toBranch && i.name === source.name && i.category === source.category);
+        await upsertMany('inventory', [updatedSource, updatedDest].filter(Boolean));
+
+        const { performedBy, performedById, userRole } = actor(nextState);
+        if (updatedSource) {
+          await logInventoryTransaction({
+            transactionType: 'Transfer', source: 'Branch Transfer',
+            productId: source.id, productName: source.name, category: source.category, branch: source.branch,
+            quantityBefore: source.qty, quantityChanged: -q, quantityAfter: updatedSource.qty,
+            performedBy, performedById, userRole, referenceNumber: transferId,
+            description: `Transferred to ${branchName(toBranch)}`, status: stockStatus(updatedSource),
+          });
+        }
+        if (updatedDest) {
+          await logInventoryTransaction({
+            transactionType: 'Transfer', source: 'Branch Transfer',
+            productId: updatedDest.id, productName: updatedDest.name, category: updatedDest.category, branch: toBranch,
+            quantityBefore: updatedDest.qty - q, quantityChanged: q, quantityAfter: updatedDest.qty,
+            performedBy, performedById, userRole, referenceNumber: transferId,
+            description: `Transferred from ${branchName(source.branch)}`, status: stockStatus(updatedDest),
+          });
+        }
         break;
       }
 
@@ -285,9 +463,31 @@ export async function syncAction(action, prevState, nextState) {
           prevState.bookings.find(b => b.id === bookingId)?.items ||
           prevState.sales.find(s => s.bookingId === bookingId)?.items || [];
         const itemIds = new Set(sourceItems.filter(i => i.id).map(i => i.id));
+        const { performedBy, performedById, userRole } = actor(nextState);
         if (itemIds.size) {
           const modified = nextState.inventory.filter(i => itemIds.has(i.id));
           if (modified.length) await upsertMany('inventory', modified);
+          for (const id of itemIds) {
+            const prevItem = prevState.inventory.find(i => i.id === id);
+            const newItem = nextState.inventory.find(i => i.id === id);
+            if (!prevItem || !newItem || prevItem.qty === newItem.qty) continue;
+            await logInventoryTransaction({
+              transactionType: 'Booking', source: 'Booking Delivery',
+              productId: newItem.id, productName: newItem.name, category: newItem.category, branch: newItem.branch,
+              quantityBefore: prevItem.qty, quantityChanged: newItem.qty - prevItem.qty, quantityAfter: newItem.qty,
+              performedBy, performedById, userRole, referenceNumber: bookingId,
+              description: 'Deducted on booking delivery', status: stockStatus(newItem),
+            });
+          }
+        }
+        if (updatedSale) {
+          await logSalesTransaction({
+            transactionType: 'Booking Delivered', saleId: updatedSale.id, customerName: updatedSale.customer, branch: updatedSale.branch,
+            amountBefore: updatedSale.total || 0, amountChanged: 0, amountAfter: updatedSale.total || 0,
+            paymentMethod: updatedSale.payment, itemsCount: updatedSale.items?.length || 0,
+            performedBy, performedById, userRole, referenceNumber: bookingId,
+            description: 'Booking delivered — converted to completed sale',
+          });
         }
         break;
       }
@@ -322,9 +522,10 @@ export async function syncAction(action, prevState, nextState) {
 
       // ── GOODS RECEIVED ────────────────────────────────────────
       case 'RECEIVE_GOODS': {
-        await upsert('goods_received', action.payload);
+        const gr = action.payload;
+        await upsert('goods_received', gr);
         // Sync restocked inventory items
-        const ids = new Set(action.payload.items.map(i => i.id));
+        const ids = new Set(gr.items.map(i => i.id));
         const modified = nextState.inventory.filter(i => ids.has(i.id));
         await upsertMany('inventory', modified);
         // Sync any purchase orders that were marked as "fulfilled"
@@ -333,17 +534,46 @@ export async function syncAction(action, prevState, nextState) {
           return prevP && prevP.status !== p.status;
         });
         if (changedPurchases.length) await upsertMany('purchase_list', changedPurchases);
+
+        const { performedBy, performedById, userRole } = actor(nextState);
+        for (const received of gr.items) {
+          const prevItem = prevState.inventory.find(i => i.id === received.id);
+          const newItem = nextState.inventory.find(i => i.id === received.id);
+          if (!prevItem || !newItem) continue;
+          await logInventoryTransaction({
+            transactionType: 'Stock In', source: gr.supplier || 'Goods Received',
+            productId: newItem.id, productName: newItem.name, category: newItem.category, branch: gr.branch || newItem.branch,
+            quantityBefore: prevItem.qty, quantityChanged: received.qty || 0, quantityAfter: newItem.qty,
+            performedBy, performedById, userRole, referenceNumber: gr.id,
+            description: `GRN #${gr.id} received`, status: stockStatus(newItem),
+          });
+        }
         break;
       }
 
       case 'UPDATE_GRN': {
-        await upsert('goods_received', action.payload.updated);
+        const { updated, original } = action.payload;
+        await upsert('goods_received', updated);
         const allItemIds = new Set([
-          ...action.payload.original.items.map(i => i.id),
-          ...action.payload.updated.items.map(i => i.id),
+          ...original.items.map(i => i.id),
+          ...updated.items.map(i => i.id),
         ]);
         const modifiedItems = nextState.inventory.filter(i => allItemIds.has(i.id));
         await upsertMany('inventory', modifiedItems);
+
+        const { performedBy, performedById, userRole } = actor(nextState);
+        for (const id of allItemIds) {
+          const prevItem = prevState.inventory.find(i => i.id === id);
+          const newItem = nextState.inventory.find(i => i.id === id);
+          if (!prevItem || !newItem || prevItem.qty === newItem.qty) continue;
+          await logInventoryTransaction({
+            transactionType: 'Adjustment', source: updated.supplier || 'GRN Update',
+            productId: newItem.id, productName: newItem.name, category: newItem.category, branch: updated.branch || newItem.branch,
+            quantityBefore: prevItem.qty, quantityChanged: newItem.qty - prevItem.qty, quantityAfter: newItem.qty,
+            performedBy, performedById, userRole, referenceNumber: updated.id,
+            description: `GRN #${updated.id} revised`, status: stockStatus(newItem),
+          });
+        }
         break;
       }
 
@@ -354,6 +584,20 @@ export async function syncAction(action, prevState, nextState) {
           const ids = new Set(grn.items.map(i => i.id));
           const reversed = nextState.inventory.filter(i => ids.has(i.id));
           if (reversed.length) await upsertMany('inventory', reversed);
+
+          const { performedBy, performedById, userRole } = actor(nextState);
+          for (const id of ids) {
+            const prevItem = prevState.inventory.find(i => i.id === id);
+            const newItem = nextState.inventory.find(i => i.id === id);
+            if (!prevItem || !newItem || prevItem.qty === newItem.qty) continue;
+            await logInventoryTransaction({
+              transactionType: 'Stock Out', source: 'GRN Deleted (Reversal)',
+              productId: newItem.id, productName: newItem.name, category: newItem.category, branch: grn.branch || newItem.branch,
+              quantityBefore: prevItem.qty, quantityChanged: newItem.qty - prevItem.qty, quantityAfter: newItem.qty,
+              performedBy, performedById, userRole, referenceNumber: grn.id,
+              description: `GRN #${grn.id} deleted, stock reversed`, status: stockStatus(newItem),
+            });
+          }
         }
         break;
       }
@@ -437,7 +681,27 @@ export async function syncAction(action, prevState, nextState) {
           }[binItem._type];
           if (tbl && stateKey) {
             const restored = nextState[stateKey].find(x => x.id === action.payload);
-            if (restored) await upsert(tbl, restored);
+            if (restored) {
+              await upsert(tbl, restored);
+              const { performedBy, performedById, userRole } = actor(nextState);
+              if (binItem._type === 'inventory') {
+                await logInventoryTransaction({
+                  transactionType: 'Restore', source: 'Recycle Bin Restore',
+                  productId: restored.id, productName: restored.name, category: restored.category, branch: restored.branch,
+                  quantityBefore: 0, quantityChanged: restored.qty || 0, quantityAfter: restored.qty || 0,
+                  performedBy, performedById, userRole, referenceNumber: binItem.id,
+                  description: 'Restored from recycle bin', status: stockStatus(restored),
+                });
+              } else if (binItem._type === 'sale') {
+                await logSalesTransaction({
+                  transactionType: 'Sale Restored', saleId: restored.id, customerName: restored.customer, branch: restored.branch,
+                  amountBefore: 0, amountChanged: restored.total || 0, amountAfter: restored.total || 0,
+                  paymentMethod: restored.payment, itemsCount: restored.items?.length || 0,
+                  performedBy, performedById, userRole, referenceNumber: binItem.id,
+                  description: 'Restored from recycle bin',
+                });
+              }
+            }
           }
         }
         break;
@@ -497,6 +761,21 @@ export async function syncAction(action, prevState, nextState) {
             await remove(tbl, req.targetId);
             await toRecycleBin(nextState, req.targetId);
           }
+          const { performedBy, performedById, userRole } = actor(nextState);
+
+          if (req.type === 'inventory') {
+            const item = prevState.inventory.find(i => i.id === req.targetId);
+            if (item) {
+              await logInventoryTransaction({
+                transactionType: 'Delete', source: 'Delete Request Approved',
+                productId: item.id, productName: item.name, category: item.category, branch: item.branch,
+                quantityBefore: item.qty || 0, quantityChanged: -(item.qty || 0), quantityAfter: 0,
+                performedBy, performedById, userRole, referenceNumber: req.id,
+                description: `Delete request approved: ${req.label}`, status: 'Out of Stock',
+              });
+            }
+          }
+
           // For sale deletions, sync the inventory items that were restored
           if (req.type === 'sale') {
             const deletedSale = prevState.sales.find(s => s.id === req.targetId);
@@ -504,14 +783,63 @@ export async function syncAction(action, prevState, nextState) {
               const ids = new Set(deletedSale.items.filter(i => !i._custom).map(i => i.id));
               const restored = nextState.inventory.filter(i => ids.has(i.id));
               if (restored.length) await upsertMany('inventory', restored);
+              for (const id of ids) {
+                const prevItem = prevState.inventory.find(i => i.id === id);
+                const newItem = nextState.inventory.find(i => i.id === id);
+                if (!prevItem || !newItem || prevItem.qty === newItem.qty) continue;
+                await logInventoryTransaction({
+                  transactionType: 'Stock In', source: 'Sale Deleted (Reversal)',
+                  productId: newItem.id, productName: newItem.name, category: newItem.category, branch: newItem.branch,
+                  quantityBefore: prevItem.qty, quantityChanged: newItem.qty - prevItem.qty, quantityAfter: newItem.qty,
+                  performedBy, performedById, userRole, referenceNumber: req.id,
+                  description: `Stock reversed — delete request approved for sale #${req.targetId}`, status: stockStatus(newItem),
+                });
+              }
+            }
+            if (deletedSale) {
+              await logSalesTransaction({
+                transactionType: 'Sale Deleted', saleId: req.targetId, customerName: deletedSale.customer, branch: deletedSale.branch,
+                amountBefore: deletedSale.total || 0, amountChanged: -(deletedSale.total || 0), amountAfter: 0,
+                paymentMethod: deletedSale.payment, itemsCount: deletedSale.items?.length || 0,
+                performedBy, performedById, userRole, referenceNumber: req.id,
+                description: `Delete request approved: ${req.label}`,
+              });
             }
           }
         }
         break;
       }
-      case 'REJECT_DELETE':
+      case 'REJECT_DELETE': {
         await remove('delete_requests', action.payload);
+        const req = prevState.deleteRequests.find(r => r.id === action.payload);
+        if (req) {
+          const { performedBy, performedById, userRole } = actor(nextState);
+          if (req.type === 'inventory') {
+            const item = prevState.inventory.find(i => i.id === req.targetId);
+            if (item) {
+              await logInventoryTransaction({
+                transactionType: 'Update', source: 'Delete Request Rejected',
+                productId: item.id, productName: item.name, category: item.category, branch: item.branch,
+                quantityBefore: item.qty || 0, quantityChanged: 0, quantityAfter: item.qty || 0,
+                performedBy, performedById, userRole, referenceNumber: req.id,
+                description: `Delete request rejected — item retained: ${req.label}`, status: stockStatus(item),
+              });
+            }
+          } else if (req.type === 'sale') {
+            const sale = prevState.sales.find(s => s.id === req.targetId);
+            if (sale) {
+              await logSalesTransaction({
+                transactionType: 'Sale Updated', saleId: req.targetId, customerName: sale.customer, branch: sale.branch,
+                amountBefore: sale.total || 0, amountChanged: 0, amountAfter: sale.total || 0,
+                paymentMethod: sale.payment, itemsCount: sale.items?.length || 0,
+                performedBy, performedById, userRole, referenceNumber: req.id,
+                description: `Delete request rejected — sale retained: ${req.label}`,
+              });
+            }
+          }
+        }
         break;
+      }
 
       default:
         break;
