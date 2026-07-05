@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp, formatCurrency, fmtDate, genId } from '../context/AppContext';
 import { refreshExpenses } from '../lib/refresh';
 import ReportModal from '../components/ReportModal';
@@ -53,6 +53,7 @@ export default function Expenses() {
   const [filterType, setFilterType] = useState('all');
   const [reportOpen, setReportOpen] = useState(false);
   const [deleteReq, setDeleteReq] = useState(null);
+  const lastRowRef = useRef(null);
 
   const expenseColumns = [
     { key: 'date',   label: 'Date',                              format: v => fmtDate(v) },
@@ -104,6 +105,10 @@ export default function Expenses() {
 
   const totalCashIn   = filtered.filter(e => getExpenseType(e) === 'cashIn').reduce((s, e) => s + (e.amount || 0), 0);
   const totalExpenses = filtered.filter(e => getExpenseType(e) !== 'cashIn').reduce((s, e) => s + (e.amount || 0), 0);
+
+  useEffect(() => {
+    lastRowRef.current?.scrollIntoView({ block: 'end' });
+  }, [ledger.length]);
 
   function openEdit(e) {
     setEditing(e);
@@ -249,8 +254,12 @@ export default function Expenses() {
             <tbody>
               {ledger.length === 0 ? (
                 <tr><td colSpan={9} className="text-center text-gray-600 py-12">No entries found</td></tr>
-              ) : ledger.map(e => (
-                <tr key={e.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
+              ) : ledger.map((e, i) => (
+                <tr
+                  key={e.id}
+                  ref={i === ledger.length - 1 ? lastRowRef : null}
+                  className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors"
+                >
                   <td className="px-4 py-3.5 text-gray-400 whitespace-nowrap">{fmtDate(e.date)}</td>
                   <td className="px-4 py-3.5">
                     <p className="text-white font-medium">{e.desc}</p>
