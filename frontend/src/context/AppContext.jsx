@@ -894,6 +894,11 @@ function rawReducer(state, action) {
           : [],
       };
     }
+    case 'PURGE_EXPIRED': {
+      const ids = new Set(action.payload?.ids || []);
+      if (!ids.size) return state;
+      return { ...state, recycleBin: state.recycleBin.filter(i => !ids.has(i.id)) };
+    }
 
     // ── SETTINGS ───────────────────────────────────────────────
     case 'UPDATE_SETTINGS':

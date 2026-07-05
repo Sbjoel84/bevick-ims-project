@@ -10,7 +10,7 @@
 }
 
 /* ── Light mode overrides ───────────────────────────────────────────────────── */
-html[data-theme="light"] body { background-color: #f1f5f9; color: #0f172a; }
+html[data-theme="light"] body { background-color: #f1f5f9; color: #000000; font-weight: 300; }
 
 /* Backgrounds */
 html[data-theme="light"] .bg-gray-950 { background-color: #f1f5f9 !important; }
@@ -25,14 +25,28 @@ html[data-theme="light"] .hover\:bg-gray-800:hover  { background-color: #e2e8f0 
 html[data-theme="light"] .hover\:bg-gray-700:hover  { background-color: #cbd5e1 !important; }
 html[data-theme="light"] .hover\:bg-gray-800\/40:hover { background-color: rgba(226,232,240,0.6) !important; }
 
-/* Text */
-html[data-theme="light"] .text-white   { color: #0f172a !important; }
-html[data-theme="light"] .text-gray-100 { color: #1e293b !important; }
-html[data-theme="light"] .text-gray-200 { color: #334155 !important; }
-html[data-theme="light"] .text-gray-300 { color: #475569 !important; }
-html[data-theme="light"] .text-gray-400 { color: #64748b !important; }
-html[data-theme="light"] .text-gray-500 { color: #94a3b8 !important; }
-html[data-theme="light"] .text-gray-600 { color: #64748b !important; }
+/* Text — solid black for readability; weight is left to each element so
+   titles (font-bold/font-semibold) stay bold and body content stays light. */
+html[data-theme="light"] .text-white    { color: #000000 !important; }
+html[data-theme="light"] .text-gray-100 { color: #000000 !important; }
+html[data-theme="light"] .text-gray-200 { color: #000000 !important; }
+html[data-theme="light"] .text-gray-300 { color: #000000 !important; }
+html[data-theme="light"] .text-gray-400 { color: #000000 !important; }
+html[data-theme="light"] .text-gray-500 { color: #000000 !important; }
+html[data-theme="light"] .text-gray-600 { color: #000000 !important; }
+
+/* Titles (h1/h2, .font-syne) stay bold; their subtitle paragraph
+   (the <p> immediately following, per this app's page-header pattern) stays bold too. */
+html[data-theme="light"] h1,
+html[data-theme="light"] h2,
+html[data-theme="light"] h3,
+html[data-theme="light"] .font-syne {
+  font-weight: 700 !important;
+}
+html[data-theme="light"] h1 + p,
+html[data-theme="light"] h2 + p {
+  font-weight: 700 !important;
+}
 
 /* Accented text — darken for light bg readability */
 html[data-theme="light"] .text-blue-400 { color: #2563eb !important; }

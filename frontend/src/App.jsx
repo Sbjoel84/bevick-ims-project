@@ -168,6 +168,28 @@ export default function App() {
     return () => stopRealtime();
   }, [dispatch]);
 
+  // ── Auto-purge expired recycle bin items ────────────────────────────────────
+  // Items sitting in the recycle bin for 30+ days are permanently deleted
+  // automatically, both locally and in Supabase (via PURGE_EXPIRED sync case).
+  useEffect(() => {
+    const RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+    const CHECK_INTERVAL_MS = 60 * 60 * 1000; // re-check hourly for items that age out mid-session
+
+    function purgeExpired() {
+      const cutoff = Date.now() - RETENTION_MS;
+      const expiredIds = (state.recycleBin || [])
+        .filter(item => item._deletedAt && new Date(item._deletedAt).getTime() <= cutoff)
+        .map(item => item.id);
+      if (expiredIds.length) {
+        dispatch({ type: 'PURGE_EXPIRED', payload: { ids: expiredIds } });
+      }
+    }
+
+    purgeExpired();
+    const interval = setInterval(purgeExpired, CHECK_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [state.recycleBin, dispatch]);
+
   // Show loading screen while Supabase data is being fetched
   if (!state.dbLoaded) return <LoadingScreen />;
 

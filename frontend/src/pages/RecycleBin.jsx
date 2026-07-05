@@ -74,7 +74,7 @@ export default function RecycleBin() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-syne text-2xl font-bold text-white">Recycle Bin</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</p>
+          <p className="text-gray-500 text-sm mt-0.5">{filtered.length} item{filtered.length !== 1 ? 's' : ''} · items are permanently deleted 30 days after being moved here</p>
         </div>
         {filtered.length > 0 && (
           <button

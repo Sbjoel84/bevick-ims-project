@@ -731,6 +731,13 @@ export async function syncAction(action, prevState, nextState) {
         }
         break;
       }
+      case 'PURGE_EXPIRED': {
+        const ids = (action.payload?.ids || []).map(String);
+        if (ids.length) {
+          await supabase.from('recycle_bin').delete().in('id', ids);
+        }
+        break;
+      }
 
       // ── SETTINGS ──────────────────────────────────────────────
       case 'UPDATE_SETTINGS': {
