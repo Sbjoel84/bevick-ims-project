@@ -932,7 +932,7 @@ export default function Inventory() {
 
       {/* ── Inventory Transactions Ledger Tab ── */}
       {tab === 'ledger' && (
-        <InventoryTransactionsLedger state={state} canExport={canEditAll} />
+        <InventoryTransactionsLedger state={state} />
       )}
 
       {/* General Record Edit Modal */}

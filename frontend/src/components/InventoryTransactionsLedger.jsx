@@ -63,7 +63,7 @@ function SummaryCard({ label, value, accent }) {
   );
 }
 
-export default function InventoryTransactionsLedger({ state, canExport }) {
+export default function InventoryTransactionsLedger({ state }) {
   const { filters, updateFilters, resetFilters, page, setPage, pageSize, rows, total, loading, summary } = useInventoryTransactions();
   const [detail, setDetail] = useState(null);
   const [reportPanelOpen, setReportPanelOpen] = useState(false);
@@ -191,60 +191,58 @@ export default function InventoryTransactionsLedger({ state, canExport }) {
       />
 
       {/* Report / Export toolbar */}
-      {canExport && (
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setReportPanelOpen(o => !o)}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
-          >
-            Generate Report
-          </button>
-          {reportPanelOpen && (
-            <div className="w-full bg-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-wrap items-center gap-3">
-              <select value={reportPreset} onChange={e => setReportPreset(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {REPORT_PRESETS.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-              </select>
-              {reportPreset === 'custom' && (
-                <>
-                  <input type="date" value={reportCustomStart} onChange={e => setReportCustomStart(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <input type="date" value={reportCustomEnd} onChange={e => setReportCustomEnd(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </>
-              )}
-              <button disabled={reportBusy || reportPreviewLoading} onClick={handlePrintReport} className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
-                Print
-              </button>
-              <button disabled={reportBusy || reportPreviewLoading} onClick={() => handleExport('excel')} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
-                Export Excel
-              </button>
-              <button disabled={reportBusy || reportPreviewLoading} onClick={() => handleExport('csv')} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
-                Export CSV
-              </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setReportPanelOpen(o => !o)}
+          className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+        >
+          Generate Report
+        </button>
+        {reportPanelOpen && (
+          <div className="w-full bg-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-wrap items-center gap-3">
+            <select value={reportPreset} onChange={e => setReportPreset(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {REPORT_PRESETS.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+            </select>
+            {reportPreset === 'custom' && (
+              <>
+                <input type="date" value={reportCustomStart} onChange={e => setReportCustomStart(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="date" value={reportCustomEnd} onChange={e => setReportCustomEnd(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </>
+            )}
+            <button disabled={reportBusy || reportPreviewLoading} onClick={handlePrintReport} className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 disabled:bg-gray-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+              Print
+            </button>
+            <button disabled={reportBusy || reportPreviewLoading} onClick={() => handleExport('excel')} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+              Export Excel
+            </button>
+            <button disabled={reportBusy || reportPreviewLoading} onClick={() => handleExport('csv')} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+              Export CSV
+            </button>
 
-              {/* Live preview — updates automatically as the period/filters change */}
-              <div className="w-full">
-                {reportPreviewLoading ? (
-                  <p className="text-gray-500 text-xs">Fetching {REPORT_PRESETS.find(r => r.id === reportPreset)?.label.toLowerCase()}…</p>
-                ) : reportPreview ? (
-                  <div className="space-y-2">
-                    <p className="text-gray-400 text-xs">
-                      <span className="text-white font-semibold">{reportPreview.rows.length.toLocaleString()}</span> transaction{reportPreview.rows.length !== 1 ? 's' : ''} found · {reportPreview.dateRangeLabel}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {reportPreview.summaryRows.slice(0, 6).map(s => (
-                        <div key={s.label} className="bg-gray-800 rounded-lg px-3 py-1.5 text-xs">
-                          <span className="text-gray-500">{s.label}:</span> <span className="text-white font-medium">{s.value}</span>
-                        </div>
-                      ))}
-                    </div>
+            {/* Live preview — updates automatically as the period/filters change */}
+            <div className="w-full">
+              {reportPreviewLoading ? (
+                <p className="text-gray-500 text-xs">Fetching {REPORT_PRESETS.find(r => r.id === reportPreset)?.label.toLowerCase()}…</p>
+              ) : reportPreview ? (
+                <div className="space-y-2">
+                  <p className="text-gray-400 text-xs">
+                    <span className="text-white font-semibold">{reportPreview.rows.length.toLocaleString()}</span> transaction{reportPreview.rows.length !== 1 ? 's' : ''} found · {reportPreview.dateRangeLabel}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {reportPreview.summaryRows.slice(0, 6).map(s => (
+                      <div key={s.label} className="bg-gray-800 rounded-lg px-3 py-1.5 text-xs">
+                        <span className="text-gray-500">{s.label}:</span> <span className="text-white font-medium">{s.value}</span>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <p className="text-gray-500 text-xs">Select a custom date range to preview.</p>
-                )}
-              </div>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-xs">Select a custom date range to preview.</p>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {/* Table */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
