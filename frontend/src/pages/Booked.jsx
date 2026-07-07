@@ -682,27 +682,27 @@ export default function Booked() {
 
         return (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <div className="bg-gray-900 border border-blue-500/30 rounded-2xl px-4 py-4">
+            <div className="stat-card bg-gray-900 border border-blue-500/30 rounded-2xl px-4 py-4">
               <p className="text-gray-500 text-xs font-medium mb-1">Total Bookings</p>
               <p className="font-syne font-bold text-blue-400 text-2xl">{activeBookings.length}</p>
               <p className="text-gray-600 text-xs mt-1">FF {ffBookings.length} · Others {othBookings.length}</p>
             </div>
-            <div className="bg-gray-900 border border-amber-500/20 rounded-2xl px-4 py-4">
+            <div className="stat-card bg-gray-900 border border-amber-500/20 rounded-2xl px-4 py-4">
               <p className="text-gray-500 text-xs font-medium mb-1">Full Factory Value</p>
               <p className="font-syne font-bold text-amber-300 text-sm sm:text-base break-all">{formatCurrency(ffValue, currency)}</p>
               <p className="text-gray-600 text-xs mt-1">excl. cancelled</p>
             </div>
-            <div className="bg-gray-900 border border-red-500/20 rounded-2xl px-4 py-4">
+            <div className="stat-card bg-gray-900 border border-red-500/20 rounded-2xl px-4 py-4">
               <p className="text-gray-500 text-xs font-medium mb-1">Others Value</p>
               <p className="font-syne font-bold text-red-400 text-sm sm:text-base break-all">{formatCurrency(othValue, currency)}</p>
               <p className="text-gray-600 text-xs mt-1">excl. cancelled</p>
             </div>
-            <div className="bg-gray-900 border border-amber-500/30 rounded-2xl px-4 py-4">
+            <div className="stat-card bg-gray-900 border border-amber-500/30 rounded-2xl px-4 py-4">
               <p className="text-gray-500 text-xs font-medium mb-1">Full Factory Customers</p>
               <p className="font-syne font-bold text-amber-300 text-2xl">{ffCustomers}</p>
               <p className="text-gray-600 text-xs mt-1">unique customer{ffCustomers !== 1 ? 's' : ''}</p>
             </div>
-            <div className="bg-gray-900 border border-red-500/30 rounded-2xl px-4 py-4 col-span-2 sm:col-span-1">
+            <div className="stat-card bg-gray-900 border border-red-500/30 rounded-2xl px-4 py-4 col-span-2 sm:col-span-1">
               <p className="text-gray-500 text-xs font-medium mb-1">Others Customers</p>
               <p className="font-syne font-bold text-red-400 text-2xl">{othCustomers}</p>
               <p className="text-gray-600 text-xs mt-1">unique customer{othCustomers !== 1 ? 's' : ''}</p>
@@ -752,7 +752,7 @@ export default function Booked() {
             <button
               key={s}
               onClick={() => setFilterStatus(s)}
-              className={`px-3 py-2 rounded-xl text-xs font-medium capitalize transition-colors ${filterStatus === s ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+              className={`filter-tab px-3 py-2 rounded-xl text-xs font-medium capitalize transition-colors ${filterStatus === s ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
             >
               {s === 'all' ? 'All' : s}
             </button>

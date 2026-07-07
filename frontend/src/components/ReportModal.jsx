@@ -91,7 +91,7 @@ export default function ReportModal({ title, data, dateKey, columns, getSummary,
                   <button
                     key={r.id}
                     onClick={() => setRange(r.id)}
-                    className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors ${range === r.id ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                    className={`filter-tab px-3 py-2 rounded-xl text-xs font-medium transition-colors ${range === r.id ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
                   >
                     {r.label}
                   </button>

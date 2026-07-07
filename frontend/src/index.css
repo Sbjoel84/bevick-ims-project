@@ -72,11 +72,36 @@ html[data-theme="light"] .bg-gray-800 { background-color: #f1f5f9 !important; }
 html[data-theme="light"] .bg-gray-700 { background-color: #e2e8f0 !important; }
 html[data-theme="light"] .bg-gray-600 { background-color: #cbd5e1 !important; }
 
+/* Stat cards (the small metric tiles — Dashboard, Customers, Expenses, Booked, etc.) —
+   sidebar blue with white text. Scoped to .stat-card only, not modals/tables/tab bars. */
+html[data-theme="light"] .stat-card { background-color: #3b82f6 !important; color: #ffffff !important; }
+html[data-theme="light"] .stat-card.border-gray-800 { border-color: #2563eb !important; }
+/* :not([class*="bg-"]) skips nested badges/pills that carry their own background. */
+html[data-theme="light"] .stat-card .text-white:not([class*="bg-"]),
+html[data-theme="light"] .stat-card .text-gray-100:not([class*="bg-"]),
+html[data-theme="light"] .stat-card .text-gray-200:not([class*="bg-"]),
+html[data-theme="light"] .stat-card .text-gray-300:not([class*="bg-"]),
+html[data-theme="light"] .stat-card .text-gray-400:not([class*="bg-"]),
+html[data-theme="light"] .stat-card .text-gray-500:not([class*="bg-"]),
+html[data-theme="light"] .stat-card .text-gray-600:not([class*="bg-"]) {
+  color: #ffffff !important;
+}
+
+/* Card section headings (e.g. the date-group banner in Inventory's Transaction History) */
+html[data-theme="light"] .card-heading { background-color: #3b82f6 !important; }
+html[data-theme="light"] .card-heading .text-white,
+html[data-theme="light"] .card-heading .text-gray-500 {
+  color: #ffffff !important;
+}
+
 /* Hover backgrounds */
 html[data-theme="light"] .hover\:bg-gray-900:hover  { background-color: #f8fafc !important; }
 html[data-theme="light"] .hover\:bg-gray-800:hover  { background-color: #e2e8f0 !important; }
 html[data-theme="light"] .hover\:bg-gray-700:hover  { background-color: #cbd5e1 !important; }
 html[data-theme="light"] .hover\:bg-gray-800\/40:hover { background-color: rgba(226,232,240,0.6) !important; }
+
+/* Filter/segmented tab buttons — blue on hover (selected state is already bg-blue-500) */
+html[data-theme="light"] .filter-tab:hover { background-color: #3b82f6 !important; color: #ffffff !important; }
 
 /* Text — solid black for readability; weight is left to each element so
    titles (font-bold/font-semibold) stay bold and body content stays light. */

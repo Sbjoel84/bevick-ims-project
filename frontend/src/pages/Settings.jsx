@@ -150,7 +150,7 @@ export default function Settings() {
               <button
                 key={c}
                 onClick={() => update({ currency: c })}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${currency === c ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                className={`filter-tab px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${currency === c ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
               >
                 {CURRENCY_SYMBOLS[c]}&nbsp;{c}
               </button>

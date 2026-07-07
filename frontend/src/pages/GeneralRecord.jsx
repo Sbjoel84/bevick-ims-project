@@ -191,7 +191,7 @@ export default function GeneralRecord() {
             <button
               key={r.id}
               onClick={() => setRange(r.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              className={`filter-tab px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 range === r.id ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
               }`}
             >
@@ -220,20 +220,20 @@ export default function GeneralRecord() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
+        <div className="stat-card bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
           <p className="text-gray-500 text-xs mb-1">Items Sold</p>
           <p className="font-syne font-bold text-white text-xl">{totals.itemsSold}</p>
           <p className="text-gray-600 text-xs mt-0.5">FF {totals.ffQty} · Others {totals.othersQty}</p>
         </div>
-        <div className="bg-gray-900 border border-blue-500/30 rounded-xl px-4 py-3">
+        <div className="stat-card bg-gray-900 border border-blue-500/30 rounded-xl px-4 py-3">
           <p className="text-gray-500 text-xs mb-1">Full Factory</p>
           <p className="font-syne font-bold text-blue-400 text-xl">{totals.ffQty}</p>
         </div>
-        <div className="bg-gray-900 border border-purple-500/30 rounded-xl px-4 py-3">
+        <div className="stat-card bg-gray-900 border border-purple-500/30 rounded-xl px-4 py-3">
           <p className="text-gray-500 text-xs mb-1">Others</p>
           <p className="font-syne font-bold text-purple-400 text-xl">{totals.othersQty}</p>
         </div>
-        <div className={`bg-gray-900 border rounded-xl px-4 py-3 ${totals.goodsToOrder > 0 ? 'border-amber-500/40' : 'border-green-500/30'}`}>
+        <div className={`stat-card bg-gray-900 border rounded-xl px-4 py-3 ${totals.goodsToOrder > 0 ? 'border-amber-500/40' : 'border-green-500/30'}`}>
           <p className="text-gray-500 text-xs mb-1">Goods to Order</p>
           <p className={`font-syne font-bold text-xl ${totals.goodsToOrder > 0 ? 'text-amber-400' : 'text-green-400'}`}>
             {totals.goodsToOrder}

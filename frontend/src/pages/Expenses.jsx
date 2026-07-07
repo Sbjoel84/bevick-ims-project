@@ -196,16 +196,16 @@ export default function Expenses() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 lg:col-span-2 overflow-hidden min-w-0">
+          <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 lg:col-span-2 overflow-hidden min-w-0">
             <p className="text-gray-500 text-xs font-medium mb-1">Total Expenses</p>
             <p className="font-syne text-xs sm:text-sm md:text-2xl font-bold text-red-400 break-all">{formatCurrency(totalExpenses, currency)}</p>
             <p className="text-gray-600 text-xs mt-1">{filtered.filter(e => getExpenseType(e) !== 'cashIn').length} expense entries</p>
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+          <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
             <p className="text-gray-500 text-xs font-medium mb-1">Cash In</p>
             <p className="font-syne text-xs sm:text-sm md:text-lg font-bold text-green-400 break-all">{formatCurrency(totalCashIn, currency)}</p>
           </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+          <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
             <p className="text-gray-500 text-xs font-medium mb-1">Balance</p>
             <p className={`font-syne text-xs sm:text-sm md:text-lg font-bold break-all ${totalCashIn - totalExpenses >= 0 ? 'text-white' : 'text-red-400'}`}>
               {totalCashIn - totalExpenses < 0

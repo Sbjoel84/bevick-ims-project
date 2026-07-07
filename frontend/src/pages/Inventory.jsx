@@ -545,23 +545,23 @@ export default function Inventory() {
 
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+        <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Items</p>
           <p className="font-syne text-sm sm:text-xl md:text-2xl font-bold text-white">{filtered.length}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+        <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Quantity</p>
           <p className="font-syne text-sm sm:text-xl md:text-2xl font-bold text-white">{totalQty}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+        <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Stock Value</p>
           <p className="font-syne text-xs sm:text-sm md:text-xl font-bold text-white break-all">{formatCurrency(totalValue, currency)}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+        <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Low Stock</p>
           <p className={`font-syne text-sm sm:text-xl md:text-2xl font-bold ${lowCount > 0 ? 'text-amber-400' : 'text-white'}`}>{lowCount}</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0 col-span-2 md:col-span-1">
+        <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0 col-span-2 md:col-span-1">
           <p className="text-gray-500 text-xs font-medium mb-1">Out of Stock</p>
           <p className={`font-syne text-sm sm:text-xl md:text-2xl font-bold ${outCount > 0 ? 'text-red-400' : 'text-white'}`}>{outCount}</p>
         </div>
@@ -743,20 +743,20 @@ export default function Inventory() {
             const totOrder = filteredRecord.reduce((s, r) => s + r.goodsToOrder, 0);
             return (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-gray-900 border border-green-500/30 rounded-xl px-4 py-3">
+                <div className="stat-card bg-gray-900 border border-green-500/30 rounded-xl px-4 py-3">
                   <p className="text-gray-500 text-xs mb-1">Items Sold</p>
                   <p className="font-syne font-bold text-green-400 text-2xl">{totSold}</p>
                   <p className="text-gray-600 text-xs mt-0.5">FF {totFF} · Others {totOth}</p>
                 </div>
-                <div className="bg-gray-900 border border-amber-500/30 rounded-xl px-4 py-3">
+                <div className="stat-card bg-gray-900 border border-amber-500/30 rounded-xl px-4 py-3">
                   <p className="text-gray-500 text-xs mb-1">Full Factory</p>
                   <p className="font-syne font-bold text-amber-300 text-2xl">{totFF}</p>
                 </div>
-                <div className="bg-gray-900 border border-red-500/30 rounded-xl px-4 py-3">
+                <div className="stat-card bg-gray-900 border border-red-500/30 rounded-xl px-4 py-3">
                   <p className="text-gray-500 text-xs mb-1">Others</p>
                   <p className="font-syne font-bold text-red-400 text-2xl">{totOth}</p>
                 </div>
-                <div className={`bg-gray-900 border rounded-xl px-4 py-3 ${totOrder > 0 ? 'border-orange-500/40' : 'border-gray-800'}`}>
+                <div className={`stat-card bg-gray-900 border rounded-xl px-4 py-3 ${totOrder > 0 ? 'border-orange-500/40' : 'border-gray-800'}`}>
                   <p className="text-gray-500 text-xs mb-1">Goods to Order</p>
                   <p className={`font-syne font-bold text-2xl ${totOrder > 0 ? 'text-orange-400' : 'text-gray-400'}`}>{totOrder}</p>
                 </div>
@@ -905,7 +905,7 @@ export default function Inventory() {
             <div className="space-y-5">
               {groupedHistory.map(([dayKey, entries]) => (
                 <div key={dayKey} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-3 bg-gray-800/60 border-b border-gray-800">
+                  <div className="card-heading flex items-center justify-between px-5 py-3 bg-gray-800/60 border-b border-gray-800">
                     <p className="font-syne font-semibold text-white text-sm">{fmtDate(dayKey)}</p>
                     <span className="text-gray-500 text-xs">{entries.length} transaction{entries.length !== 1 ? 's' : ''}</span>
                   </div>

@@ -187,7 +187,7 @@ refreshPermissions(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'pe
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${tab === t ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+            className={`filter-tab px-4 py-2 rounded-xl text-sm font-medium transition-colors ${tab === t ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-gray-300'}`}
           >
             {t}
             {t === 'Pending' && pendingUsers.length > 0 && (

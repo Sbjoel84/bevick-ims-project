@@ -108,13 +108,13 @@ export default function RecycleBin() {
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setFilterType('all')}
-                className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors ${filterType === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                className={`filter-tab px-3 py-2 rounded-xl text-xs font-medium transition-colors ${filterType === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
               >All</button>
               {types.map(t => (
                 <button
                   key={t}
                   onClick={() => setFilterType(t)}
-                  className={`px-3 py-2 rounded-xl text-xs font-medium capitalize transition-colors ${filterType === t ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                  className={`filter-tab px-3 py-2 rounded-xl text-xs font-medium capitalize transition-colors ${filterType === t ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
                 >
                   {TYPE_LABELS[t] || t}
                 </button>

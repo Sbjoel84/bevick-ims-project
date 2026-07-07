@@ -788,7 +788,7 @@ export default function Sales() {
                     key={m}
                     type="button"
                     onClick={() => setForm(f => ({ ...f, payment: m }))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${form.payment === m ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                    className={`filter-tab px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${form.payment === m ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
                   >
                     {m}
                   </button>

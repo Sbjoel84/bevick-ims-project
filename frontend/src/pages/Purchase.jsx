@@ -212,7 +212,7 @@ export default function Purchase() {
           { label: 'PO Raised',           value: bookedNotInStock.filter(i => i.hasPO).length,              color: 'text-blue-400' },
           { label: 'Total Units to Buy',  value: bookedNotInStock.reduce((s, i) => s + i.needed, 0),        color: 'text-green-400' },
         ].map(s => (
-          <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+          <div key={s.label} className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
             <p className="text-gray-500 text-xs font-medium mb-1">{s.label}</p>
             <p className={`font-syne font-bold break-all text-sm sm:text-lg md:text-2xl ${s.color}`}>{s.value}</p>
           </div>

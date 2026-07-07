@@ -29,7 +29,7 @@ const TYPE_STYLES = {
 
 function SummaryCard({ label, value, accent }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 overflow-hidden min-w-0">
+    <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 overflow-hidden min-w-0">
       <p className="text-gray-500 text-xs font-medium mb-1">{label}</p>
       <p className={`font-syne text-sm sm:text-xl font-bold ${accent || 'text-white'}`}>{value}</p>
     </div>

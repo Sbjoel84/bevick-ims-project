@@ -10,7 +10,7 @@ function StatCard({ label, value, sub, color = 'blue', icon }) {
     purple:  'bg-purple-500/10 text-purple-400',
   };
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+    <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
       <div className="flex items-start justify-between mb-2 sm:mb-3">
         <div className={`w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-xl flex items-center justify-center ${colors[color]}`}>
           {icon}
@@ -220,7 +220,7 @@ export default function Dashboard() {
         ).sort((a, b) => b[1].total - a[1].total).slice(0, 2);
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+            <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
               <p className="text-gray-500 text-xs font-medium mb-1">Total Commissions</p>
               <p className="font-syne text-xs sm:text-sm md:text-2xl font-bold text-emerald-400 break-all">
                 {formatCurrency(totalCommissions, currency)}
@@ -229,7 +229,7 @@ export default function Dashboard() {
                 {filteredCommissions.length} referral{filteredCommissions.length !== 1 ? 's' : ''}
               </p>
             </div>
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+            <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
               <p className="text-gray-500 text-xs font-medium mb-2">Top Partners</p>
               {byPartner.length > 0 ? (
                 <div className="space-y-2">

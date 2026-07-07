@@ -418,7 +418,7 @@ function SummaryCards({ summaryRows }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
       {summaryRows.map(s => (
-        <div key={s.label} className={`bg-gray-900 border rounded-xl px-4 py-3 ${s.bold ? 'border-blue-500/50' : 'border-gray-800'}`}>
+        <div key={s.label} className={`stat-card bg-gray-900 border rounded-xl px-4 py-3 ${s.bold ? 'border-blue-500/50' : 'border-gray-800'}`}>
           <p className="text-gray-500 text-xs mb-1 truncate">{s.label}</p>
           <p className={`font-syne font-bold text-base truncate ${s.bold ? 'text-blue-400' : 'text-white'}`}>{s.value}</p>
         </div>
@@ -531,7 +531,7 @@ export default function Reports() {
                   <button
                     key={r.id}
                     onClick={() => setRange(r.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    className={`filter-tab px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       range === r.id
                         ? 'bg-blue-500 text-white'
                         : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'

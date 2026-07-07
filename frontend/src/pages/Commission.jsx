@@ -245,7 +245,7 @@ export default function Commission() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 lg:col-span-2 overflow-hidden min-w-0">
+        <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 lg:col-span-2 overflow-hidden min-w-0">
           <p className="text-gray-500 text-xs font-medium mb-1">Total Commissions</p>
           <p className="font-syne text-xs sm:text-sm md:text-2xl font-bold text-emerald-400 break-all">
             {formatCurrency(totalCommission, currency)}
@@ -255,7 +255,7 @@ export default function Commission() {
           </p>
         </div>
         {byPartner.slice(0, 2).map(x => (
-          <div key={x.partner} className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+          <div key={x.partner} className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
             <p className="text-gray-500 text-xs font-medium mb-1 truncate">{x.partner}</p>
             <p className="font-syne text-xs sm:text-sm md:text-lg font-bold text-white break-all">
               {formatCurrency(x.total, currency)}
