@@ -9,6 +9,59 @@
   .font-mono { font-family: 'DM Mono', monospace; }
 }
 
+/* ── Booked Items matrix (Full Factory / Others) — theme-aware CSS vars ────── */
+:root {
+  --mtx-surface: #0f172a;
+  --mtx-outer-border: #1f2937;
+  --mtx-scroll-thumb: #475569;
+  --mtx-scroll-thumb-2: #334155;
+  --mtx-scroll-track: #1e293b;
+  --mtx-header-bg: #1e293b;
+  --mtx-header-muted: #94a3b8;
+  --mtx-header-text: #f1f5f9;
+  --mtx-header-border: #334155;
+  --mtx-total-header-bg: #1e3a8a;
+  --mtx-total-header-text: #bfdbfe;
+  --mtx-row-even: #0f172a;
+  --mtx-row-odd: #131e2e;
+  --mtx-cell-border: #1e293b;
+  --mtx-sn-text: #64748b;
+  --mtx-row-text: #f1f5f9;
+  --mtx-qty-active-text: #f8fafc;
+  --mtx-qty-zero-text: #1e293b;
+  --mtx-qty-bg-even: #172133;
+  --mtx-qty-bg-odd: #1a2840;
+  --mtx-total-cell-bg: #0e2044;
+  --mtx-total-active-text: #93c5fd;
+  --mtx-total-zero-text: #1e293b;
+}
+
+html[data-theme="light"] {
+  --mtx-surface: #ffffff;
+  --mtx-outer-border: #e2e8f0;
+  --mtx-scroll-thumb: #cbd5e1;
+  --mtx-scroll-thumb-2: #cbd5e1;
+  --mtx-scroll-track: #f1f5f9;
+  --mtx-header-bg: #f1f5f9;
+  --mtx-header-muted: #64748b;
+  --mtx-header-text: #0f172a;
+  --mtx-header-border: #cbd5e1;
+  --mtx-total-header-bg: #dbeafe;
+  --mtx-total-header-text: #1e3a8a;
+  --mtx-row-even: #ffffff;
+  --mtx-row-odd: #f8fafc;
+  --mtx-cell-border: #e2e8f0;
+  --mtx-sn-text: #94a3b8;
+  --mtx-row-text: #0f172a;
+  --mtx-qty-active-text: #0c4a6e;
+  --mtx-qty-zero-text: #f8fafc;
+  --mtx-qty-bg-even: #dbeafe;
+  --mtx-qty-bg-odd: #e6f0fb;
+  --mtx-total-cell-bg: #eff6ff;
+  --mtx-total-active-text: #1d4ed8;
+  --mtx-total-zero-text: #eff6ff;
+}
+
 /* ── Light mode overrides ───────────────────────────────────────────────────── */
 html[data-theme="light"] body { background-color: #f1f5f9; color: #000000; font-weight: 300; }
 

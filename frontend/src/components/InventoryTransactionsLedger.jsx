@@ -169,7 +169,7 @@ export default function InventoryTransactionsLedger({ state }) {
   return (
     <div className="space-y-4">
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+      <div className="sticky top-0 z-20 bg-gray-950 pt-1 pb-3 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
         <SummaryCard label="Today's Transactions" value={summary?.today_count ?? '—'} />
         <SummaryCard label="Weekly Transactions" value={summary?.week_count ?? '—'} />
         <SummaryCard label="Monthly Transactions" value={summary?.month_count ?? '—'} />
@@ -246,9 +246,9 @@ export default function InventoryTransactionsLedger({ state }) {
 
       {/* Table */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[65vh]">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-gray-900">
               <tr className="border-b border-gray-800">
                 {COLUMNS.map(c => (
                   <th key={c.key} className={`text-gray-500 font-medium px-3 py-3 whitespace-nowrap ${c.align === 'tr' ? 'text-right' : 'text-left'}`}>{c.label}</th>

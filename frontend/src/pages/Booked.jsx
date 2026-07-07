@@ -761,9 +761,9 @@ export default function Booked() {
       </div>}
 
       {activeTab === 'bookings' && <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[65vh]">
           <table className="w-full text-sm min-w-[700px]">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-gray-900">
               <tr className="border-b border-gray-800">
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Customer</th>
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Booking ID</th>
@@ -902,10 +902,10 @@ export default function Booked() {
                   onScroll={onRulerScroll}
                   style={{
                     overflowX: 'scroll', overflowY: 'hidden',
-                    height: 16, background: '#0f172a',
+                    height: 16, background: 'var(--mtx-surface)',
                     borderRadius: '12px 12px 0 0',
-                    border: '1px solid #1f2937', borderBottom: 'none',
-                    scrollbarWidth: 'thin', scrollbarColor: '#475569 #1e293b',
+                    border: '1px solid var(--mtx-outer-border)', borderBottom: 'none',
+                    scrollbarWidth: 'thin', scrollbarColor: 'var(--mtx-scroll-thumb) var(--mtx-scroll-track)',
                   }}
                 >
                   {/* Ghost element — same width as the table so the ruler scrolls in sync */}
@@ -919,28 +919,28 @@ export default function Booked() {
                   style={{
                     width: '100%', overflowX: 'scroll', overflowY: 'visible',
                     borderRadius: '0 0 16px 16px',
-                    border: '1px solid #1f2937', borderTop: 'none',
-                    background: '#0f172a',
-                    scrollbarWidth: 'thin', scrollbarColor: '#334155 #0f172a',
+                    border: '1px solid var(--mtx-outer-border)', borderTop: 'none',
+                    background: 'var(--mtx-surface)',
+                    scrollbarWidth: 'thin', scrollbarColor: 'var(--mtx-scroll-thumb-2) var(--mtx-surface)',
                   }}
                 >
                   <table style={{ borderCollapse: 'collapse', minWidth: totalW, width: '100%' }}>
                     <thead>
                       <tr>
                         <th style={{
-                          background: '#1e293b', color: '#94a3b8', fontWeight: 700, fontSize: 12,
-                          textAlign: 'center', padding: '10px 4px', border: '1px solid #334155',
+                          background: 'var(--mtx-header-bg)', color: 'var(--mtx-header-muted)', fontWeight: 700, fontSize: 12,
+                          textAlign: 'center', padding: '10px 4px', border: '1px solid var(--mtx-header-border)',
                           width: SNW, minWidth: SNW, position: 'sticky', left: 0, zIndex: 2,
                         }}>S/N</th>
                         <th style={{
-                          background: '#1e293b', color: '#f1f5f9', fontWeight: 700, fontSize: 13,
-                          textAlign: 'left', padding: '10px 14px', border: '1px solid #334155',
+                          background: 'var(--mtx-header-bg)', color: 'var(--mtx-header-text)', fontWeight: 700, fontSize: 13,
+                          textAlign: 'left', padding: '10px 14px', border: '1px solid var(--mtx-header-border)',
                           width: ITEMW, minWidth: ITEMW, position: 'sticky', left: SNW, zIndex: 2,
                         }}>ITEMS</th>
                         {customers.map((c, i) => (
                           <th key={i} style={{
-                            background: '#1e293b', color: '#f1f5f9', fontWeight: 900, fontSize: 12,
-                            border: '1px solid #334155', width: COLW, minWidth: COLW,
+                            background: 'var(--mtx-header-bg)', color: 'var(--mtx-header-text)', fontWeight: 900, fontSize: 12,
+                            border: '1px solid var(--mtx-header-border)', width: COLW, minWidth: COLW,
                             verticalAlign: 'bottom', padding: 0,
                           }}>
                             <div style={{
@@ -953,8 +953,8 @@ export default function Booked() {
                           </th>
                         ))}
                         <th style={{
-                          background: '#1e3a8a', color: '#bfdbfe', fontWeight: 900, fontSize: 12,
-                          border: '1px solid #334155', width: TOTALW, minWidth: TOTALW,
+                          background: 'var(--mtx-total-header-bg)', color: 'var(--mtx-total-header-text)', fontWeight: 900, fontSize: 12,
+                          border: '1px solid var(--mtx-header-border)', width: TOTALW, minWidth: TOTALW,
                           verticalAlign: 'bottom', padding: 0,
                         }}>
                           <div style={{
@@ -967,38 +967,38 @@ export default function Booked() {
                     </thead>
                     <tbody>
                       {rows.map((row, idx) => {
-                        const rowBg = idx % 2 === 0 ? '#0f172a' : '#131e2e';
+                        const rowBg = idx % 2 === 0 ? 'var(--mtx-row-even)' : 'var(--mtx-row-odd)';
                         return (
                           <tr key={row.name} style={{ background: rowBg }}>
                             <td style={{
-                              color: '#64748b', textAlign: 'center', padding: '9px 4px',
-                              border: '1px solid #1e293b', fontSize: 12, fontWeight: 600,
+                              color: 'var(--mtx-sn-text)', textAlign: 'center', padding: '9px 4px',
+                              border: '1px solid var(--mtx-cell-border)', fontSize: 12, fontWeight: 600,
                               position: 'sticky', left: 0, background: rowBg, zIndex: 1,
                             }}>{idx + 1}</td>
                             <td style={{
-                              color: '#f1f5f9', fontWeight: 600, fontSize: 13,
-                              padding: '9px 14px', border: '1px solid #1e293b',
+                              color: 'var(--mtx-row-text)', fontWeight: 600, fontSize: 13,
+                              padding: '9px 14px', border: '1px solid var(--mtx-cell-border)',
                               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                               maxWidth: ITEMW, position: 'sticky', left: SNW, background: rowBg, zIndex: 1,
                             }}>{row.name}</td>
                             {row.qtys.map((qty, i) => (
                               <td key={i} style={{
                                 textAlign: 'center', padding: '9px 2px',
-                                border: '1px solid #1e293b',
+                                border: '1px solid var(--mtx-cell-border)',
                                 fontWeight: qty > 0 ? 800 : 400,
-                                color: qty > 0 ? '#f8fafc' : '#1e293b',
+                                color: qty > 0 ? 'var(--mtx-qty-active-text)' : 'var(--mtx-qty-zero-text)',
                                 fontFamily: 'monospace', fontSize: 14,
-                                background: qty > 0 ? (idx % 2 === 0 ? '#172133' : '#1a2840') : rowBg,
+                                background: qty > 0 ? (idx % 2 === 0 ? 'var(--mtx-qty-bg-even)' : 'var(--mtx-qty-bg-odd)') : rowBg,
                               }}>
                                 {qty > 0 ? qty : ''}
                               </td>
                             ))}
                             <td style={{
                               textAlign: 'center', padding: '9px 2px',
-                              border: '1px solid #1e293b',
+                              border: '1px solid var(--mtx-cell-border)',
                               fontWeight: 800, fontSize: 15,
-                              color: row.total > 0 ? '#93c5fd' : '#1e293b',
-                              fontFamily: 'monospace', background: '#0e2044',
+                              color: row.total > 0 ? 'var(--mtx-total-active-text)' : 'var(--mtx-total-zero-text)',
+                              fontFamily: 'monospace', background: 'var(--mtx-total-cell-bg)',
                             }}>
                               {row.total > 0 ? row.total : ''}
                             </td>

@@ -222,9 +222,9 @@ export default function SalesTransactionsLedger({ state, canExport }) {
 
       {/* Table */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[65vh]">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-gray-900">
               <tr className="border-b border-gray-800">
                 {columns.map(c => (
                   <th key={c.key} className={`text-gray-500 font-medium px-3 py-3 whitespace-nowrap ${c.align === 'tr' ? 'text-right' : 'text-left'}`}>{c.label}</th>

@@ -265,9 +265,9 @@ export default function Purchase() {
           <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
           <span className="text-amber-400 text-sm font-semibold">Items from Active Bookings — Not in Store Inventory</span>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[65vh]">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-gray-900">
               <tr className="border-b border-gray-800">
                 <th className="text-left text-gray-500 font-medium px-5 py-3">#</th>
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Item Name</th>

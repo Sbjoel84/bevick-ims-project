@@ -169,49 +169,51 @@ export default function Expenses() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-syne text-2xl font-bold text-white">Expenses</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{bname}</p>
+      {/* Header + Summary Cards (float together while scrolling) */}
+      <div className="sticky top-0 z-20 -mx-6 -mt-6 px-6 pt-6 pb-4 bg-gray-950 border-b border-gray-800 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-syne text-2xl font-bold text-white">Expenses</h1>
+            <p className="text-gray-500 text-sm mt-0.5">{bname}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setReportOpen(true)}
+              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+              Print
+            </button>
+            <button
+              onClick={() => { setEditing(null); setForm({ ...EMPTY, branch: branch || 'DUB' }); setModal(true); }}
+              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+              Add Entry
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setReportOpen(true)}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-            Print
-          </button>
-          <button
-            onClick={() => { setEditing(null); setForm({ ...EMPTY, branch: branch || 'DUB' }); setModal(true); }}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-            Add Entry
-          </button>
-        </div>
-      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 lg:col-span-2 overflow-hidden min-w-0">
-          <p className="text-gray-500 text-xs font-medium mb-1">Total Expenses</p>
-          <p className="font-syne text-xs sm:text-sm md:text-2xl font-bold text-red-400 break-all">{formatCurrency(totalExpenses, currency)}</p>
-          <p className="text-gray-600 text-xs mt-1">{filtered.filter(e => getExpenseType(e) !== 'cashIn').length} expense entries</p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
-          <p className="text-gray-500 text-xs font-medium mb-1">Cash In</p>
-          <p className="font-syne text-xs sm:text-sm md:text-lg font-bold text-green-400 break-all">{formatCurrency(totalCashIn, currency)}</p>
-        </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
-          <p className="text-gray-500 text-xs font-medium mb-1">Balance</p>
-          <p className={`font-syne text-xs sm:text-sm md:text-lg font-bold break-all ${totalCashIn - totalExpenses >= 0 ? 'text-white' : 'text-red-400'}`}>
-            {totalCashIn - totalExpenses < 0
-              ? `-${formatCurrency(Math.abs(totalCashIn - totalExpenses), currency)}`
-              : formatCurrency(totalCashIn - totalExpenses, currency)
-            }
-          </p>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 lg:col-span-2 overflow-hidden min-w-0">
+            <p className="text-gray-500 text-xs font-medium mb-1">Total Expenses</p>
+            <p className="font-syne text-xs sm:text-sm md:text-2xl font-bold text-red-400 break-all">{formatCurrency(totalExpenses, currency)}</p>
+            <p className="text-gray-600 text-xs mt-1">{filtered.filter(e => getExpenseType(e) !== 'cashIn').length} expense entries</p>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+            <p className="text-gray-500 text-xs font-medium mb-1">Cash In</p>
+            <p className="font-syne text-xs sm:text-sm md:text-lg font-bold text-green-400 break-all">{formatCurrency(totalCashIn, currency)}</p>
+          </div>
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
+            <p className="text-gray-500 text-xs font-medium mb-1">Balance</p>
+            <p className={`font-syne text-xs sm:text-sm md:text-lg font-bold break-all ${totalCashIn - totalExpenses >= 0 ? 'text-white' : 'text-red-400'}`}>
+              {totalCashIn - totalExpenses < 0
+                ? `-${formatCurrency(Math.abs(totalCashIn - totalExpenses), currency)}`
+                : formatCurrency(totalCashIn - totalExpenses, currency)
+              }
+            </p>
+          </div>
         </div>
       </div>
 
@@ -236,9 +238,9 @@ export default function Expenses() {
 
       {/* Ledger Table */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[65vh]">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-gray-900">
               <tr className="border-b border-gray-800">
                 <th className="text-left text-gray-500 font-medium px-4 py-3 whitespace-nowrap">Date</th>
                 <th className="text-left text-gray-500 font-medium px-4 py-3">Details</th>

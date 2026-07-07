@@ -205,9 +205,9 @@ export default function Customers() {
 
       {/* Table */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[65vh]">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-gray-900">
               <tr className="border-b border-gray-800">
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Name</th>
                 <th className="text-left text-gray-500 font-medium px-5 py-3">Phone</th>
