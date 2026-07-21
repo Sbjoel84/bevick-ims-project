@@ -8,6 +8,18 @@ import { supabase } from '../lib/supabase';
 // thousands of entries that slow down every state update.
 const MAX_AUDIT_LOG = 500;
 
+// Maps a state key refreshed via REFRESH_TABLE to the recycleBin `_type` used
+// when that record is soft-deleted, so REFRESH_TABLE can filter out rows that
+// are already in the recycle bin (see REFRESH_TABLE case below).
+const RECYCLE_TYPE_BY_KEY = {
+  inventory: 'inventory',
+  customers: 'customer',
+  expenses: 'expense',
+  suppliers: 'supplier',
+  bookings: 'booking',
+  sales: 'sale',
+};
+
 const AppContext = createContext(null);
 
 const initialState = {
@@ -100,8 +112,23 @@ function rawReducer(state, action) {
       return { ...state, toasts: state.toasts.filter(t => t.id !== action.payload) };
 
     // ── REFRESH — bulk-set a single table from a manual Supabase fetch ─────────
-    case 'REFRESH_TABLE':
-      return { ...state, [action.payload.key]: action.payload.data };
+    // Guards against a stale/out-of-order fetch (e.g. a page-mount fetch that
+    // started before a delete, but resolves after it) re-adding a row the user
+    // already deleted: anything still sitting in the recycle bin for this table
+    // is stripped from the incoming data before it overwrites local state.
+    case 'REFRESH_TABLE': {
+      const { key, data } = action.payload;
+      const recycleType = RECYCLE_TYPE_BY_KEY[key];
+      if (recycleType && state.recycleBin.length) {
+        const deletedIds = new Set(
+          state.recycleBin.filter(r => r._type === recycleType).map(r => r.id)
+        );
+        if (deletedIds.size) {
+          return { ...state, [key]: data.filter(row => !deletedIds.has(row.id)) };
+        }
+      }
+      return { ...state, [key]: data };
+    }
 
     // ── REFRESH SETTINGS — spreads fetched settings fields into state ──────────
     case 'REFRESH_SETTINGS':
