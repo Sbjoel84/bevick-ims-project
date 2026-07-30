@@ -607,6 +607,7 @@ export default function Inventory() {
                 <th className="text-left text-gray-500 font-medium px-4 py-3">Category</th>
                 <th className="text-center text-gray-500 font-medium px-4 py-3">Dubai</th>
                 <th className="text-center text-gray-500 font-medium px-4 py-3">Kubwa</th>
+                <th className="text-center text-gray-500 font-medium px-4 py-3">Total Items</th>
                 <th className="text-left text-gray-500 font-medium px-4 py-3">Unit</th>
                 <th className="text-left text-gray-500 font-medium px-4 py-3">Price</th>
                 <th className="text-left text-gray-500 font-medium px-4 py-3">Value</th>
@@ -616,7 +617,7 @@ export default function Inventory() {
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={9} className="text-center text-gray-600 py-12">No items found</td></tr>
+                <tr><td colSpan={10} className="text-center text-gray-600 py-12">No items found</td></tr>
               ) : filtered.map(item => (
                 <tr key={item.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
                   <td className="px-4 py-3">
@@ -628,6 +629,7 @@ export default function Inventory() {
                   </td>
                   <td className="px-4 py-3 text-center text-white font-mono">{item.dubQty} <span className="text-gray-500 text-xs">{item.unit}</span></td>
                   <td className="px-4 py-3 text-center text-white font-mono">{item.kubQty} <span className="text-gray-500 text-xs">{item.unit}</span></td>
+                  <td className="px-4 py-3 text-center text-white font-mono font-semibold">{(item.dubQty || 0) + (item.kubQty || 0)} <span className="text-gray-500 text-xs">{item.unit}</span></td>
                   <td className="px-4 py-3 text-gray-400 text-xs">{item.unit}</td>
                   <td className="px-4 py-3 text-gray-400 font-mono">{formatCurrency(item.price, currency)}</td>
                   <td className="px-4 py-3 text-blue-400 font-mono">{formatCurrency(((item.dubQty || 0) + (item.kubQty || 0)) * item.price, currency)}</td>
@@ -689,6 +691,9 @@ export default function Inventory() {
                 </div>
                 <div className="bg-gray-800 px-2 py-1 rounded">
                   <span className="text-gray-500">Kubwa:</span> <span className="text-white font-mono">{item.kubQty} {item.unit}</span>
+                </div>
+                <div className="bg-gray-800 px-2 py-1 rounded">
+                  <span className="text-gray-500">Total Items:</span> <span className="text-white font-mono font-semibold">{(item.dubQty || 0) + (item.kubQty || 0)} {item.unit}</span>
                 </div>
                 <div className="bg-gray-800 px-2 py-1 rounded">
                   <span className="text-gray-500">Price:</span> <span className="text-gray-300 font-mono">{formatCurrency(item.price, currency)}</span>
