@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useApp, formatCurrency, fmtDate } from '../context/AppContext';
-import { refreshInventory, refreshSales, refreshExpenses, refreshCustomers, refreshBookings, refreshCommissions } from '../lib/refresh';
+import { refreshInventory, refreshSales, refreshExpenses, refreshBookings, refreshCommissions } from '../lib/refresh';
 
 function StatCard({ label, value, sub, color = 'blue', icon }) {
   const colors = {
@@ -19,6 +19,108 @@ function StatCard({ label, value, sub, color = 'blue', icon }) {
       <p className="text-xs sm:text-sm md:text-xl font-syne font-bold text-white leading-tight break-all">{value}</p>
       <p className="text-gray-400 text-xs mt-0.5 truncate">{label}</p>
       {sub && <p className="text-gray-600 text-[10px] sm:text-xs mt-1 truncate">{sub}</p>}
+    </div>
+  );
+}
+
+function SalesOverviewChart({ data, currency }) {
+  if (!data || data.length === 0) {
+    return <div className="h-52 flex items-center justify-center text-gray-500 text-sm">No sales data available</div>;
+  }
+  const W = 600, H = 200, padTop = 12, padBottom = 24, padX = 8;
+  const plotH = H - padTop - padBottom;
+  const maxVal = Math.max(1, ...data.map(d => Math.max(d.revenue, d.profit)));
+  const minVal = Math.min(0, ...data.map(d => d.profit));
+  const range = (maxVal - minVal) || 1;
+  const yScale = v => padTop + ((maxVal - v) / range) * plotH;
+  const zeroY = yScale(0);
+  const n = data.length;
+  const groupW = (W - padX * 2) / n;
+  const barW = groupW * 0.42;
+  const linePts = data.map((d, i) => ({ x: padX + groupW * i + groupW / 2, y: yScale(d.profit), v: d.profit }));
+  const linePath = linePts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+
+  return (
+    <div>
+      <div className="flex items-center gap-4 mb-2 text-xs">
+        <span className="flex items-center gap-1.5 text-gray-400"><span className="w-2.5 h-2.5 rounded-sm bg-blue-400 inline-block" /> Daily Sales</span>
+        <span className="flex items-center gap-1.5 text-gray-400"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" /> Profit Trend</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-52">
+        <line x1={padX} y1={zeroY} x2={W - padX} y2={zeroY} stroke="#383835" strokeWidth="1" strokeDasharray="3 3" />
+        {data.map((d, i) => {
+          const x = padX + groupW * i + (groupW - barW) / 2;
+          const yTop = yScale(d.revenue);
+          const h = Math.max(0, zeroY - yTop);
+          return (
+            <rect key={i} x={x} y={yTop} width={barW} height={h} rx="3" fill="#60a5fa" opacity="0.85">
+              <title>{`${d.label}: ${formatCurrency(d.revenue, currency)} sales`}</title>
+            </rect>
+          );
+        })}
+        <path d={linePath} fill="none" stroke="#34d399" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {linePts.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3.5" fill="#34d399" stroke="#111827" strokeWidth="1.5">
+            <title>{`${data[i].label}: ${formatCurrency(p.v, currency)} profit`}</title>
+          </circle>
+        ))}
+        {data.map((d, i) => (
+          <text key={i} x={padX + groupW * i + groupW / 2} y={H - 6} textAnchor="middle" fontSize="9" fill="#898781">{d.label}</text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+function ProfitLossAreaChart({ data, currency }) {
+  if (!data || data.length === 0) {
+    return <div className="h-52 flex items-center justify-center text-gray-500 text-sm">No data available</div>;
+  }
+  const W = 600, H = 200, padTop = 14, padBottom = 24, padX = 8;
+  const plotH = H - padTop - padBottom;
+  const values = data.map(d => d.profit);
+  const maxVal = Math.max(1, ...values, 0);
+  const minVal = Math.min(0, ...values);
+  const range = (maxVal - minVal) || 1;
+  const yScale = v => padTop + ((maxVal - v) / range) * plotH;
+  const zeroY = yScale(0);
+  const n = data.length;
+  const xStep = n > 1 ? (W - padX * 2) / (n - 1) : 0;
+  const pts = data.map((d, i) => ({ x: padX + xStep * i, y: yScale(d.profit), v: d.profit }));
+  const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const areaPath = `M${pts[0].x},${zeroY} L${pts.map(p => `${p.x},${p.y}`).join(' L')} L${pts[pts.length - 1].x},${zeroY} Z`;
+  const zeroFrac = (zeroY / H) * 100;
+  const gradId = 'plGrad';
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-52">
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2={H} gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#0ca30c" stopOpacity="0.55" />
+            <stop offset={`${zeroFrac}%`} stopColor="#0ca30c" stopOpacity="0.25" />
+            <stop offset={`${zeroFrac}%`} stopColor="#d03b3b" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#d03b3b" stopOpacity="0.55" />
+          </linearGradient>
+          <linearGradient id={`${gradId}-line`} x1="0" y1="0" x2="0" y2={H} gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#0ca30c" />
+            <stop offset={`${zeroFrac}%`} stopColor="#0ca30c" />
+            <stop offset={`${zeroFrac}%`} stopColor="#d03b3b" />
+            <stop offset="100%" stopColor="#d03b3b" />
+          </linearGradient>
+        </defs>
+        <line x1={padX} y1={zeroY} x2={W - padX} y2={zeroY} stroke="#383835" strokeWidth="1" strokeDasharray="3 3" />
+        <path d={areaPath} fill={`url(#${gradId})`} />
+        <path d={linePath} fill="none" stroke={`url(#${gradId}-line)`} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {pts.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3.5" fill={p.v >= 0 ? '#0ca30c' : '#d03b3b'} stroke="#111827" strokeWidth="1.5">
+            <title>{`${data[i].label}: ${formatCurrency(p.v, currency)} ${p.v >= 0 ? 'profit' : 'loss'}`}</title>
+          </circle>
+        ))}
+        {data.map((d, i) => (
+          <text key={i} x={padX + xStep * i} y={H - 6} textAnchor="middle" fontSize="9" fill="#898781">{d.label}</text>
+        ))}
+      </svg>
     </div>
   );
 }
@@ -69,14 +171,13 @@ function SimpleBarChart({ data, currency }) {
 
 export default function Dashboard() {
   const { state, dispatch } = useApp();
-  const { sales, expenses, inventory, bookings, customers, commissions = [], currency, thr, branch, bname, user } = state;
+  const { sales, expenses, inventory, bookings, commissions = [], currency, thr, branch, bname, user } = state;
   const isAdmin = ['main_super_admin', 'super_admin', 'admin'].includes(user?.role);
 
   useEffect(() => {
     refreshInventory(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'inventory', data } }));
     refreshSales(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'sales', data } }));
     refreshExpenses(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'expenses', data } }));
-    refreshCustomers(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'customers', data } }));
     refreshBookings(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'bookings', data } }));
     refreshCommissions(data => dispatch({ type: 'REFRESH_TABLE', payload: { key: 'commissions', data } }));
   }, []);
@@ -86,23 +187,12 @@ export default function Dashboard() {
   const filteredExpenses  = branch ? expenses.filter(e => e.branch === branch) : expenses;
   const filteredInventory = branch ? inventory.filter(i => i.branch === branch) : inventory;
   const filteredBookings  = branch ? bookings.filter(b => !b.branch || b.branch === branch) : bookings;
-  const filteredCustomers = branch ? customers.filter(c => !c.branch || c.branch === branch) : customers;
-
-  // All unique customers: registered + anyone named in a sale or booking (mirrors Customers page)
-  const totalUniqueCustomers = useMemo(() => {
-    const norm = s => s?.toLowerCase().trim() || '';
-    const seen = new Set(filteredCustomers.map(c => norm(c.name)).filter(Boolean));
-    [...filteredSales.map(s => s.customer), ...filteredBookings.map(b => b.customer)]
-      .forEach(name => { const k = norm(name); if (k) seen.add(k); });
-    return seen.size;
-  }, [filteredCustomers, filteredSales, filteredBookings]);
 
   // KPIs
   const totalRevenue = filteredSales.reduce((s, x) => s + (x.total || 0), 0);
   const totalExpenses = filteredExpenses.reduce((s, x) => s + (x.amount || 0), 0);
   const netProfit = totalRevenue - totalExpenses;
   const lowStock = filteredInventory.filter(i => i.qty <= (i.minQty || thr));
-  const outOfStock = filteredInventory.filter(i => i.qty === 0);
 
   // Commission stats
   const filteredCommissions = branch ? commissions.filter(c => c.branch === branch) : commissions;
@@ -133,6 +223,40 @@ export default function Dashboard() {
       .sort((a, b) => b.qty - a.qty)
       .slice(0, 10);
   }, [filteredSales]);
+
+  // Sales Overview — last 7 days: daily revenue (bars) vs daily profit (line)
+  const salesOverviewData = useMemo(() => {
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d);
+    }
+    return days.map(d => {
+      const key = d.toDateString();
+      const revenue = filteredSales.filter(s => new Date(s.date).toDateString() === key).reduce((s, x) => s + (x.total || 0), 0);
+      const expense = filteredExpenses.filter(e => new Date(e.date).toDateString() === key).reduce((s, x) => s + (x.amount || 0), 0);
+      return { label: d.toLocaleDateString('en-US', { weekday: 'short' }), revenue, profit: revenue - expense };
+    });
+  }, [filteredSales, filteredExpenses]);
+
+  // Profit & Loss Analysis — current month, bucketed by week
+  const profitLossData = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear(), month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const weekCount = Math.ceil(daysInMonth / 7);
+    const buckets = Array.from({ length: weekCount }, (_, i) => ({ label: `Week ${i + 1}`, revenue: 0, expense: 0 }));
+    filteredSales.forEach(s => {
+      const d = new Date(s.date);
+      if (d.getFullYear() === year && d.getMonth() === month) buckets[Math.floor((d.getDate() - 1) / 7)].revenue += s.total || 0;
+    });
+    filteredExpenses.forEach(e => {
+      const d = new Date(e.date);
+      if (d.getFullYear() === year && d.getMonth() === month) buckets[Math.floor((d.getDate() - 1) / 7)].expense += e.amount || 0;
+    });
+    return buckets.map(b => ({ label: b.label, profit: b.revenue - b.expense }));
+  }, [filteredSales, filteredExpenses]);
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
@@ -177,14 +301,7 @@ export default function Dashboard() {
       )}
 
       {/* Second row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Inventory Items"
-          value={filteredInventory.length}
-          sub={`${outOfStock.length} out of stock`}
-          color="blue"
-          icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>}
-        />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           label="Low Stock Alerts"
           value={lowStock.length}
@@ -200,56 +317,30 @@ export default function Dashboard() {
           icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>}
         />
         <StatCard
-          label="Customers"
-          value={totalUniqueCustomers}
-          sub="Registered"
+          label="Total Commissions"
+          value={formatCurrency(totalCommissions, currency)}
+          sub={`${filteredCommissions.length} referral${filteredCommissions.length !== 1 ? 's' : ''}`}
           color="blue"
           icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>}
         />
       </div>
 
-      {/* Commission Summary */}
-      {(() => {
-        const byPartner = Object.entries(
-          filteredCommissions.reduce((acc, c) => {
-            if (!acc[c.partner]) acc[c.partner] = { total: 0, count: 0 };
-            acc[c.partner].total += c.commission || 0;
-            acc[c.partner].count += 1;
-            return acc;
-          }, {})
-        ).sort((a, b) => b[1].total - a[1].total).slice(0, 2);
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-            <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
-              <p className="text-gray-500 text-xs font-medium mb-1">Total Commissions</p>
-              <p className="font-syne text-xs sm:text-sm md:text-2xl font-bold text-emerald-400 break-all">
-                {formatCurrency(totalCommissions, currency)}
-              </p>
-              <p className="text-gray-600 text-xs mt-1">
-                {filteredCommissions.length} referral{filteredCommissions.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-            <div className="stat-card bg-gray-900 border border-gray-800 rounded-2xl p-3 sm:p-4 md:p-5 overflow-hidden min-w-0">
-              <p className="text-gray-500 text-xs font-medium mb-2">Top Partners</p>
-              {byPartner.length > 0 ? (
-                <div className="space-y-2">
-                  {byPartner.map(([partner, { total, count }]) => (
-                    <div key={partner} className="flex items-center justify-between gap-2">
-                      <p className="text-white text-xs font-medium truncate">{partner}</p>
-                      <div className="text-right shrink-0">
-                        <p className="font-syne text-xs font-bold text-white">{formatCurrency(total, currency)}</p>
-                        <p className="text-gray-600 text-xs">{count} referral{count !== 1 ? 's' : ''}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-600 text-xs">No referrals recorded yet</p>
-              )}
-            </div>
+      {/* Sales Overview & Profit / Loss charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+          <h2 className="font-syne font-semibold text-white mb-1">Sales Overview</h2>
+          <p className="text-gray-600 text-xs mb-3">Last 7 days</p>
+          <SalesOverviewChart data={salesOverviewData} currency={currency} />
+        </div>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-syne font-semibold text-white">Profit &amp; Loss Analysis</h2>
+            <span className="text-gray-500 text-xs bg-gray-800 border border-gray-700 rounded-lg px-2 py-1">This Month</span>
           </div>
-        );
-      })()}
+          <p className="text-gray-600 text-xs mb-3">Weekly profit trend</p>
+          <ProfitLossAreaChart data={profitLossData} currency={currency} />
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Recent Sales */}
