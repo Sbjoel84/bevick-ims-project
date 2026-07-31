@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 
-export function exportPurchaseListExcel({ items, bizName, bizRC }) {
+export function exportPurchaseListExcel({ items, bizName, bizRC, title = 'Purchase Requirements', sheetName = 'Purchase List', fileNamePrefix = 'Purchase-Requirements' }) {
   const now = new Date();
   const dateStr = now.toLocaleString('en-NG');
   const fileDateStr = now.toISOString().slice(0, 10);
@@ -11,7 +11,7 @@ export function exportPurchaseListExcel({ items, bizName, bizRC }) {
   const metaRows = [
     [bizName || 'Bevick Packaging Machineries'],
     [bizRC || 'RC: 967373'],
-    ['Purchase Requirements'],
+    [title],
     [`Generated: ${dateStr}`],
     [],
     ['S/N', 'ITEM NAME', 'QTY'],
@@ -39,8 +39,8 @@ export function exportPurchaseListExcel({ items, bizName, bizRC }) {
     { wch: 10 },  // QTY
   ];
 
-  XLSX.utils.book_append_sheet(wb, ws, 'Purchase List');
-  XLSX.writeFile(wb, `Purchase-Requirements-${fileDateStr}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
+  XLSX.writeFile(wb, `${fileNamePrefix}-${fileDateStr}.xlsx`);
 }
 
 // Builds the shared metadata + header + data + summary row layout used by
