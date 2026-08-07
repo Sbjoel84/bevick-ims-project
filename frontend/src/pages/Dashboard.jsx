@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useApp, formatCurrency, fmtDate } from '../context/AppContext';
 import { refreshInventory, refreshSales, refreshExpenses, refreshBookings, refreshCommissions } from '../lib/refresh';
+import { getExpenseType } from './Expenses';
 
 function StatCard({ label, value, sub, color = 'blue', icon }) {
   const colors = {
@@ -121,6 +122,60 @@ function ProfitLossAreaChart({ data, currency }) {
           <text key={i} x={padX + xStep * i} y={H - 6} textAnchor="middle" fontSize="9" fill="#898781">{d.label}</text>
         ))}
       </svg>
+    </div>
+  );
+}
+
+function ExpenseBreakdownChart({ data, currency }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (total <= 0) {
+    return <div className="h-52 flex items-center justify-center text-gray-500 text-sm">No expense data available</div>;
+  }
+  const size = 160, radius = 60, strokeW = 22, cx = size / 2, cy = size / 2;
+  const circumference = 2 * Math.PI * radius;
+  const gap = 3;
+  let offsetAcc = 0;
+  const segments = data.filter(d => d.value > 0).map(d => {
+    const frac = d.value / total;
+    const dash = frac * circumference;
+    const seg = { ...d, frac, dash: Math.max(0, dash - gap), offset: offsetAcc };
+    offsetAcc += dash;
+    return seg;
+  });
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <svg viewBox={`0 0 ${size} ${size}`} className="w-36 h-36 shrink-0 -rotate-90">
+        <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#27272a" strokeWidth={strokeW} />
+        {segments.map((s, i) => (
+          <circle
+            key={i}
+            cx={cx} cy={cy} r={radius}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={strokeW}
+            strokeDasharray={`${s.dash} ${circumference - s.dash}`}
+            strokeDashoffset={-s.offset}
+          >
+            <title>{`${s.label}: ${formatCurrency(s.value, currency)} (${Math.round(s.frac * 100)}%)`}</title>
+          </circle>
+        ))}
+      </svg>
+      <div className="flex flex-col gap-2 w-full min-w-0">
+        {segments.map((s, i) => (
+          <div key={i} className="flex items-center justify-between gap-2 text-xs">
+            <span className="flex items-center gap-1.5 text-gray-400 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
+              <span className="truncate">{s.label}</span>
+            </span>
+            <span className="text-gray-300 font-mono font-medium shrink-0">{Math.round(s.frac * 100)}%</span>
+          </div>
+        ))}
+        <div className="flex items-center justify-between gap-2 text-xs pt-2 mt-1 border-t border-gray-800">
+          <span className="text-gray-500">Total</span>
+          <span className="text-white font-mono font-semibold">{formatCurrency(total, currency)}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -258,6 +313,18 @@ export default function Dashboard() {
     return buckets.map(b => ({ label: b.label, profit: b.revenue - b.expense }));
   }, [filteredSales, filteredExpenses]);
 
+  // Expense Breakdown — by expense type
+  const expenseBreakdownData = useMemo(() => {
+    const roExp   = filteredExpenses.filter(e => getExpenseType(e) === 'roExpense').reduce((s, e) => s + (e.amount || 0), 0);
+    const siteTP  = filteredExpenses.filter(e => getExpenseType(e) === 'siteTP').reduce((s, e) => s + (e.amount || 0), 0);
+    const offExp  = filteredExpenses.filter(e => getExpenseType(e) === 'officeExp').reduce((s, e) => s + (e.amount || 0), 0);
+    return [
+      { label: 'RO Expense', value: roExp, color: '#60a5fa' },
+      { label: 'Site TP & Others', value: siteTP, color: '#fbbf24' },
+      { label: 'Office Expense', value: offExp, color: '#fb7185' },
+    ];
+  }, [filteredExpenses]);
+
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
@@ -325,20 +392,25 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Sales Overview & Profit / Loss charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+      {/* Sales Overview, Profit / Loss & Expense Breakdown charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 lg:col-span-2">
           <h2 className="font-syne font-semibold text-white mb-1">Sales Overview</h2>
           <p className="text-gray-600 text-xs mb-3">Last 7 days</p>
           <SalesOverviewChart data={salesOverviewData} currency={currency} />
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 lg:col-span-2">
           <div className="flex items-center justify-between mb-1">
             <h2 className="font-syne font-semibold text-white">Profit &amp; Loss Analysis</h2>
             <span className="text-gray-500 text-xs bg-gray-800 border border-gray-700 rounded-lg px-2 py-1">This Month</span>
           </div>
           <p className="text-gray-600 text-xs mb-3">Weekly profit trend</p>
           <ProfitLossAreaChart data={profitLossData} currency={currency} />
+        </div>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 lg:col-span-1">
+          <h2 className="font-syne font-semibold text-white mb-1">Expense Breakdown</h2>
+          <p className="text-gray-600 text-xs mb-3">By category</p>
+          <ExpenseBreakdownChart data={expenseBreakdownData} currency={currency} />
         </div>
       </div>
 
