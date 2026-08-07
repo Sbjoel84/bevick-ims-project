@@ -412,8 +412,12 @@ export default function Booked() {
   const filtered = bookings
     .filter(b => filterStatus === 'all' || b.status === filterStatus)
     .filter(b => {
-      const q = search.toLowerCase();
-      return !q || b.customer?.toLowerCase().includes(q) || b.id?.toLowerCase().includes(q);
+      const q = search.trim().toLowerCase();
+      if (!q) return true;
+      if (b.customer?.toLowerCase().includes(q)) return true;
+      if (b.id?.toLowerCase().includes(q)) return true;
+      if ((b.items || []).some(i => i.name?.toLowerCase().includes(q))) return true;
+      return false;
     })
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -742,7 +746,7 @@ export default function Booked() {
       {activeTab === 'bookings' && <div className="flex flex-col sm:flex-row flex-wrap gap-3">
         <input
           type="text"
-          placeholder="Search bookings…"
+          placeholder="Search by item or customer…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
@@ -863,13 +867,40 @@ export default function Booked() {
         const isFF = activeTab === 'full_factory';
 
         const q = matrixSearch.trim().toLowerCase();
-        const rows = q ? allRows.filter(r => r.name.toLowerCase().includes(q)) : allRows;
+        let rows = allRows;
+        let cols = customers;
+
+        if (q) {
+          const matchedItemRows  = allRows.filter(r => r.name.toLowerCase().includes(q));
+          const matchedCustomers = customers.filter(c => c.toLowerCase().includes(q));
+
+          if (matchedItemRows.length > 0) {
+            // Item-name search: show the matching item(s) and only the customers who booked them
+            const activeIdx = new Set();
+            matchedItemRows.forEach(r => r.qtys.forEach((v, i) => { if (v > 0) activeIdx.add(i); }));
+            cols = customers.filter((_, i) => activeIdx.has(i));
+            rows = matchedItemRows.map(r => ({
+              ...r,
+              qtys: customers.map((_, i) => r.qtys[i]).filter((_, i) => activeIdx.has(i)),
+            }));
+          } else if (matchedCustomers.length > 0) {
+            // Customer-name search: show only that customer's column and the items they booked
+            cols = matchedCustomers;
+            const idxList = customers.map((c, i) => (matchedCustomers.includes(c) ? i : -1)).filter(i => i >= 0);
+            rows = allRows
+              .map(r => ({ ...r, qtys: idxList.map(i => r.qtys[i]) }))
+              .filter(r => r.qtys.some(v => v > 0));
+          } else {
+            rows = [];
+            cols = [];
+          }
+        }
 
         const SNW    = 48;
         const ITEMW  = 260;
         const COLW   = 38;
         const TOTALW = 52;
-        const totalW = SNW + ITEMW + customers.length * COLW + TOTALW;
+        const totalW = SNW + ITEMW + cols.length * COLW + TOTALW;
 
         return (
           <div className="space-y-3">
@@ -881,18 +912,18 @@ export default function Booked() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search items…"
+                  placeholder="Search by item or customer…"
                   value={matrixSearch}
                   onChange={e => setMatrixSearch(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <span className="text-gray-500 text-xs">{rows.length} item{rows.length !== 1 ? 's' : ''} · {customers.length} client{customers.length !== 1 ? 's' : ''}</span>
+              <span className="text-gray-500 text-xs">{rows.length} item{rows.length !== 1 ? 's' : ''} · {cols.length} client{cols.length !== 1 ? 's' : ''}</span>
             </div>
 
             {rows.length === 0 ? (
               <div className="bg-gray-900 border border-gray-800 rounded-2xl p-16 text-center">
-                <p className="text-gray-500 text-base font-medium">{q ? 'No items match your search' : `No ${isFF ? 'Full Factory' : 'Others'} bookings found`}</p>
+                <p className="text-gray-500 text-base font-medium">{q ? 'No items or customers match your search' : `No ${isFF ? 'Full Factory' : 'Others'} bookings found`}</p>
               </div>
             ) : (
               <div className="space-y-0.5">
@@ -937,7 +968,7 @@ export default function Booked() {
                           textAlign: 'left', padding: '10px 14px', border: '1px solid var(--mtx-header-border)',
                           width: ITEMW, minWidth: ITEMW, position: 'sticky', left: SNW, zIndex: 2,
                         }}>ITEMS</th>
-                        {customers.map((c, i) => (
+                        {cols.map((c, i) => (
                           <th key={i} style={{
                             background: 'var(--mtx-header-bg)', color: 'var(--mtx-header-text)', fontWeight: 900, fontSize: 12,
                             border: '1px solid var(--mtx-header-border)', width: COLW, minWidth: COLW,
