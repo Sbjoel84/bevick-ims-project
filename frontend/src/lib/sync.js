@@ -50,20 +50,102 @@ async function withRetry(fn, maxAttempts = 3, baseDelayMs = 400) {
   throw lastErr;
 }
 
+// ── Durable write queue ──────────────────────────────────────────────────────
+// A write that still fails after withRetry's attempts (e.g. the device briefly
+// lost its connection) would otherwise vanish forever: the reducer already
+// applied it to local state, so the user sees it as "saved" until the next
+// reload wipes local state with whatever Supabase actually has. Queuing the
+// row to localStorage and flushing it once connectivity returns closes that
+// data-loss window without changing the optimistic-update UX.
+const PENDING_QUEUE_KEY = 'bevick_pending_writes';
+
+function loadQueue() {
+  try {
+    return JSON.parse(localStorage.getItem(PENDING_QUEUE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveQueue(queue) {
+  try {
+    localStorage.setItem(PENDING_QUEUE_KEY, JSON.stringify(queue));
+  } catch {
+    // best-effort persistence — e.g. storage quota exceeded
+  }
+}
+
+function enqueuePendingWrite(op) {
+  const queue = loadQueue();
+  queue.push({ ...op, ts: Date.now() });
+  saveQueue(queue);
+}
+
+async function applyQueuedOp(op) {
+  if (op.kind === 'upsert') {
+    const { error } = await supabase.from(op.table).upsert(op.row);
+    if (error) throw error;
+  } else if (op.kind === 'remove') {
+    const { error } = await supabase.from(op.table).delete().eq('id', op.id);
+    if (error) throw error;
+  }
+}
+
+let flushing = false;
+// Retries every queued write once; anything that still fails stays queued
+// for the next flush. Safe to call repeatedly/concurrently — re-entrant
+// calls while a flush is in progress are no-ops.
+export async function flushPendingWrites() {
+  if (flushing) return;
+  const queue = loadQueue();
+  if (!queue.length) return;
+  flushing = true;
+  const remaining = [];
+  for (const op of queue) {
+    try {
+      await applyQueuedOp(op);
+    } catch {
+      remaining.push(op);
+    }
+  }
+  saveQueue(remaining);
+  flushing = false;
+  return { flushed: queue.length - remaining.length, remaining: remaining.length };
+}
+
+export function pendingWriteCount() {
+  return loadQueue().length;
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => { flushPendingWrites(); });
+  setInterval(() => { flushPendingWrites(); }, 30000);
+}
+
 async function upsert(table, obj) {
   const row = { id: String(obj.id), data: obj };
   if (BRANCH_TABLES.has(table)) row.branch = obj.branch || null;
-  await withRetry(async () => {
-    const { error } = await supabase.from(table).upsert(row);
-    if (error) throw error;
-  });
+  try {
+    await withRetry(async () => {
+      const { error } = await supabase.from(table).upsert(row);
+      if (error) throw error;
+    });
+  } catch (err) {
+    enqueuePendingWrite({ kind: 'upsert', table, row });
+    throw err;
+  }
 }
 
 async function remove(table, id) {
-  await withRetry(async () => {
-    const { error } = await supabase.from(table).delete().eq('id', String(id));
-    if (error) throw error;
-  });
+  try {
+    await withRetry(async () => {
+      const { error } = await supabase.from(table).delete().eq('id', String(id));
+      if (error) throw error;
+    });
+  } catch (err) {
+    enqueuePendingWrite({ kind: 'remove', table, id: String(id) });
+    throw err;
+  }
 }
 
 // Chunked batch upsert — avoids request-size limits for large collections.
@@ -76,10 +158,15 @@ async function upsertMany(table, items) {
   });
   for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
     const chunk = rows.slice(i, i + CHUNK_SIZE);
-    await withRetry(async () => {
-      const { error } = await supabase.from(table).upsert(chunk);
-      if (error) throw error;
-    });
+    try {
+      await withRetry(async () => {
+        const { error } = await supabase.from(table).upsert(chunk);
+        if (error) throw error;
+      });
+    } catch (err) {
+      chunk.forEach(row => enqueuePendingWrite({ kind: 'upsert', table, row }));
+      throw err;
+    }
   }
 }
 

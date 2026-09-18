@@ -1,7 +1,7 @@
 import { createContext, useContext, useReducer, useEffect, useRef, useCallback } from 'react';
 import { DEFAULT_PERMISSIONS } from '../data/users';
 import { loadData } from '../lib/db';
-import { syncAction } from '../lib/sync';
+import { syncAction, flushPendingWrites, pendingWriteCount } from '../lib/sync';
 import { supabase } from '../lib/supabase';
 
 // In-memory audit log is capped so long-running sessions never accumulate
@@ -1076,7 +1076,23 @@ export function AppProvider({ children }) {
 
   // Load all data from Supabase once on mount, then try to restore session
   useEffect(() => {
-    loadData()
+    // Retry any writes left over from a previous failed sync (e.g. a booking
+    // payment saved locally right before the connection dropped) before the
+    // fresh load below can overwrite local state with stale remote data.
+    const pendingBefore = pendingWriteCount();
+
+    Promise.resolve(pendingBefore ? flushPendingWrites() : null)
+      .then((result) => {
+        if (result?.flushed) {
+          const id = Date.now();
+          rawDispatch({
+            type: 'ADD_TOAST',
+            payload: { id, message: `Recovered ${result.flushed} change(s) that failed to save earlier.` },
+          });
+          setTimeout(() => rawDispatch({ type: 'REMOVE_TOAST', payload: id }), 8000);
+        }
+        return loadData();
+      })
       .then(async (data) => {
         rawDispatch({ type: 'INIT', payload: data });
 
