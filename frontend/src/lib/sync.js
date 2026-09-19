@@ -8,6 +8,7 @@
 import { supabase } from './supabase';
 import { logTransaction as logInventoryTransaction } from './inventoryTransactionService';
 import { logTransaction as logSalesTransaction } from './salesTransactionService';
+import { markDeleted, clearDeleted, isDeleted } from './tombstones';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -81,13 +82,34 @@ function enqueuePendingWrite(op) {
   saveQueue(queue);
 }
 
+// A queued save must never replay after the user deleted that row, or it
+// would resurrect it.
+function dropQueuedUpserts(table, ids) {
+  const set = new Set(ids.map(String));
+  const queue = loadQueue();
+  const kept = queue.filter(op => !(op.kind === 'upsert' && op.table === table && set.has(String(op.row?.id))));
+  if (kept.length !== queue.length) saveQueue(kept);
+}
+
+async function deleteRows(table, ids) {
+  const { error } = await supabase.from(table).delete().in('id', ids);
+  if (error) throw error;
+  // RLS can turn a blocked delete into a silent no-op, which is how deleted
+  // rows "come back" on the next refresh — verify they are really gone.
+  const { data, error: checkErr } = await supabase.from(table).select('id').in('id', ids);
+  if (checkErr) throw checkErr;
+  if (data?.length) throw new Error(`Delete on ${table} did not take effect (check Supabase delete permissions)`);
+}
+
 async function applyQueuedOp(op) {
   if (op.kind === 'upsert') {
+    if (isDeleted(op.table, op.row?.id)) return;
     const { error } = await supabase.from(op.table).upsert(op.row);
     if (error) throw error;
   } else if (op.kind === 'remove') {
-    const { error } = await supabase.from(op.table).delete().eq('id', op.id);
-    if (error) throw error;
+    await deleteRows(op.table, [op.id]);
+  } else if (op.kind === 'removeMany') {
+    await deleteRows(op.table, op.ids);
   }
 }
 
@@ -125,6 +147,7 @@ if (typeof window !== 'undefined') {
 async function upsert(table, obj) {
   const row = { id: String(obj.id), data: obj };
   if (BRANCH_TABLES.has(table)) row.branch = obj.branch || null;
+  clearDeleted(table, [row.id]);
   try {
     await withRetry(async () => {
       const { error } = await supabase.from(table).upsert(row);
@@ -137,13 +160,18 @@ async function upsert(table, obj) {
 }
 
 async function remove(table, id) {
+  return removeMany(table, [id]);
+}
+
+async function removeMany(table, ids) {
+  const list = ids.map(String);
+  if (!list.length) return;
+  markDeleted(table, list);
+  dropQueuedUpserts(table, list);
   try {
-    await withRetry(async () => {
-      const { error } = await supabase.from(table).delete().eq('id', String(id));
-      if (error) throw error;
-    });
+    await withRetry(() => deleteRows(table, list));
   } catch (err) {
-    enqueuePendingWrite({ kind: 'remove', table, id: String(id) });
+    enqueuePendingWrite({ kind: 'removeMany', table, ids: list });
     throw err;
   }
 }
@@ -156,6 +184,7 @@ async function upsertMany(table, items) {
     if (BRANCH_TABLES.has(table)) row.branch = obj.branch || null;
     return row;
   });
+  clearDeleted(table, rows.map(r => r.id));
   for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
     const chunk = rows.slice(i, i + CHUNK_SIZE);
     try {
@@ -184,6 +213,13 @@ async function syncAudit(nextState, prevState) {
 async function toRecycleBin(nextState, id) {
   const item = nextState.recycleBin.find(r => r.id === id);
   if (item) await upsert('recycle_bin', item);
+}
+
+// Bin copy first: if the delete then fails, the record still exists in the bin instead of being lost.
+async function softDelete(table, nextState, id) {
+  markDeleted(table, [String(id)]);
+  await toRecycleBin(nextState, id);
+  await remove(table, id);
 }
 
 // Stock movements are always prepended (never mutated), same as auditLog —
@@ -272,8 +308,7 @@ export async function syncAction(action, prevState, nextState) {
         break;
       }
       case 'DELETE_SALE': {
-        await remove('sales', action.payload);
-        await toRecycleBin(nextState, action.payload);
+        await softDelete('sales', nextState, action.payload);
         const deletedSale = prevState.sales.find(s => s.id === action.payload);
         const { performedBy, performedById, userRole } = actor(nextState);
         // Sync inventory items that were restored when the sale was removed
@@ -296,8 +331,7 @@ export async function syncAction(action, prevState, nextState) {
         }
         // If this was a booking-type sale, also remove the linked booking from Supabase
         if (deletedSale?.bookingId) {
-          await remove('bookings', deletedSale.bookingId);
-          await toRecycleBin(nextState, deletedSale.bookingId);
+          await softDelete('bookings', nextState, deletedSale.bookingId);
           const purchasesToDelete = prevState.purchaseList.filter(p => p.bookingId === deletedSale.bookingId);
           if (purchasesToDelete.length) {
             await Promise.all(purchasesToDelete.map(p => remove('purchase_list', p.id)));
@@ -379,8 +413,7 @@ export async function syncAction(action, prevState, nextState) {
         await upsert('customers', action.payload);
         break;
       case 'DELETE_CUSTOMER': {
-        await remove('customers', action.payload);
-        await toRecycleBin(nextState, action.payload);
+        await softDelete('customers', nextState, action.payload);
         break;
       }
 
@@ -392,8 +425,7 @@ export async function syncAction(action, prevState, nextState) {
         await upsert('expenses', action.payload);
         break;
       case 'DELETE_EXPENSE': {
-        await remove('expenses', action.payload);
-        await toRecycleBin(nextState, action.payload);
+        await softDelete('expenses', nextState, action.payload);
         break;
       }
 
@@ -447,8 +479,7 @@ export async function syncAction(action, prevState, nextState) {
         break;
       }
       case 'DELETE_ITEM': {
-        await remove('inventory', action.payload);
-        await toRecycleBin(nextState, action.payload);
+        await softDelete('inventory', nextState, action.payload);
         const item = prevState.inventory.find(i => i.id === action.payload);
         if (item) {
           const { performedBy, performedById, userRole } = actor(nextState);
@@ -590,8 +621,7 @@ export async function syncAction(action, prevState, nextState) {
         break;
       }
       case 'DELETE_BOOKING': {
-        await remove('bookings', action.payload);
-        await toRecycleBin(nextState, action.payload);
+        await softDelete('bookings', nextState, action.payload);
         const purchasesToDelete = prevState.purchaseList.filter(p => p.bookingId === action.payload);
         if (purchasesToDelete.length) {
           await Promise.all(purchasesToDelete.map(p => remove('purchase_list', p.id)));
@@ -599,8 +629,7 @@ export async function syncAction(action, prevState, nextState) {
         // Also remove the linked booking-type sale from Supabase
         const linkedSale = prevState.sales.find(s => s.bookingId === action.payload);
         if (linkedSale) {
-          await remove('sales', linkedSale.id);
-          await toRecycleBin(nextState, linkedSale.id);
+          await softDelete('sales', nextState, linkedSale.id);
         }
         break;
       }
@@ -719,8 +748,7 @@ export async function syncAction(action, prevState, nextState) {
         await upsert('suppliers', action.payload);
         break;
       case 'DELETE_SUPPLIER': {
-        await remove('suppliers', action.payload);
-        await toRecycleBin(nextState, action.payload);
+        await softDelete('suppliers', nextState, action.payload);
         break;
       }
 
@@ -812,17 +840,11 @@ export async function syncAction(action, prevState, nextState) {
         const toDelete = b
           ? prevState.recycleBin.filter(r => !r.branch || r.branch === b)
           : prevState.recycleBin;
-        const ids = toDelete.map(r => String(r.id));
-        if (ids.length) {
-          await supabase.from('recycle_bin').delete().in('id', ids);
-        }
+        await removeMany('recycle_bin', toDelete.map(r => r.id));
         break;
       }
       case 'PURGE_EXPIRED': {
-        const ids = (action.payload?.ids || []).map(String);
-        if (ids.length) {
-          await supabase.from('recycle_bin').delete().in('id', ids);
-        }
+        await removeMany('recycle_bin', action.payload?.ids || []);
         break;
       }
 
@@ -863,8 +885,7 @@ export async function syncAction(action, prevState, nextState) {
           };
           const tbl = tableMap[req.type];
           if (tbl) {
-            await remove(tbl, req.targetId);
-            await toRecycleBin(nextState, req.targetId);
+            await softDelete(tbl, nextState, req.targetId);
           }
           const { performedBy, performedById, userRole } = actor(nextState);
 

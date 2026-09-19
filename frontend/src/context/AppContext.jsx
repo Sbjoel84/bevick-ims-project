@@ -3,6 +3,7 @@ import { DEFAULT_PERMISSIONS } from '../data/users';
 import { loadData } from '../lib/db';
 import { syncAction, flushPendingWrites, pendingWriteCount } from '../lib/sync';
 import { supabase } from '../lib/supabase';
+import { TABLE_BY_STATE_KEY, filterDeleted, isDeleted } from '../lib/tombstones';
 
 // In-memory audit log is capped so long-running sessions never accumulate
 // thousands of entries that slow down every state update.
@@ -96,8 +97,13 @@ function rawReducer(state, action) {
   switch (action.type) {
 
     // ── DB INIT ────────────────────────────────────────────────
-    case 'INIT':
-      return { ...state, ...action.payload, dbLoaded: true };
+    case 'INIT': {
+      const payload = { ...action.payload };
+      for (const [key, table] of Object.entries(TABLE_BY_STATE_KEY)) {
+        if (payload[key]) payload[key] = filterDeleted(table, payload[key]);
+      }
+      return { ...state, ...payload, dbLoaded: true };
+    }
 
     // ── PASSWORD RECOVERY — enter / exit reset-password mode ───
     case 'ENTER_RECOVERY':
@@ -117,7 +123,8 @@ function rawReducer(state, action) {
     // already deleted: anything still sitting in the recycle bin for this table
     // is stripped from the incoming data before it overwrites local state.
     case 'REFRESH_TABLE': {
-      const { key, data } = action.payload;
+      const { key } = action.payload;
+      const data = filterDeleted(TABLE_BY_STATE_KEY[key], action.payload.data);
       const recycleType = RECYCLE_TYPE_BY_KEY[key];
       if (recycleType && state.recycleBin.length) {
         const deletedIds = new Set(
@@ -984,6 +991,7 @@ function rawReducer(state, action) {
       // INSERT or UPDATE — upsert into the array
       const item = row?.data;
       if (!item) return state;
+      if (isDeleted(table, item.id)) return state;
       const exists = state[stateKey].some(x => String(x.id) === String(item.id));
       return {
         ...state,
