@@ -101,10 +101,26 @@ async function deleteRows(table, ids) {
   if (data?.length) throw new Error(`Delete on ${table} did not take effect (check Supabase delete permissions)`);
 }
 
+// Tables whose rows are only created by explicit actions (add, restore, transfer).
+// Every other write to them is an edit of an existing row, so it must not
+// re-insert a row another device already deleted: tombstones are per-browser,
+// and a stale device selling/restocking a deleted item would otherwise bring it back.
+const UPDATE_ONLY_TABLES = new Set(['inventory']);
+
+async function keepExisting(table, rows, insert) {
+  if (insert || !UPDATE_ONLY_TABLES.has(table) || !rows.length) return rows;
+  const { data, error } = await supabase.from(table).select('id').in('id', rows.map(r => r.id));
+  if (error) throw error;
+  const existing = new Set((data || []).map(r => String(r.id)));
+  return rows.filter(r => existing.has(r.id));
+}
+
 async function applyQueuedOp(op) {
   if (op.kind === 'upsert') {
     if (isDeleted(op.table, op.row?.id)) return;
-    const { error } = await supabase.from(op.table).upsert(op.row);
+    const [row] = await keepExisting(op.table, [op.row], op.insert);
+    if (!row) return;
+    const { error } = await supabase.from(op.table).upsert(row);
     if (error) throw error;
   } else if (op.kind === 'remove') {
     await deleteRows(op.table, [op.id]);
@@ -144,17 +160,20 @@ if (typeof window !== 'undefined') {
   setInterval(() => { flushPendingWrites(); }, 30000);
 }
 
-async function upsert(table, obj) {
+// `insert: true` marks writes that may create the row (see UPDATE_ONLY_TABLES).
+async function upsert(table, obj, { insert = false } = {}) {
   const row = { id: String(obj.id), data: obj };
   if (BRANCH_TABLES.has(table)) row.branch = obj.branch || null;
-  clearDeleted(table, [row.id]);
+  if (insert || !UPDATE_ONLY_TABLES.has(table)) clearDeleted(table, [row.id]);
   try {
     await withRetry(async () => {
-      const { error } = await supabase.from(table).upsert(row);
+      const [kept] = await keepExisting(table, [row], insert);
+      if (!kept) return;
+      const { error } = await supabase.from(table).upsert(kept);
       if (error) throw error;
     });
   } catch (err) {
-    enqueuePendingWrite({ kind: 'upsert', table, row });
+    enqueuePendingWrite({ kind: 'upsert', table, row, insert });
     throw err;
   }
 }
@@ -184,12 +203,14 @@ async function upsertMany(table, items) {
     if (BRANCH_TABLES.has(table)) row.branch = obj.branch || null;
     return row;
   });
-  clearDeleted(table, rows.map(r => r.id));
+  if (!UPDATE_ONLY_TABLES.has(table)) clearDeleted(table, rows.map(r => r.id));
   for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
     const chunk = rows.slice(i, i + CHUNK_SIZE);
     try {
       await withRetry(async () => {
-        const { error } = await supabase.from(table).upsert(chunk);
+        const kept = await keepExisting(table, chunk, false);
+        if (!kept.length) return;
+        const { error } = await supabase.from(table).upsert(kept);
         if (error) throw error;
       });
     } catch (err) {
@@ -452,7 +473,7 @@ export async function syncAction(action, prevState, nextState) {
       // ── INVENTORY ────────────────────────────────────────────
       case 'ADD_ITEM': {
         const item = action.payload;
-        await upsert('inventory', item);
+        await upsert('inventory', item, { insert: true });
         const { performedBy, performedById, userRole } = actor(nextState);
         await logInventoryTransaction({
           transactionType: 'Stock In', source: 'New Item',
@@ -516,7 +537,9 @@ export async function syncAction(action, prevState, nextState) {
         const q = Math.max(0, parseInt(qty) || 0);
         const updatedSource = nextState.inventory.find(i => i.id === fromId);
         const updatedDest = nextState.inventory.find(i => i.branch === toBranch && i.name === source.name && i.category === source.category);
-        await upsertMany('inventory', [updatedSource, updatedDest].filter(Boolean));
+        const destIsNew = updatedDest && !prevState.inventory.some(i => i.id === updatedDest.id);
+        await upsertMany('inventory', [updatedSource, destIsNew ? null : updatedDest].filter(Boolean));
+        if (destIsNew) await upsert('inventory', updatedDest, { insert: true });
 
         const { performedBy, performedById, userRole } = actor(nextState);
         if (updatedSource) {
@@ -808,7 +831,7 @@ export async function syncAction(action, prevState, nextState) {
           if (tbl && stateKey) {
             const restored = nextState[stateKey].find(x => x.id === action.payload);
             if (restored) {
-              await upsert(tbl, restored);
+              await upsert(tbl, restored, { insert: true });
               const { performedBy, performedById, userRole } = actor(nextState);
               if (binItem._type === 'inventory') {
                 await logInventoryTransaction({
